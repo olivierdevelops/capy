@@ -52,6 +52,47 @@ jobs:
   #         version: latest
   #         args: --timeout=3m
 
+  # The Rust port under rust/ must stay behaviourally identical to the Go
+  # reference implementation. This job builds BOTH and diffs them at every layer
+  # (lexer → library parser → loader → parser → evaluator → embedding API → CLI →
+  # MCP → playground bundle), then runs the Rust engine against the same
+  # checked-in goldens the Go suite uses.
+  #
+  # Additive on purpose: it changes nothing about what ships. The published
+  # playground and release binaries still come from the Go tree.
+  conformance:
+    name: rust/go conformance
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v6
+        with:
+          go-version: '1.23'
+          cache: true
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: rust
+      - name: rust build + clippy (deny warnings)
+        working-directory: rust
+        run: |
+          cargo build --workspace
+          cargo clippy --workspace -- -D warnings
+      - name: rust tests (incl. the golden suite)
+        working-directory: rust
+        run: cargo test --workspace
+      - name: cross-implementation conformance
+        run: ./rust/devtools/conformance.sh
+      - name: wasm conformance
+        # The browser-facing wasm surface: same JS harness, both engines.
+        run: |
+          rustup target add wasm32-unknown-unknown
+          curl -fsSL https://deno.land/install.sh | DENO_INSTALL="$HOME/.deno" sh -s -- -y >/dev/null
+          export PATH="$HOME/.deno/bin:$PATH"
+          ./rust/devtools/wasm_compare.sh
+
   build:
     name: build (${{ matrix.os }})
     needs: test

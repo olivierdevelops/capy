@@ -34,17 +34,33 @@ use crate::orchestrator::features::{
     make_evaluator, make_lexer, make_library_loader, make_parser,
 };
 use std::collections::BTreeMap;
-use std::rc::Rc;
+use std::sync::Arc;
 
 /// A compiled, ready-to-run Capy library. Safe to reuse across many `run`
 /// calls.
+///
+/// `Library` is `Send + Sync`: compile once, wrap in an `Arc`, and share it
+/// across threads. `run` takes `&self` and builds a fresh accumulating context
+/// per call, so concurrent transpiles need no lock. This is why the engine
+/// holds `Arc` rather than `Rc` internally — see the `library_is_send_and_sync`
+/// test, which pins the property at compile time.
+///
+/// ```
+/// use capy_core::capy::Library;
+/// use std::sync::Arc;
+///
+/// let lib = Arc::new(Library::new("extension txt\n")?);
+/// let worker = { let lib = Arc::clone(&lib); std::thread::spawn(move || lib.run("")) };
+/// worker.join().unwrap()?;
+/// # Ok::<(), capy_core::domain::errors::CapyError>(())
+/// ```
 pub struct Library {
     lib: DomainLibrary,
-    host: Rc<dyn Host>,
+    host: Arc<dyn Host + Send + Sync>,
 }
 
 impl std::fmt::Debug for Library {
-    /// Hand-written because the held `Rc<dyn Host>` can't derive `Debug`.
+    /// Hand-written because the held `Arc<dyn Host + Send + Sync>` can't derive `Debug`.
     /// Reports the library's identity, not its full compiled contents.
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("Library")
@@ -68,14 +84,14 @@ impl Library {
     /// Port of `NewLibraryFromFile`.
     pub fn from_file(path: &str) -> Result<Library, CapyError> {
         let dl = make_library_loader::load_library(path, make_lexer::tokenize)?;
-        Ok(Library { lib: dl, host: Rc::new(NoOpHost) })
+        Ok(Library { lib: dl, host: Arc::new(NoOpHost) })
     }
 
     /// Port of `newFromBytes`.
     pub fn from_bytes(format: &str, src: &[u8]) -> Result<Library, CapyError> {
         let dl =
             make_library_loader::load_library_from_bytes(format, src, make_lexer::tokenize)?;
-        Ok(Library { lib: dl, host: Rc::new(NoOpHost) })
+        Ok(Library { lib: dl, host: Arc::new(NoOpHost) })
     }
 
     /// Port of `SetHost`.
@@ -85,8 +101,12 @@ impl Library {
     /// primitive returns the empty zero value and `read_file` errors out. Pass an
     /// `OsHost` to opt in to real env / args / filesystem (only when the library
     /// source is trusted).
-    pub fn set_host(&mut self, h: Option<Rc<dyn Host>>) {
-        self.host = h.unwrap_or_else(|| Rc::new(NoOpHost));
+    ///
+    /// The `Send + Sync` bound is what keeps `Library` shareable across
+    /// threads; a custom `Host` holding interior-mutable state must therefore
+    /// use a thread-safe cell (`Mutex`/`RwLock`, not `RefCell`).
+    pub fn set_host(&mut self, h: Option<Arc<dyn Host + Send + Sync>>) {
+        self.host = h.unwrap_or_else(|| Arc::new(NoOpHost));
     }
 
     /// Port of `Run`.

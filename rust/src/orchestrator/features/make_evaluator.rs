@@ -23,7 +23,7 @@ use crate::domain::val::Val;
 use crate::gofmt;
 use regex::Regex;
 use std::collections::BTreeMap;
-use std::rc::Rc;
+use std::sync::Arc;
 
 /// Port of the `runMulti` closure returned by `MakeEvaluatorWithHost`.
 pub struct OuterEval<'a> {
@@ -33,12 +33,12 @@ pub struct OuterEval<'a> {
     depth: usize,
     /// Function table as shared handles, so resolving a call's definition is a
     /// refcount bump rather than a deep clone of the whole `FuncDef`.
-    fns: BTreeMap<String, Rc<crate::domain::library::FuncDef>>,
+    fns: BTreeMap<String, Arc<crate::domain::library::FuncDef>>,
 }
 
 /// Port of `MakeEvaluator` — uses [`NoOpHost`].
 pub fn run(program: &Block, lib: &Library) -> Result<String, CapyError> {
-    let (out, _) = run_multi(program, lib, Rc::new(NoOpHost))?;
+    let (out, _) = run_multi(program, lib, Arc::new(NoOpHost))?;
     Ok(out)
 }
 
@@ -48,18 +48,18 @@ pub fn run_noop_host_multi(
     program: &Block,
     lib: &Library,
 ) -> Result<(String, BTreeMap<String, String>), CapyError> {
-    run_multi(program, lib, Rc::new(NoOpHost))
+    run_multi(program, lib, Arc::new(NoOpHost))
 }
 
 /// Port of `MakeEvaluatorWithHost(...).RunMulti`.
 pub fn run_multi(
     program: &Block,
     lib: &Library,
-    host: Rc<dyn Host>,
+    host: Arc<dyn Host + Send + Sync>,
 ) -> Result<(String, BTreeMap<String, String>), CapyError> {
     let ctx = deep_copy_map(&lib.context);
-    let fns: BTreeMap<String, Rc<crate::domain::library::FuncDef>> =
-        lib.functions.iter().map(|(k, v)| (k.clone(), Rc::new(v.clone()))).collect();
+    let fns: BTreeMap<String, Arc<crate::domain::library::FuncDef>> =
+        lib.functions.iter().map(|(k, v)| (k.clone(), Arc::new(v.clone()))).collect();
     let mut ev =
         OuterEval { lib, inner: InnerEvaluator::new(ctx, host), depth: 0, fns };
     let body = ev.render_block(program)?;
@@ -162,7 +162,7 @@ impl<'a> OuterEval<'a> {
     fn func_def(
         &self,
         c: &FuncCall,
-    ) -> Result<Rc<crate::domain::library::FuncDef>, CapyError> {
+    ) -> Result<Arc<crate::domain::library::FuncDef>, CapyError> {
         match self.fns.get(&c.func) {
             Some(f) => Ok(f.clone()),
             None => Err(CapyError::msg(format!(

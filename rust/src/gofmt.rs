@@ -107,49 +107,6 @@ pub fn quote(s: &str) -> String {
     out
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    // Expected values produced by Go:
-    //   strconv.FormatFloat(v, 'g', -1, 64)
-    #[test]
-    fn float_g_matches_go() {
-        let cases: &[(f64, &str)] = &[
-            (0.0, "0"),
-            (-0.0, "-0"),
-            (1.0, "1"),
-            (-1.0, "-1"),
-            (1.5, "1.5"),
-            (0.1, "0.1"),
-            (100000.0, "100000"),
-            (1000000.0, "1e+06"),
-            (1234567.0, "1.234567e+06"),
-            (999999.0, "999999"),
-            (0.0001, "0.0001"),
-            (0.00001, "1e-05"),
-            (1e20, "1e+20"),
-            (1e-20, "1e-20"),
-            (3.141592653589793, "3.141592653589793"),
-            (2.0 / 3.0, "0.6666666666666666"),
-            (1e21, "1e+21"),
-            (123.456, "123.456"),
-            (-0.5, "-0.5"),
-        ];
-        for (v, want) in cases {
-            assert_eq!(&format_float_g(*v), want, "format_float_g({v})");
-        }
-    }
-
-    #[test]
-    fn quote_matches_go() {
-        assert_eq!(quote("hi"), "\"hi\"");
-        assert_eq!(quote("a\"b"), "\"a\\\"b\"");
-        assert_eq!(quote("a\nb"), "\"a\\nb\"");
-        assert_eq!(quote("a\\b"), "\"a\\\\b\"");
-        assert_eq!(quote("\t"), "\"\\t\"");
-    }
-}
 
 /// Port of `strconv.QuoteRune` / `fmt.Sprintf("%q", r)` for a single rune.
 pub fn quote_rune(c: char) -> String {
@@ -305,5 +262,53 @@ fn unquote_char(s: &str, quote: u8) -> Result<(char, &str), ()> {
             Ok((v as u8 as char, &s[4..]))
         }
         _ => Err(()),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // Expected values produced by Go:
+    //   strconv.FormatFloat(v, 'g', -1, 64)
+    #[test]
+    // The 3.14159… vector below is a literal Go produced, not an approximation of
+    // PI: the point is the exact f64 → string mapping, so substituting
+    // std::f64::consts::PI would make the test assert something else.
+    #[allow(clippy::approx_constant)]
+    fn float_g_matches_go() {
+        let cases: &[(f64, &str)] = &[
+            (0.0, "0"),
+            (-0.0, "-0"),
+            (1.0, "1"),
+            (-1.0, "-1"),
+            (1.5, "1.5"),
+            (0.1, "0.1"),
+            (100000.0, "100000"),
+            (1000000.0, "1e+06"),
+            (1234567.0, "1.234567e+06"),
+            (999999.0, "999999"),
+            (0.0001, "0.0001"),
+            (0.00001, "1e-05"),
+            (1e20, "1e+20"),
+            (1e-20, "1e-20"),
+            (3.141592653589793, "3.141592653589793"),
+            (2.0 / 3.0, "0.6666666666666666"),
+            (1e21, "1e+21"),
+            (123.456, "123.456"),
+            (-0.5, "-0.5"),
+        ];
+        for (v, want) in cases {
+            assert_eq!(&format_float_g(*v), want, "format_float_g({v})");
+        }
+    }
+
+    #[test]
+    fn quote_matches_go() {
+        assert_eq!(quote("hi"), "\"hi\"");
+        assert_eq!(quote("a\"b"), "\"a\\\"b\"");
+        assert_eq!(quote("a\nb"), "\"a\\nb\"");
+        assert_eq!(quote("a\\b"), "\"a\\\\b\"");
+        assert_eq!(quote("\t"), "\"\\t\"");
     }
 }

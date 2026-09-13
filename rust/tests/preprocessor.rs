@@ -1,6 +1,5 @@
 //! Port of `infra/preprocessor_test.go`.
 
-use capy_core::domain::host::Host;
 use capy_core::infra::os_host::OsHost;
 use capy_core::infra::preprocessor::preprocess;
 use std::path::PathBuf;

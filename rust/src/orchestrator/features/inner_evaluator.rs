@@ -24,7 +24,7 @@ use crate::gofmt;
 use crate::infra::helpers;
 use regex::Regex;
 use std::collections::BTreeMap;
-use std::rc::Rc;
+use std::sync::Arc;
 
 /// Scope maps used by the evaluator.
 pub type Locals = BTreeMap<String, Val>;
@@ -33,13 +33,13 @@ pub type Captures = BTreeMap<String, CaptureValue>;
 /// The `OnUnknownCall` hook. Returning `(Some(v), true)` / `(None, true)` means
 /// "handled"; `(None, false)` means "still unknown, raise the normal error".
 pub type UnknownCallHook =
-    Rc<dyn Fn(&str, &[Val]) -> Result<(Option<Val>, bool), CapyError>>;
+    Arc<dyn Fn(&str, &[Val]) -> Result<(Option<Val>, bool), CapyError> + Send + Sync>;
 
 pub struct InnerEvaluator {
     /// Always a [`Val::Obj`]. Held as a `Val` so the mutable path walk is
     /// uniform with nested containers.
     pub context: Val,
-    pub host: Rc<dyn Host>,
+    pub host: Arc<dyn Host + Send + Sync>,
     /// Invoked when `run_primitive` doesn't recognise a call's name. Used by the
     /// command runner to add command-only primitives without growing the global
     /// primitive set.
@@ -47,12 +47,12 @@ pub struct InnerEvaluator {
 }
 
 impl InnerEvaluator {
-    pub fn new(context: BTreeMap<String, Val>, host: Rc<dyn Host>) -> InnerEvaluator {
+    pub fn new(context: BTreeMap<String, Val>, host: Arc<dyn Host + Send + Sync>) -> InnerEvaluator {
         InnerEvaluator { context: Val::Obj(context), host, on_unknown_call: None }
     }
 
     pub fn with_noop_host(context: BTreeMap<String, Val>) -> InnerEvaluator {
-        InnerEvaluator::new(context, Rc::new(NoOpHost))
+        InnerEvaluator::new(context, Arc::new(NoOpHost))
     }
 
     /// The context as a plain map, for callers that need the final accumulator.

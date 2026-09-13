@@ -1,9 +1,12 @@
 [package]
 name = "capy-wasm-abi"
-version = "0.12.0"
-edition = "2021"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+# Not published to crates.io. The .wasm build artefact is consumed by the wazero binding and the
+# browser playground, not by Rust callers; a Rust dependant wants capy-core.
+publish = false
 description = "Linear-memory wasm ABI for the Capy engine — for wazero and browser hosts"
-license = "MIT"
 
 [lib]
 # cdylib is what produces a .wasm; the ABI's #[no_mangle] symbols live here
@@ -12,7 +15,7 @@ crate-type = ["cdylib"]
 path = "src/lib.rs"
 
 [dependencies]
-capy-core = { path = ".." }
+capy-core = { path = "..", version = "0.12.0" }
 
 # NOTE: release profile settings live at the workspace root (Cargo ignores them
 # in member crates), so the size-optimised wasm build is configured there.

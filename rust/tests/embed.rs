@@ -353,3 +353,49 @@ end
     );
     assert_eq!(out, "script says hi world\n");
 }
+
+/// `Library` must be `Send + Sync` so downstream crates can share one compiled
+/// library across threads — an axum/tokio handler, a `rayon` map, a `OnceLock`
+/// global. This has no Go counterpart (a `*capy.Library` is usable from any
+/// goroutine by construction); in Rust it is a property of the types we hold,
+/// so assert it at compile time rather than trusting it to survive refactors.
+/// The engine uses `Arc`, never `Rc`, precisely to keep this true.
+#[test]
+fn library_is_send_and_sync() {
+    fn assert_send_sync<T: Send + Sync + 'static>() {}
+    assert_send_sync::<capy_core::capy::Library>();
+    assert_send_sync::<capy_core::domain::errors::CapyError>();
+    assert_send_sync::<capy_core::domain::val::Val>();
+}
+
+/// The thread-safety guarantee above, exercised for real: one `Library` behind
+/// an `Arc`, transpiling concurrently on several threads. `run` takes `&self`,
+/// so no lock is needed — each call builds its own accumulating context.
+#[test]
+fn shared_library_runs_concurrently() {
+    let lib = std::sync::Arc::new(must_lib(
+        r##"
+extension txt
+
+function greet
+    arg literal "greet"
+    arg capture who string
+    write `hello ${decoded who}
+`
+end
+"##,
+    ));
+    let handles: Vec<_> = (0..8)
+        .map(|i| {
+            let lib = std::sync::Arc::clone(&lib);
+            std::thread::spawn(move || {
+                let script = format!("greet \"thread-{i}\"\n");
+                let out = lib.run(&script).expect("run on worker thread");
+                assert_eq!(out, format!("hello thread-{i}\n"));
+            })
+        })
+        .collect();
+    for h in handles {
+        h.join().expect("worker thread panicked");
+    }
+}

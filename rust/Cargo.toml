@@ -1,19 +1,44 @@
 [workspace]
-members = ["cli", "mcp", "playground", "wasm"]
+members = ["cli", "devtools", "mcp", "playground", "wasm"]
 
-[package]
-name = "capy-core"
+# Shared metadata, inherited by every member via `foo.workspace = true`. Keeps
+# the version numbers from drifting apart and gives each publishable crate the
+# license/repository fields crates.io requires.
+[workspace.package]
 version = "0.12.0"
 edition = "2021"
 rust-version = "1.74"
-description = "Capy transpiler engine — a target-agnostic transpiler driven entirely by a .capy library"
 license = "MIT"
 repository = "https://github.com/olivierdevelops/capy"
+
+[package]
+name = "capy-core"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Capy transpiler engine — a target-agnostic transpiler driven entirely by a .capy library"
+readme = "README.md"
 keywords = ["transpiler", "dsl", "codegen", "parser"]
 categories = ["compilers", "parser-implementations"]
-# Ship only the library. The differential-test harnesses under devtools/ and the
-# sample corpus stay out of the published crate.
-include = ["src/**/*.rs", "Cargo.toml", "README.md", "LICENSE"]
+# Ship the library plus the self-contained integration tests, so `cargo publish`'s
+# verify step exercises the public embedding API against the packaged crate — the
+# one thing that would otherwise only ever be tested through a path dependency.
+#
+# tests/golden.rs is deliberately absent: it walks the repo's `samples/` corpus,
+# which is far too large to publish, and it panics rather than skips when that
+# directory is missing (on purpose — a silent skip would hide a CI regression).
+# Cargo warns once about the ignored target; that warning is expected.
+include = [
+    "src/**/*.rs",
+    "tests/embed.rs",
+    "tests/define_extractor.rs",
+    "tests/preprocessor.rs",
+    "Cargo.toml",
+    "README.md",
+    "LICENSE",
+]
 
 [lib]
 name = "capy_core"
@@ -32,61 +57,3 @@ lto = true
 codegen-units = 1
 panic = "abort"
 strip = true
-
-# The differential-test harnesses. Declared explicitly so `cargo build` doesn't
-# pick them up and `include` keeps them unpublished.
-[[bin]]
-name = "lexdump"
-path = "devtools/bin/lexdump.rs"
-
-[[bin]]
-name = "helperdump"
-path = "devtools/bin/helperdump.rs"
-
-[[bin]]
-name = "innerdump"
-path = "devtools/bin/innerdump.rs"
-
-[[bin]]
-name = "libdump"
-path = "devtools/bin/libdump.rs"
-
-[[bin]]
-name = "loaddump"
-path = "devtools/bin/loaddump.rs"
-
-[[bin]]
-name = "parsedump"
-path = "devtools/bin/parsedump.rs"
-
-[[bin]]
-name = "multidump"
-path = "devtools/bin/multidump.rs"
-
-[[bin]]
-name = "embeddump"
-path = "devtools/bin/embeddump.rs"
-
-[[bin]]
-name = "cmddump"
-path = "devtools/bin/cmddump.rs"
-
-[[bin]]
-name = "pathdump"
-path = "devtools/bin/pathdump.rs"
-
-[[bin]]
-name = "runcli"
-path = "devtools/bin/runcli.rs"
-
-[[bin]]
-name = "runcmd"
-path = "devtools/bin/runcmd.rs"
-
-[[bin]]
-name = "goldenrun"
-path = "devtools/bin/goldenrun.rs"
-
-[[bin]]
-name = "nativebench"
-path = "devtools/bin/nativebench.rs"

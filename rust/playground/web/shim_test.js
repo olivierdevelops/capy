@@ -65,8 +65,10 @@ console.log("✅ capyIntrospect:", ins.functions.map((f) => f.name).join(", "),
 
 // 4. capyDocs
 const docs = globalThis.capyDocs(LIB, "auto");
-if (!docs.ok || !docs.output.startsWith("# Library reference")) throw new Error("docs failed");
-console.log("✅ capyDocs:", docs.output.length, "bytes of Markdown");
+// The field is `docs`, not `output` — index.html reads `res.docs`. This test
+// previously asserted against `.output` and threw; it never ran in CI.
+if (!docs.ok || !docs.docs.startsWith("# Library reference")) throw new Error("docs failed");
+console.log("✅ capyDocs:", docs.docs.length, "bytes of Markdown");
 
 // 5. repeated calls must not leak or corrupt memory
 for (let i = 0; i < 200; i++) {

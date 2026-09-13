@@ -1,0 +1,19 @@
+[package]
+name = "capy-devtools"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+# Never published: repo tooling.
+publish = false
+
+[dependencies]
+capy-core = { path = "..", version = "0.12.0" }
+
+# The thirteen layer-dumping harnesses that used to live here existed only to emit
+# one engine layer's output in a format diffable against a matching Go dumper.
+# With the Go reference gone they have no counterpart; the golden corpus
+# (rust/tests/golden.rs) and rust/devtools/wasm_check.sh are the oracles now.
+# Their history is in git if a layer ever needs that kind of bisecting again.
+[[bin]]
+name = "nativebench"
+path = "bin/nativebench.rs"

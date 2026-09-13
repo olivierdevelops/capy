@@ -240,12 +240,18 @@ pub unsafe extern "C" fn capy_docs(lib_ptr: *const u8, lib_len: u32) -> *mut u8 
 
 /// `capy_version() -> resultPtr`
 ///
-/// Go's `capyVersion` returns a bare JS string; the JS shim unwraps `output`
-/// from this envelope so the browser-facing signature stays identical.
+/// The JS shim unwraps `output` from this envelope, so the browser-facing
+/// signature is a bare version string.
+///
+/// `CAPY_VERSION` is read at compile time so CI can stamp in `git describe`
+/// (the playground toolbar shows the release, not the crate version). This is
+/// the replacement for the Go build's `-ldflags "-X main.version=…"`. Falls back
+/// to the crate version for an ordinary local build.
 #[no_mangle]
 pub extern "C" fn capy_version() -> *mut u8 {
-    into_result_buffer(format!(
-        "{{\"ok\":true,\"output\":{}}}",
-        jstr(env!("CARGO_PKG_VERSION"))
-    ))
+    let version = match option_env!("CAPY_VERSION") {
+        Some(v) if !v.is_empty() => v,
+        _ => env!("CARGO_PKG_VERSION"),
+    };
+    into_result_buffer(format!("{{\"ok\":true,\"output\":{}}}", jstr(version)))
 }

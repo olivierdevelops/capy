@@ -1,13 +1,20 @@
 [package]
 name = "capy-cli"
-version = "0.12.0"
-edition = "2021"
-description = "Capy CLI — port of cmd/capy"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Capy command-line interface — transpile, check, format and scaffold .capy projects"
+keywords = ["transpiler", "dsl", "codegen", "cli"]
+categories = ["command-line-utilities", "compilers"]
 
 [[bin]]
 name = "capy"
 path = "src/main.rs"
 
 [dependencies]
-capy-core = { path = ".." }
+# `version` alongside `path`: cargo uses the path locally and the registry
+# version when published. Without it `cargo publish` rejects the crate.
+capy-core = { path = "..", version = "0.12.0" }
 zip = { version = "2", default-features = false, features = ["deflate"] }

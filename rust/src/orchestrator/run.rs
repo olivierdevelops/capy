@@ -9,7 +9,7 @@ use crate::infra::os_host::OsHost;
 use crate::infra::{define_extractor, preprocessor};
 use std::collections::BTreeMap;
 use std::fs;
-use std::rc::Rc;
+use std::sync::Arc;
 
 /// Port of `Run`.
 ///
@@ -57,7 +57,7 @@ pub fn run_multi_with_args(
     let raw_src = fs::read(script_path)
         .map_err(|e| CapyError::msg(gopath::io_error("open", script_path, &e)))?;
     let src = strip_shebang(&raw_src).to_vec();
-    let host = Rc::new(OsHost {
+    let host = Arc::new(OsHost {
         user_args: user_args.to_vec(),
         base_dir: gopath::dir(script_path),
     });

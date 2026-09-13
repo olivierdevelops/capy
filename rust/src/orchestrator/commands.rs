@@ -10,7 +10,7 @@ use crate::gofmt;
 use crate::gopath;
 use crate::infra::os_host::OsHost;
 use std::collections::BTreeMap;
-use std::rc::Rc;
+use std::sync::Arc;
 
 /// Port of `RunCommand`.
 ///
@@ -59,7 +59,7 @@ pub fn run_command(
     // into `extra` (still surfaced via context.args).
     let parsed = parse_command_args(&cmd, args)?;
 
-    let host = Rc::new(OsHost {
+    let host = Arc::new(OsHost {
         user_args: args.to_vec(),
         base_dir: gopath::dir(library_path),
     });
@@ -95,7 +95,7 @@ pub fn run_command(
     // The command env carries the library handle so `compile script` can reach
     // back into the library to render.
     let lib_path_owned = library_path.to_string();
-    ev.on_unknown_call = Some(Rc::new(move |name: &str, cargs: &[Val]| {
+    ev.on_unknown_call = Some(Arc::new(move |name: &str, cargs: &[Val]| {
         command_dispatch(&lib_path_owned, name, cargs)
     }));
     let empty: BTreeMap<String, CaptureValue> = BTreeMap::new();

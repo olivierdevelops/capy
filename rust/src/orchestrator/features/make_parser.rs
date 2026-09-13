@@ -12,11 +12,11 @@ use crate::domain::library::{CloseSegment, FuncDef, Library, PatternElement, Typ
 use crate::domain::token::{Token, TokenKind};
 use crate::gofmt;
 use std::collections::BTreeMap;
-use std::rc::Rc;
+use std::sync::Arc;
 
 /// Port of `MakeParser(...).Parse`.
 pub fn parse(toks: Vec<Token>, src: &str, lib: &Library) -> Result<Block, CapyError> {
-    let mut fns: Vec<Rc<FuncDef>> = lib.functions.values().cloned().map(Rc::new).collect();
+    let mut fns: Vec<Arc<FuncDef>> = lib.functions.values().cloned().map(Arc::new).collect();
     fns.sort_by(|a, b| {
         // Priority descending.
         if a.priority != b.priority {
@@ -39,7 +39,7 @@ pub fn parse(toks: Vec<Token>, src: &str, lib: &Library) -> Result<Block, CapyEr
         // map-iteration order — making any keyword collision a heisenbug.
         a.name.cmp(&b.name)
     });
-    let by_name: BTreeMap<String, Rc<FuncDef>> =
+    let by_name: BTreeMap<String, Arc<FuncDef>> =
         fns.iter().map(|f| (f.name.clone(), f.clone())).collect();
     let mut pp = OuterP {
         toks,
@@ -80,8 +80,8 @@ fn split_source_lines(s: &str) -> Vec<String> {
 struct OuterP {
     toks: Vec<Token>,
     pos: usize,
-    fns: Vec<Rc<FuncDef>>,
-    by_name: BTreeMap<String, Rc<FuncDef>>,
+    fns: Vec<Arc<FuncDef>>,
+    by_name: BTreeMap<String, Arc<FuncDef>>,
     types: BTreeMap<String, TypeDef>,
     /// The original source split into lines (1-indexed via `src_lines[line-1]`).
     /// Used by `parse_verbatim_body` to capture a `block_verbatim` body as the raw
@@ -208,7 +208,7 @@ impl OuterP {
         // remembered error is more informative than the generic "no library
         // function matches" — so it is surfaced at the end.
         let mut block_err: Option<CapyError> = None;
-        // Index-walk with a per-candidate Rc bump instead of cloning the whole
+        // Index-walk with a per-candidate Arc bump instead of cloning the whole
         // candidate vector on every statement.
         for ci in 0..self.fns.len() {
             let f = &self.fns[ci].clone();

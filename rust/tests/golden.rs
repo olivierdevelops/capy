@@ -72,7 +72,18 @@ fn golden_samples_match() {
 
     let mut pass = 0usize;
     let mut skip = 0usize;
+    let mut updated = 0usize;
     let mut failures: Vec<String> = Vec::new();
+
+    // Port of the Go suite's `-update` flag. `cargo test` has no clean way to
+    // pass a custom flag through to a test binary, so this is an env var:
+    //
+    //     CAPY_UPDATE_GOLDENS=1 cargo test --test golden
+    //
+    // Like the Go original it only refreshes goldens that ALREADY EXIST —
+    // create an empty placeholder first when adding a brand-new sample, so a
+    // typo in a filename can't silently mint a golden that asserts nothing.
+    let update = std::env::var("CAPY_UPDATE_GOLDENS").unwrap_or_default() == "1";
 
     for (name, lib, script) in &pairs {
         let dir = script.parent().unwrap();
@@ -93,6 +104,9 @@ fn golden_samples_match() {
                     let got = e.to_string().trim().to_string();
                     if got == want {
                         pass += 1;
+                    } else if update {
+                        std::fs::write(&err_path, format!("{got}\n")).unwrap();
+                        updated += 1;
                     } else {
                         failures.push(format!(
                             "{name}: error mismatch\n    want: {want:?}\n    got:  {got:?}"
@@ -110,6 +124,9 @@ fn golden_samples_match() {
                     let (g, w) = (normalize(&out), normalize(&want));
                     if g == w {
                         pass += 1;
+                    } else if update {
+                        std::fs::write(&ok_path, &out).unwrap();
+                        updated += 1;
                     } else {
                         failures.push(format!("{name}: output mismatch\n{}", first_diff(&w, &g)));
                     }
@@ -121,6 +138,9 @@ fn golden_samples_match() {
         }
     }
 
+    if update {
+        eprintln!("goldens: {pass} already matched, {updated} REWRITTEN, {skip} skipped (no golden file)");
+    }
     eprintln!("goldens: {pass} passed, {skip} skipped (no golden file), {} failed", failures.len());
     assert!(
         failures.is_empty(),

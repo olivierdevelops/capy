@@ -14,3 +14,7 @@ gobind/capy_core.wasm
 # Scratch binaries from the devtools comparison scripts.
 gobind/smokebin
 gobind/benchbin
+
+# A workspace member must not carry its own lockfile; the workspace root
+# lockfile (rust/Cargo.lock) is authoritative and cargo ignores this one.
+*/Cargo.lock

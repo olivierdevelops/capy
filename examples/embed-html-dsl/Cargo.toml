@@ -1,0 +1,10 @@
+# Standalone on purpose: this is what an OUTSIDE project's manifest looks like, so
+# it is not a member of the rust/ workspace. Depend on the published crate with
+# `capy-core = "0.12"` once it is on crates.io.
+[package]
+name = "embed-html-dsl"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+capy-core = { path = "../../rust" }

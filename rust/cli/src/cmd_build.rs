@@ -1,29 +1,27 @@
-//! Port of `cmd/capy/cmd_build.go`.
+//! `capy build` — produces a standalone executable with a library baked in. Run
+//! it against any script and it dispatches to the library's commands; no `capy`
+//! install is needed on the target host.
 //!
-//! Produces a standalone executable with a library baked in. Run the executable
-//! against any script and it dispatches to the library's commands — no `capy`
-//! install required on the target host.
+//! Implementation: writes a temporary Cargo project whose `main.rs` embeds the
+//! library source and calls `capy_core::orchestrator::commands::run_command`,
+//! then shells out to `cargo build --release`.
 //!
-//! IMPORTANT, and unchanged from the Go original by design: this writes a small
-//! Go `main.go` that embeds the library source and imports
-//! `github.com/olivierdevelops/capy/orchestrator`, then shells out to
-//! `go mod tidy` + `go build`. So:
+//!   * running `capy build` needs a Cargo toolchain
+//!   * the OUTPUT binary embeds the Rust engine and needs no toolchain
+//!   * `--target <triple>` cross-compiles; it replaces the Go build's
+//!     GOOS/GOARCH, so `--target wasm32-unknown-unknown` yields a `.wasm`
 //!
-//!   * running `capy build` needs a Go toolchain (as it always did)
-//!   * the OUTPUT binary is powered by the GO engine, not this Rust one
-//!
-//! Porting it faithfully preserves the feature exactly. Retargeting the generated
-//! program at the Rust engine would be a design change, not a port — it needs a
-//! Rust template plus a `cargo build` path, and a decision about how the library
-//! source gets embedded.
+//! This replaces the Go original, which generated a Go module importing
+//! `github.com/olivierdevelops/capy/orchestrator`. The observable contract — the
+//! produced binary's CLI, its `--help`, and the commands it dispatches — is
+//! unchanged; only the engine inside it is.
 
 use super::flags::{self, reorder_flags_first, Spec};
 use super::lib_path::resolve_lib;
-use capy_core::gofmt;
 use capy_core::gopath;
 use std::process::Command;
 
-const BUILD_SPEC: Spec = Spec { bools: &["keep-temp"], strings: &["o"] };
+const BUILD_SPEC: Spec = Spec { bools: &["keep-temp"], strings: &["o", "target"] };
 
 /// Port of `cmdBuild`.
 pub fn cmd_build(args: &[String]) -> Result<(), String> {
@@ -32,7 +30,9 @@ pub fn cmd_build(args: &[String]) -> Result<(), String> {
     let fs = flags::parse(&BUILD_SPEC, &args)?;
     let pos = &fs.positionals;
     if pos.len() != 1 {
-        return Err("usage: capy build <library> [-o <output>]".to_string());
+        return Err(
+            "usage: capy build <library> [-o <output>] [--target <triple>]".to_string(),
+        );
     }
     let lib_name = &pos[0];
 
@@ -60,59 +60,59 @@ pub fn cmd_build(args: &[String]) -> Result<(), String> {
         out = format!("./{}", resolved_name);
     }
 
-    // Materialise a temp Go module with the library source embedded.
+    // Materialise a temp Cargo project with the library source embedded.
     let tmp_dir = make_temp_dir("capy-build-")?;
     let keep = fs.bool("keep-temp");
-
-    // Locate the local capy module root so we can use a `replace` directive.
-    let capy_root = find_capy_module_root();
-
-    let main_go_path = gopath::join(&[&tmp_dir, "main.go"]);
-    std::fs::write(&main_go_path, build_main_go(&resolved_name, &lib_src).as_bytes())
-        .map_err(|e| format!("write main.go: {}", gopath::io_error("open", &main_go_path, &e)))?;
-
-    let gomod = if !capy_root.is_empty() {
-        format!(
-            "module capybuild\n\ngo 1.22\n\nrequire github.com/olivierdevelops/capy v0.0.0\nreplace github.com/olivierdevelops/capy => {}\n",
-            capy_root
-        )
-    } else {
-        "module capybuild\n\ngo 1.22\n\nrequire github.com/olivierdevelops/capy latest\n".to_string()
-    };
-    let gomod_path = gopath::join(&[&tmp_dir, "go.mod"]);
-    std::fs::write(&gomod_path, gomod.as_bytes())
-        .map_err(|e| format!("write go.mod: {}", gopath::io_error("open", &gomod_path, &e)))?;
-    // With a local checkout, copy its go.sum so deps don't re-resolve.
-    if !capy_root.is_empty() {
-        if let Ok(sum) = std::fs::read(gopath::join(&[&capy_root, "go.sum"])) {
-            let _ = std::fs::write(gopath::join(&[&tmp_dir, "go.sum"]), sum);
-        }
-    }
-
     let cleanup = |dir: &str, keep: bool| {
         if !keep {
             let _ = std::fs::remove_dir_all(dir);
         }
     };
 
-    // `go mod tidy` to settle deps for the new module.
-    let tidy = Command::new("go").arg("mod").arg("tidy").current_dir(&tmp_dir).status();
-    match tidy {
-        Ok(st) if st.success() => {}
-        Ok(st) => {
-            cleanup(&tmp_dir, keep);
-            return Err(format!(
-                "go mod tidy failed: exit status {}",
-                st.code().unwrap_or(-1)
-            ));
-        }
-        Err(e) => {
-            cleanup(&tmp_dir, keep);
-            return Err(format!("go mod tidy failed: {}", e));
-        }
+    let src_dir = gopath::join(&[&tmp_dir, "src"]);
+    std::fs::create_dir_all(&src_dir)
+        .map_err(|e| gopath::io_error("mkdir", &src_dir, &e))?;
+    let main_rs_path = gopath::join(&[&src_dir, "main.rs"]);
+    std::fs::write(&main_rs_path, build_main_rs(&resolved_name, &lib_src).as_bytes())
+        .map_err(|e| format!("write main.rs: {}", gopath::io_error("open", &main_rs_path, &e)))?;
+
+    // Prefer a local checkout so an offline build works and the binary matches
+    // the engine that produced it — the equivalent of the Go version's
+    // `replace` directive. Fall back to the published crate.
+    let dep = match find_capy_core_root() {
+        Some(root) => format!("capy-core = {{ path = {} }}", toml_string(&root)),
+        None => format!("capy-core = {}", toml_string(CAPY_CORE_VERSION)),
+    };
+    let cargo_toml = format!(
+        "# Generated by capy build. Do not edit.\n\
+         [package]\n\
+         name = \"capybuild\"\n\
+         version = \"0.0.0\"\n\
+         edition = \"2021\"\n\
+         \n\
+         [[bin]]\n\
+         name = \"capybuild\"\n\
+         path = \"src/main.rs\"\n\
+         \n\
+         [dependencies]\n\
+         {dep}\n\
+         \n\
+         # Match the engine's own release profile: a bundled tool wants to be small.\n\
+         [profile.release]\n\
+         opt-level = \"z\"\n\
+         lto = true\n\
+         codegen-units = 1\n\
+         strip = true\n"
+    );
+    let cargo_toml_path = gopath::join(&[&tmp_dir, "Cargo.toml"]);
+    if let Err(e) = std::fs::write(&cargo_toml_path, cargo_toml.as_bytes()) {
+        cleanup(&tmp_dir, keep);
+        return Err(format!(
+            "write Cargo.toml: {}",
+            gopath::io_error("open", &cargo_toml_path, &e)
+        ));
     }
 
-    // `go build`.
     let abs_out = if gopath::is_abs(&out) {
         gopath::clean(&out)
     } else {
@@ -121,22 +121,73 @@ pub fn cmd_build(args: &[String]) -> Result<(), String> {
             .unwrap_or_default();
         gopath::join(&[&cwd, &out])
     };
-    eprintln!("building {} (this needs the Go toolchain)…", resolved_name);
-    let build = Command::new("go")
-        .args(["build", "-o", &abs_out, "./..."])
+
+    eprintln!("building {} (this needs the Cargo toolchain)…", resolved_name);
+    // --target-dir inside the temp dir keeps the build self-contained, so it
+    // neither pollutes nor is polluted by a surrounding workspace.
+    let target_dir = gopath::join(&[&tmp_dir, "target"]);
+    // `--target <triple>` cross-compiles, replacing the Go build's GOOS/GOARCH
+    // env vars — notably `--target wasm32-unknown-unknown` for a browser build.
+    let triple = fs.str("target").to_string();
+    if triple.starts_with("wasm32") {
+        // Be explicit rather than shipping a module that fails at run time. The
+        // generated wrapper stages the embedded library through a temp file, and
+        // wasm32-unknown-unknown has no filesystem at all while WASI needs the
+        // host to grant one — so `--help` works but commands panic without it.
+        // A browser-ready build is a different artefact: see capy-wasm-abi.
+        eprintln!(
+            "warning: a wasm target needs a host-provided filesystem for the staged\n\
+             library file; `--help` works but commands will fail without one.\n\
+             For the browser, build the capy-wasm-abi crate instead — it exposes\n\
+             capy_run/capy_docs/capy_introspect over linear memory, with no files."
+        );
+    }
+    let mut cargo_args: Vec<&str> = vec!["build", "--release", "--target-dir", &target_dir];
+    if !triple.is_empty() {
+        cargo_args.push("--target");
+        cargo_args.push(&triple);
+    }
+    let build = Command::new("cargo")
+        .args(&cargo_args)
         .current_dir(&tmp_dir)
         .status();
     match build {
         Ok(st) if st.success() => {}
         Ok(st) => {
             cleanup(&tmp_dir, keep);
-            return Err(format!("go build failed: exit status {}", st.code().unwrap_or(-1)));
+            return Err(format!("cargo build failed: exit status {}", st.code().unwrap_or(-1)));
         }
         Err(e) => {
             cleanup(&tmp_dir, keep);
-            return Err(format!("go build failed: {}", e));
+            return Err(format!("cargo build failed: {}", e));
         }
     }
+
+    // Cargo names the artefact after the bin target rather than honouring an
+    // output path, so move it into place ourselves. A cross-compile also nests
+    // the artefact one level deeper, under the triple.
+    let exe = if triple.starts_with("wasm32") {
+        "capybuild.wasm".to_string()
+    } else if triple.contains("windows") || (triple.is_empty() && cfg!(windows)) {
+        "capybuild.exe".to_string()
+    } else {
+        "capybuild".to_string()
+    };
+    let produced = if triple.is_empty() {
+        gopath::join(&[&target_dir, "release", &exe])
+    } else {
+        gopath::join(&[&target_dir, &triple, "release", &exe])
+    };
+    if let Err(e) = std::fs::copy(&produced, &abs_out) {
+        cleanup(&tmp_dir, keep);
+        return Err(format!("install binary: {}", gopath::io_error("open", &produced, &e)));
+    }
+    #[cfg(unix)]
+    if !triple.starts_with("wasm32") {
+        use std::os::unix::fs::PermissionsExt;
+        let _ = std::fs::set_permissions(&abs_out, std::fs::Permissions::from_mode(0o755));
+    }
+
     let size = std::fs::metadata(&abs_out).map(|m| m.len()).unwrap_or(0);
     eprintln!("✓ wrote {} ({:.1} MB)", out, size as f64 / 1024.0 / 1024.0);
     eprintln!("  try:  {} --help", out);
@@ -144,83 +195,105 @@ pub fn cmd_build(args: &[String]) -> Result<(), String> {
     Ok(())
 }
 
-/// Port of `buildMainGo` — the source of the standalone wrapper binary. Embeds
-/// the library source as a string constant and dispatches every invocation to
-/// `orchestrator.RunCommand`.
-fn build_main_go(lib_name: &str, lib_src: &str) -> String {
+/// The published `capy-core` version the generated project depends on when no
+/// local checkout is found. Kept in step with the workspace version.
+const CAPY_CORE_VERSION: &str = env!("CARGO_PKG_VERSION");
+
+/// The source of the standalone wrapper binary. Embeds the library source as a
+/// constant and dispatches every invocation to `run_command`, mirroring what the
+/// Go template did with `orchestrator.RunCommand`.
+fn build_main_rs(lib_name: &str, lib_src: &str) -> String {
     format!(
-        concat!(
-            "// Generated by capy build. Do not edit.\n",
-            "package main\n",
-            "\n",
-            "import (\n",
-            "\t\"fmt\"\n",
-            "\t\"os\"\n",
-            "\n",
-            "\t\"github.com/olivierdevelops/capy/orchestrator\"\n",
-            ")\n",
-            "\n",
-            "const libName = {name}\n",
-            "\n",
-            "const libSource = {src}\n",
-            "\n",
-            "func main() {{\n",
-            "\tif len(os.Args) < 2 || os.Args[1] == \"--help\" || os.Args[1] == \"-h\" {{\n",
-            "\t\tprintUsage()\n",
-            "\t\treturn\n",
-            "\t}}\n",
-            "\t// The library is EMBEDDED in this binary; the user already\n",
-            "\t// trusted it by running the binary. Suppress the\n",
-            "\t// \"not on CAPY_LIBS\" warning that would otherwise fire\n",
-            "\t// for the temp-file path.\n",
-            "\tos.Setenv(\"CAPY_TRUST\", \"1\")\n",
-            "\tf, err := os.CreateTemp(\"\", \"capy-lib-*.capy\")\n",
-            "\tif err != nil {{ fmt.Fprintln(os.Stderr, err); os.Exit(1) }}\n",
-            "\tdefer os.Remove(f.Name())\n",
-            "\tif _, err := f.WriteString(libSource); err != nil {{ fmt.Fprintln(os.Stderr, err); os.Exit(1) }}\n",
-            "\tf.Close()\n",
-            "\n",
-            "\tcmd := os.Args[1]\n",
-            "\targs := os.Args[2:]\n",
-            "\tif err := orchestrator.RunCommand(f.Name(), cmd, args); err != nil {{ fmt.Fprintln(os.Stderr, err); os.Exit(1) }}\n",
-            "}}\n",
-            "\n",
-            "func printUsage() {{\n",
-            "\tfmt.Printf(\"%s \\u2014 bundled Capy library (built with capy build)\\n\\n\", libName)\n",
-            "\tfmt.Println(\"USAGE\")\n",
-            "\tfmt.Printf(\"    %s <command> [args...]\\n\\n\", libName)\n",
-            "\tfmt.Println(\"Try --help for command-specific help.\")\n",
-            "}}\n",
-        ),
-        name = gofmt::quote(lib_name),
-        src = go_raw_string_literal(lib_src)
+        r###"// Generated by capy build. Do not edit.
+use std::io::Write;
+
+const LIB_NAME: &str = {name};
+
+const LIB_SOURCE: &str = {src};
+
+fn main() {{
+    let args: Vec<String> = std::env::args().skip(1).collect();
+    if args.is_empty() || args[0] == "--help" || args[0] == "-h" {{
+        print_usage();
+        return;
+    }}
+    // The library is EMBEDDED in this binary; the user already trusted it by
+    // running the binary. Suppress the "not on CAPY_LIBS" warning that would
+    // otherwise fire for the temp-file path.
+    std::env::set_var("CAPY_TRUST", "1");
+
+    let path = std::env::temp_dir().join(format!("capy-lib-{{}}.capy", std::process::id()));
+    match std::fs::File::create(&path).and_then(|mut f| f.write_all(LIB_SOURCE.as_bytes())) {{
+        Ok(()) => {{}}
+        Err(e) => {{
+            eprintln!("{{e}}");
+            std::process::exit(1);
+        }}
+    }}
+    let result = capy_core::orchestrator::commands::run_command(
+        &path.to_string_lossy(),
+        &args[0],
+        &args[1..],
+    );
+    let _ = std::fs::remove_file(&path);
+    if let Err(e) = result {{
+        eprintln!("{{}}", e.msg);
+        std::process::exit(1);
+    }}
+}}
+
+fn print_usage() {{
+    println!("{{LIB_NAME}} \u{{2014}} bundled Capy library (built with capy build)\n");
+    println!("USAGE");
+    println!("    {{LIB_NAME}} <command> [args...]\n");
+    println!("Try --help for command-specific help.");
+}}
+"###,
+        name = rust_string_literal(lib_name),
+        src = rust_raw_string_literal(lib_src)
     )
 }
 
-/// Port of `goRawStringLiteral` — encodes `s` as a Go raw-string literal, falling
-/// back to an interpreted string with escaping when `s` contains a backtick.
-fn go_raw_string_literal(s: &str) -> String {
-    if !s.contains('`') {
-        return format!("`{}`", s);
+/// Encodes `s` as a Rust raw-string literal, widening the `#` fence until it
+/// cannot collide with the content. A `.capy` library routinely contains `"#`
+/// (`line "#"`, shell comments in a template), which would otherwise terminate
+/// the literal early and produce source that doesn't compile.
+fn rust_raw_string_literal(s: &str) -> String {
+    let mut hashes = 1;
+    while s.contains(&format!("\"{}", "#".repeat(hashes))) {
+        hashes += 1;
     }
+    let fence = "#".repeat(hashes);
+    format!("r{fence}\"{s}\"{fence}")
+}
+
+/// Encodes `s` as an ordinary escaped Rust string literal.
+fn rust_string_literal(s: &str) -> String {
     let mut b = String::from("\"");
-    for c in s.bytes() {
+    for c in s.chars() {
         match c {
-            b'\\' => b.push_str("\\\\"),
-            b'"' => b.push_str("\\\""),
-            b'\n' => b.push_str("\\n"),
-            b'\t' => b.push_str("\\t"),
-            b'\r' => b.push_str("\\r"),
-            other => b.push(other as char),
+            '\\' => b.push_str("\\\\"),
+            '"' => b.push_str("\\\""),
+            '\n' => b.push_str("\\n"),
+            '\t' => b.push_str("\\t"),
+            '\r' => b.push_str("\\r"),
+            other => b.push(other),
         }
     }
     b.push('"');
     b
 }
 
-/// Port of `findCapyModuleRoot` — looks up from the cwd (and from this binary's
-/// location) for a go.mod declaring `module github.com/olivierdevelops/capy`.
-fn find_capy_module_root() -> String {
+/// Encodes `s` as a TOML basic string, for embedding a filesystem path in the
+/// generated `Cargo.toml` (Windows paths contain backslashes).
+fn toml_string(s: &str) -> String {
+    rust_string_literal(s)
+}
+
+/// Looks up from the cwd (and from this binary's location) for the `Cargo.toml`
+/// that declares `name = "capy-core"` — the analogue of the Go version's
+/// `findCapyModuleRoot`.
+fn find_capy_core_root() -> Option<String> {
     let mut candidates: Vec<String> = Vec::new();
     if let Ok(cwd) = std::env::current_dir() {
         candidates.push(cwd.to_string_lossy().into_owned());
@@ -231,10 +304,14 @@ fn find_capy_module_root() -> String {
     for start in candidates {
         let mut dir = start;
         for _ in 0..12 {
-            let gomod = gopath::join(&[&dir, "go.mod"]);
-            if let Ok(data) = std::fs::read_to_string(&gomod) {
-                if data.contains("module github.com/olivierdevelops/capy") {
-                    return dir;
+            // The engine may sit in the directory itself, or in a `rust/`
+            // subdirectory of a repo checkout.
+            for cand in [dir.clone(), gopath::join(&[&dir, "rust"])] {
+                let manifest = gopath::join(&[&cand, "Cargo.toml"]);
+                if let Ok(data) = std::fs::read_to_string(&manifest) {
+                    if data.contains("name = \"capy-core\"") {
+                        return Some(cand);
+                    }
                 }
             }
             let parent = gopath::dir(&dir);
@@ -244,7 +321,7 @@ fn find_capy_module_root() -> String {
             dir = parent;
         }
     }
-    String::new()
+    None
 }
 
 /// Stand-in for `os.MkdirTemp`.
@@ -263,4 +340,58 @@ fn make_temp_dir(prefix: &str) -> Result<String, String> {
         }
     }
     Err("mkdirtemp: exhausted attempts".to_string())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// The fence has to widen past any `"#` sequence in the library source, or the
+    /// generated main.rs won't compile. `.capy` libraries hit this in practice —
+    /// `line "#"` for a shell comment is ordinary — and it bit this port three
+    /// times while it was being written.
+    #[test]
+    fn raw_string_fence_widens_past_collisions() {
+        assert_eq!(rust_raw_string_literal("plain"), "r#\"plain\"#");
+        // A bare `#` is harmless; only `"#` closes the fence.
+        assert_eq!(rust_raw_string_literal("line \"#\""), "r##\"line \"#\"\"##");
+        // Two hashes in the content force a three-hash fence.
+        assert_eq!(rust_raw_string_literal("a\"##b"), "r###\"a\"##b\"###");
+    }
+
+    /// Every fence produced must actually survive a round trip: the content sits
+    /// between `r<fence>"` and `"<fence>`, and that closing sequence must not
+    /// appear inside it.
+    #[test]
+    fn raw_string_fence_is_unambiguous() {
+        for src in [
+            "simple",
+            "with \"quotes\"",
+            "write `#!/bin/sh`",
+            "line \"#\"",
+            "a\"#b\"##c\"###d",
+            "trailing quote\"",
+        ] {
+            let lit = rust_raw_string_literal(src);
+            // Layout is  r <hashes> " <content> " <hashes>
+            let hashes = lit[1..].chars().take_while(|c| *c == '#').count();
+            let fence = "#".repeat(hashes);
+            let closing = format!("\"{fence}");
+            let inner = &lit[hashes + 2..lit.len() - hashes - 1];
+            assert_eq!(inner, src, "content round-trips for {src:?}");
+            assert!(!src.contains(&closing), "fence {fence:?} collides in {src:?}");
+        }
+    }
+
+    #[test]
+    fn string_literal_escapes() {
+        assert_eq!(rust_string_literal("a\"b\\c\nd"), "\"a\\\"b\\\\c\\nd\"");
+    }
+
+    /// A generated Cargo.toml must survive a Windows path without the backslashes
+    /// being read as TOML escapes.
+    #[test]
+    fn toml_string_escapes_backslashes() {
+        assert_eq!(toml_string(r"C:\repo\rust"), "\"C:\\\\repo\\\\rust\"");
+    }
 }

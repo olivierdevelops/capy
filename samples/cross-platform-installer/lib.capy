@@ -9,6 +9,10 @@ output_file "install.sh"
 
 description "Declarative installer DSL. One source generates install.sh (POSIX), install.ps1 (PowerShell), and install.bat (cmd.exe) so your install instructions stay identical across every platform."
 
+comments
+    line "#"
+end
+
 context
     app_name ""
     packages []
@@ -74,14 +78,14 @@ fi
 `
     for it in context.packages
         write `
-$PM ${unquote }
+$PM ${unquote it}
 `
     end
     write `
 `
     for it in context.dirs
         write `
-mkdir -p ${unquote }
+mkdir -p ${unquote it}
 `
     end
     write `
@@ -127,14 +131,14 @@ if (-not (Get-Command choco -ErrorAction SilentlyContinue)) {
 `
     for it in context.packages
         write `
-choco install -y ${unquote }
+choco install -y ${unquote it}
 `
     end
     write `
 `
     for it in context.dirs
         write `
-New-Item -ItemType Directory -Force -Path "${unquote }" | Out-Null
+New-Item -ItemType Directory -Force -Path "${unquote it}" | Out-Null
 `
     end
     write `
@@ -149,8 +153,8 @@ New-Item -ItemType Directory -Force -Path "${unquote }" | Out-Null
     if context.service
         write `
 
-sc.exe create ${unquote context.service} `
-  binPath= "C:\Program Files\${unquote context.app_name}\${unquote context.service}.exe" `
+sc.exe create ${unquote context.service} \`
+  binPath= "C:\Program Files\${unquote context.app_name}\${unquote context.service}.exe" \`
   start= auto
 sc.exe start ${unquote context.service}
 `
@@ -173,14 +177,14 @@ if errorlevel 1 (
 `
     for it in context.packages
         write `
-choco install -y ${unquote }
+choco install -y ${unquote it}
 `
     end
     write `
 `
     for it in context.dirs
         write `
-if not exist "${unquote }" mkdir "${unquote }"
+if not exist "${unquote it}" mkdir "${unquote it}"
 `
     end
     write `

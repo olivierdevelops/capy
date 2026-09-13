@@ -797,7 +797,7 @@ empty values so libraries can't smuggle your filesystem into a browser.
     - **CI-friendly.** `capy run lib.capy script.capy $VERSION $REGION`
       flows naturally from a build pipeline. No template-language
       gymnastics.
-    - **Sandboxed by default.** The wasm playground and embedded Go
+    - **Sandboxed by default.** The wasm playground and embedded Rust
       API both use `NoOpHost` — no library author can exfiltrate
       `$AWS_SECRET_ACCESS_KEY` from a hosted playground. Opt in to
       real host access with `lib.SetHost(infra.OSHost{...})`.
@@ -1193,7 +1193,7 @@ the library — new contributors can't deviate.
     // ... one test per declared handler ...
     ```
 
-    `go test ./...` on the generated output **passes** — verified.
+    `cargo test --workspace` on the generated output **passes** — verified.
     As the developer implements each handler, the stub stops
     returning 501 → the test fails → they replace it with real
     assertions.
@@ -2156,7 +2156,7 @@ actually use it.
     hero  "Define a language. Get a transpiler." "Capy is a tiny engine that turns a YAML file into a working code generator."
 
     feature "🌱" "Zero default grammar" "Your library is the language."
-    feature "⚡" "Fast"                  "Single-binary Go. Boots in milliseconds."
+    feature "⚡" "Fast"                  "Single-binary Rust. Boots in milliseconds."
     feature "🧩" "50 sample DSLs"        "From Python to Mermaid to a real x86-64 transpiler."
 
     cta "Get started" "/docs/getting-started"
@@ -3109,7 +3109,7 @@ don't fit on a single doc page:
 ## How to run any of these locally
 
 ```sh
-go install github.com/olivierdevelops/capy/cmd/capy@latest
+cargo install --git https://github.com/olivierdevelops/capy capy-cli
 git clone https://github.com/olivierdevelops/capy
 cd capy
 capy run samples/transpile-canvas-game/lib.capy samples/transpile-canvas-game/script.capy > game.html

@@ -7,14 +7,14 @@ substantial, useful target file. Every demo ships a `lib.yaml`,
 Run any sample:
 
 ```sh
-go build -o capy ./cmd/capy
+cargo build --release --manifest-path rust/Cargo.toml -p capy-cli
 ./capy run samples/<name>/lib.yaml samples/<name>/script.capy
 ```
 
 Run every sample's golden test:
 
 ```sh
-go test ./cmd/capy/...     # 52 cases, ~0.3s
+cargo test --manifest-path rust/Cargo.toml --test golden   # 116 cases, ~0.2s
 ```
 
 ---
@@ -137,7 +137,7 @@ Each script has a paired expected file:
 after intentional changes:
 
 ```sh
-go test ./cmd/capy/... -update
+CAPY_UPDATE_GOLDENS=1 cargo test --manifest-path rust/Cargo.toml --test golden
 ```
 
 ## Adding a new sample
@@ -146,7 +146,7 @@ go test ./cmd/capy/... -update
 capy init samples/my-new-sample
 # edit lib.yaml + script.capy
 capy run samples/my-new-sample/lib.yaml samples/my-new-sample/script.capy > samples/my-new-sample/script.expected.txt
-go test ./cmd/capy/...
+cargo test --manifest-path rust/Cargo.toml --test golden
 ```
 
 Then add your sample to the appropriate section above and write a brief

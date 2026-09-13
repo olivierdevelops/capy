@@ -456,7 +456,7 @@ pre go
 end
 ```
 
-…renders the Go code with its quotes and angle-brackets HTML-escaped
+…renders the generated Go code with its quotes and angle-brackets HTML-escaped
 inside a `<pre><code>` block, indentation preserved verbatim. Every
 line between `pre go` and `end` is captured byte-for-byte; the user
 can paste arbitrary code without it being re-parsed as Capy.

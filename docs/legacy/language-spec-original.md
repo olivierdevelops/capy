@@ -1,3 +1,6 @@
+> **HISTORICAL.** Describes an earlier design, written when the engine was
+> implemented in Go. The engine is now Rust under `rust/`. Kept for reference.
+
 # Capy — Value-Driven Markup Language
 
 Capy is an embeddable scripting language designed for configuration-driven code generation and DSL authoring. It is intentionally simple at its core, and extensible through YAML library configuration.

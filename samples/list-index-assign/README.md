@@ -24,7 +24,7 @@ instruction straight to output. Instead:
 ## Run
 
 ```
-go run ./cmd/capy run samples/list-index-assign/lib.capy samples/list-index-assign/script.capy
+cargo run --manifest-path rust/Cargo.toml -p capy-cli --bin capy -- run samples/list-index-assign/lib.capy samples/list-index-assign/script.capy
 ```
 
 Input (`script.capy`):

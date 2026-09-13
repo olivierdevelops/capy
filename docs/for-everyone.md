@@ -102,7 +102,7 @@ Three options, in order of effort:
 
 ```sh
 # 1. Install (one-time, no admin permissions needed)
-go install github.com/olivierdevelops/capy/cmd/capy@latest
+cargo install --git https://github.com/olivierdevelops/capy capy-cli
 
 # 2. Clone the samples
 git clone https://github.com/olivierdevelops/capy

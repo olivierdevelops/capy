@@ -9,10 +9,9 @@ Capy ships a `build` subcommand that turns a `.capy` library into a
 in as a string constant and dispatches to its commands at runtime —
 nobody needs `capy` installed to run the resulting tool.
 
-The same machinery works as a cross-compiler: a single `capy build`
-on macOS can produce binaries for Linux, Windows, ARM devices, and
-WebAssembly. Under the hood it shells out to `go build`, so any Go
-toolchain target is reachable.
+The same machinery works as a cross-compiler: one `capy build` can produce
+binaries for Linux, Windows and ARM devices. Under the hood it shells out to
+`cargo build`, so any installed Rust target is reachable.
 
 This page is a walkthrough — author a tiny library, build it for the
 host, then cross-compile it for four other targets, with concrete
@@ -23,9 +22,9 @@ size numbers and tips at each step.
 ## Prerequisites
 
 - The `capy` CLI ([install](getting-started.md#1-install)).
-- A Go toolchain (1.22+). `capy build` runs `go build` under the
-  hood. **Only the developer needs Go — the output binaries don't
-  require it.**
+- A Cargo toolchain (Rust 1.74+, via [rustup](https://rustup.rs)). `capy build`
+  runs `cargo build` under the hood. **Only the developer needs Rust — the
+  output binaries don't require it.**
 
 Check:
 
@@ -89,7 +88,7 @@ capy build greet -o greet
 Output:
 
 ```
-building greet (this needs the Go toolchain)…
+building greet (this needs the Cargo toolchain)…
 ✓ wrote greet (5.4 MB)
   try:  greet --help
 ```
@@ -110,17 +109,25 @@ running from source.
 
 ## Step 3 — cross-compile
 
-`capy build` honours Go's `GOOS` / `GOARCH` environment variables.
+`capy build` takes a `--target <triple>` flag.
 One developer machine produces binaries for every common deployment
 target:
 
-| Target | Command | Output size (greet example) |
-|---|---|---|
-| **macOS (host arm64)** | `capy build greet -o greet` | 5.4 MB |
-| **Linux x86-64** | `GOOS=linux GOARCH=amd64 capy build greet -o greet-linux` | 5.7 MB |
-| **Linux ARM64** (Raspberry Pi 4, AWS Graviton…) | `GOOS=linux GOARCH=arm64 capy build greet -o greet-arm` | 5.4 MB |
-| **Windows x86-64** | `GOOS=windows GOARCH=amd64 capy build greet -o greet.exe` | 5.8 MB |
-| **WebAssembly (browser)** | `GOOS=js GOARCH=wasm capy build greet -o greet.wasm` | 7.0 MB |
+| Target | Command |
+|---|---|
+| **host** | `capy build greet -o greet` |
+| **Linux x86-64** | `capy build greet --target x86_64-unknown-linux-gnu -o greet-linux` |
+| **Linux ARM64** (Raspberry Pi 4, AWS Graviton…) | `capy build greet --target aarch64-unknown-linux-gnu -o greet-arm` |
+| **Windows x86-64** | `capy build greet --target x86_64-pc-windows-msvc -o greet.exe` |
+
+A host build of the `greet` sample is **1.5 MB** (measured on macOS arm64, with
+the release profile's `opt-level="z"`, LTO and symbol stripping). Cross-compiled
+sizes land in the same ballpark.
+
+Unlike Go, a Rust cross-compile needs two things installed up front: the target's
+standard library (`rustup target add <triple>`) and a linker that can emit that
+target's format. For Linux-from-macOS or similar, [`cross`](https://github.com/cross-rs/cross)
+or a CI runner of the right OS is the path of least resistance.
 
 The output of every cross-compile is a true target-format binary:
 
@@ -136,34 +143,38 @@ Statically linked = drop on any matching kernel and it just runs.
 No glibc compatibility dance, no `LD_LIBRARY_PATH`, no DLLs to
 collect.
 
-For the **complete Go target matrix** see `go tool dist list` —
-freebsd, openbsd, illumos, aix, dragonfly, plan9, every `arm`
-revision, riscv64 — Capy inherits all of them because the build
-step is plain `go build`.
+For the **complete target matrix** see `rustc --print target-list` —
+freebsd, openbsd, illumos, netbsd, every `arm` revision, riscv64 — Capy inherits
+all the tier-1 and tier-2 targets because the build step is plain `cargo build`.
 
 ---
 
 ## Step 4 — WebAssembly walkthrough
 
-Wasm needs slightly more wiring because the binary doesn't run
-standalone — it needs a JS host to feed it stdin and route stdout.
-The pattern is the same one the [playground](playground.md) uses
-for the engine itself.
+**`capy build --target wasm32-…` is not the browser path.** The wrapper it
+generates stages the embedded library through a temp file, and
+`wasm32-unknown-unknown` has no filesystem while WASI needs the host to grant
+one — so the module's `--help` works but its commands fail. `capy build` warns
+you when you aim it at a wasm target.
+
+For the browser, compile the **engine** instead and hand it your library source
+at run time. That is exactly what the [playground](playground.md) does:
 
 ```sh
-GOOS=js GOARCH=wasm capy build greet -o greet.wasm
+rustup target add wasm32-unknown-unknown
+cargo build --release --target wasm32-unknown-unknown \
+  --manifest-path rust/Cargo.toml -p capy-wasm-abi
+cp rust/target/wasm32-unknown-unknown/release/capy_wasm_abi.wasm capy.wasm
+cp rust/playground/web/wasm_exec.js .
 ```
 
-Copy Go's wasm shim (it's in your Go install — same one capy-wasm
-uses):
+That is a 1.28 MB module exposing `capy_run` / `capy_docs` / `capy_introspect`
+over linear memory — no files, no args, nothing for a sandbox to refuse. The
+`wasm_exec.js` shim installs `capyRun`/`capyDocs`/`capyIntrospect`/`capyVersion`
+as globals, so a page calls them directly.
 
-```sh
-cp "$(go env GOROOT)/lib/wasm/wasm_exec.js" .
-# older Go versions:
-cp "$(go env GOROOT)/misc/wasm/wasm_exec.js" .
-```
-
-Minimal `index.html` host:
+Minimal `index.html` host — no stdin wiring, because the ABI is a plain
+function call:
 
 ```html
 <!doctype html>
@@ -174,58 +185,76 @@ Minimal `index.html` host:
   <script src="wasm_exec.js"></script>
   <script>
     const go = new Go();
-    go.argv = ["greet", "run", "/dev/stdin"];   // command + script
-    WebAssembly.instantiateStreaming(fetch("greet.wasm"), go.importObject)
-      .then(r => go.run(r.instance));
+    WebAssembly.instantiateStreaming(fetch("capy.wasm"), go.importObject)
+      .then(r => go.run(r.instance))
+      .then(() => {
+        const libSrc = `extension txt
+
+function greet
+    arg literal "greet"
+    arg capture who string
+    write \`hello ${unquote who}
+\`
+end
+`;
+        const res = capyRun(libSrc, "auto", document.getElementById("src").value);
+        document.getElementById("out").textContent = res.ok ? res.output : res.error;
+      });
   </script>
 </body>
 </html>
 ```
 
-The binary expects a real stdin/stdout — the simplest host wraps it
-the same way `capy-wasm` does. See
-[`cmd/capy-wasm/main.go`](https://github.com/olivierdevelops/capy/blob/main/cmd/capy-wasm/main.go)
-in the repo for a complete browser-facing entry point that exposes
-`capyRun(libSrc, scriptSrc)` as a JS function — easier to integrate
-into a real page than wiring stdin by hand.
+`capyRun(libSrc, format, scriptSrc)` returns `{ok, output, extension}` or
+`{ok: false, error, hint, line, col, pretty}`. `capyDocs` and `capyIntrospect`
+take just the library source. See
+[`rust/wasm/src/lib.rs`](https://github.com/olivierdevelops/capy/blob/main/rust/wasm/src/lib.rs)
+for the full contract and
+[`rust/playground/web/wasm_exec.js`](https://github.com/olivierdevelops/capy/blob/main/rust/playground/web/wasm_exec.js)
+for the shim.
 
 ---
 
 ## Tips & tricks
 
-### Shrink the binary — `-s -w` strips debug info
+### The binary is already size-optimised
+
+The generated `Cargo.toml` sets `opt-level = "z"`, `lto = true`,
+`codegen-units = 1` and `strip = true`, which is why the `greet` sample lands
+at ~1.5 MB rather than the several MB an unoptimised build would produce. There
+is no extra flag to pass — it is the default.
+
+For another ~40% shrink, run `upx --best` on the output. UPX-packed binaries
+start a touch slower but ship smaller.
+
+### Reproducible builds
+
+Set `RUSTFLAGS` to remap the build paths, so the same input source produces the
+same bytes regardless of which machine compiled it:
 
 ```sh
-GOFLAGS='-ldflags=-s -w' capy build greet -o greet-min
+RUSTFLAGS="--remap-path-prefix=$HOME=~" capy build greet -o greet
 ```
 
-`greet-min` ends up at **~3.7 MB instead of 5.4 MB** (roughly 30%
-smaller). Strips DWARF debug info and the symbol table; harmless for
-production but you lose pretty stack traces on a crash.
+Useful for release artefacts that you publish a checksum for. Note the temp
+build directory changes every run, so combine this with `--keep-temp` if you
+need to audit exactly what was compiled.
 
-For another ~10% shrink, run `upx --best` on the output. UPX-packed
-binaries start a touch slower but ship smaller.
+### The built binary has no `--version` of its own
 
-### Reproducible builds — `-trimpath`
+`capy build` embeds the library, not a version string: the binary answers
+`--help` and then dispatches everything else to your library's declared
+commands. If you want `mytool version`, declare it as a command in the
+library — that way the version lives with the source it describes:
 
-```sh
-GOFLAGS='-trimpath -ldflags=-s -w' capy build greet -o greet
+```
+command "version"
+    description "Print the tool version."
+    print "greet v1.4.2"
+end
 ```
 
-`-trimpath` removes absolute file paths from the binary so the same
-input source always produces the same bytes regardless of which
-machine compiled it. Useful for release artefacts that you publish a
-checksum for.
-
-### Pin a version into the binary
-
-```sh
-GOFLAGS='-ldflags=-X main.version=v1.4.2' capy build greet -o greet
-```
-
-The generated `main.go` declares `var version = "dev"`; the linker's
-`-X` flag overrides it. Your library's `--version` will then print
-`v1.4.2`.
+Then `./greet version` prints `greet v1.4.2`.
 
 ### Bundle multiple targets in one tarball
 
@@ -233,16 +262,18 @@ A common release recipe — produce binaries for every supported
 target plus checksums:
 
 ```sh
+# Each target needs `rustup target add <triple>` and a linker for it first.
 for t in \
-  "linux amd64" "linux arm64" \
-  "darwin amd64" "darwin arm64" \
-  "windows amd64"
+  "linux amd64 x86_64-unknown-linux-gnu" \
+  "linux arm64 aarch64-unknown-linux-gnu" \
+  "darwin amd64 x86_64-apple-darwin" \
+  "darwin arm64 aarch64-apple-darwin" \
+  "windows amd64 x86_64-pc-windows-msvc"
 do
-  set -- $t   # split into $1=os $2=arch
+  set -- $t   # $1=os $2=arch $3=triple
   out="greet-$1-$2"
   [ "$1" = "windows" ] && out="$out.exe"
-  GOOS=$1 GOARCH=$2 GOFLAGS='-trimpath -ldflags=-s -w' \
-    capy build greet -o "dist/$out"
+  capy build greet --target "$3" -o "dist/$out"
 done
 (cd dist && shasum -a 256 greet-* > SHA256SUMS)
 ```
@@ -277,35 +308,33 @@ Useful for project-local libraries you haven't installed on
 capy build greet --keep-temp
 ```
 
-Prints the path of the temp dir holding the generated `main.go`,
-`go.mod`, `go.sum`. Helpful when a `go build` failure is mysterious —
-go look at what was generated and run `go build` on it directly to
-get the full Go compiler diagnostics.
+Prints the path of the temp dir holding the generated `src/main.rs` and
+`Cargo.toml`. Helpful when a `cargo build` failure is mysterious — go look at
+what was generated and run `cargo build` on it directly to get the full
+compiler diagnostics.
 
 ### Build cache makes repeated builds fast
 
-The first `capy build greet` does a full `go mod tidy` and pulls
-dependencies. Subsequent rebuilds (even after editing `greet.capy`)
-reuse Go's build cache and finish in 1–2 seconds. CI matrices that
-build every target in parallel share the cache too.
+The first `capy build greet` compiles the engine from scratch — roughly 20
+seconds. Each build uses a fresh temp project with its own `--target-dir`, so
+rebuilds do *not* currently share a cache; that is the trade for keeping the
+build hermetic and never touching a surrounding workspace.
 
 ### Building inside the Capy source tree vs. from a release
 
 If you're working inside a clone of `github.com/olivierdevelops/capy`,
-`capy build` automatically detects the local module and uses a
-`replace` directive — your changes to the engine flow into the
-output binary. If you installed `capy` via `go install` or downloaded
-a release, the build pulls the published module version from the
-proxy instead.
+`capy build` detects the local `capy-core` crate (looking in the directory and
+in a `rust/` subdirectory, walking upwards) and generates a `path` dependency —
+your changes to the engine flow into the output binary, and the build works
+offline. Otherwise it depends on the published crate version.
 
 ### What if the agent / user wants the binary INSIDE the browser?
 
-For "I want a Capy library that runs in a browser tab" the cleanest
-path is to compile the **engine** ([`cmd/capy-wasm`](https://github.com/olivierdevelops/capy/tree/main/cmd/capy-wasm))
-to WASM and load your library source dynamically. That's exactly the
-playground's setup. `capy build greet -o greet.wasm` (i.e. embedding
-the library) also works but the entry point currently expects an
-`os.Args`-style invocation, so a JS host is required to feed it.
+Compile the **engine** (the [`capy-wasm-abi`](https://github.com/olivierdevelops/capy/tree/main/rust/wasm)
+crate) to wasm and load your library source dynamically — the playground's
+setup, and the walkthrough in Step 4 above. Embedding the library into a wasm
+module with `capy build --target wasm32-…` is *not* a working substitute; see
+Step 4 for why.
 
 ---
 
@@ -313,12 +342,12 @@ the library) also works but the entry point currently expects an
 
 | Caveat | Mitigation |
 |---|---|
-| **Go toolchain required to build** (not to run) | One-time install. `go install golang.org/dl/go1.22@latest`. |
-| **Cross-compiling to `js/wasm` produces a binary, not a webpage** | Pair with `wasm_exec.js` + a small HTML host, OR use the playground-style entry in `cmd/capy-wasm` instead. |
-| **No `--target` flag yet** | Use `GOOS` / `GOARCH` env vars (table above). Vote with an issue if you want a flag. |
+| **Cargo toolchain required to build** (not to run) | One-time install via [rustup](https://rustup.rs). Minimum supported Rust version 1.74. |
+| **Cross-compiling needs the target installed** | `rustup target add <triple>`, plus a linker for that target. Unlike Go's built-in cross-compiler, this is not free — use [`cross`](https://github.com/cross-rs/cross) or a matching CI runner. |
+| **A wasm target does not produce a usable module** | The wrapper stages the library through a temp file, which wasm has no filesystem for. Build `capy-wasm-abi` for the browser instead (Step 4). |
 | **Library `command` bodies that `exec` external tools** | Those tools must exist on the *target* machine, not the build machine. `exec "pandoc" …` in a library command will fail on a host that doesn't have pandoc installed. |
 | **Library `read_file` / `write_file` paths** | Run with the right working directory or pass absolute paths. The binary uses the host filesystem like any other process. |
-| **Binary size** | 5–6 MB is the Go runtime baseline. `-s -w` + UPX gets you to ~2 MB. The library source itself contributes a few KB at most. |
+| **Binary size** | ~1.5 MB. The generated project already uses `opt-level="z"`, LTO and stripping; UPX can roughly halve it again. The library source itself contributes a few KB at most. |
 
 ---
 
@@ -326,10 +355,10 @@ the library) also works but the entry point currently expects an
 
 | Approach | Pros | Cons |
 |---|---|---|
-| **`capy build greet`** | Self-contained, statically linked, cross-compiles for free, version-pinnable, embeds the library | Needs Go to build; ~5 MB minimum binary size |
+| **`capy build greet`** | Self-contained, version-pinnable, embeds the library | Needs Cargo to build; ~1.5 MB minimum binary size; cross-compiling needs the target toolchain |
 | **Ship `.capy` + require `capy install`** | Tiny artifact (a `.capy` file is a few KB) | Every user needs `capy` installed; library updates need redistribution |
-| **Ship as a Go library** ([embedding](embedding.md)) | No CLI binary; integrate Capy into a larger Go program | Only useful when your distribution surface is already Go code |
-| **Ship as `cmd/capy-wasm` + lib** | Runs in any browser, no install | Two files (wasm + HTML host); only browser context |
+| **Ship as a Rust library** ([embedding](embedding.md)) | No CLI binary; integrate Capy into a larger Rust program | Only useful when your distribution surface is already Rust code |
+| **Ship `capy-wasm-abi` + lib** | Runs in any browser, no install | Two files (wasm + HTML host); only browser context |
 
 For most "I built a DSL, I want to give it to teammates" use cases,
 `capy build` is the right answer — one command produces five binaries
@@ -346,7 +375,7 @@ your colleagues can `curl` and run.
 - [Library commands + `CAPY_LIBS`](library-commands.md) — design the
   commands that go inside your library before you ship it.
 - [Embedding](embedding.md) — alternative path: link Capy into your
-  Go program instead of producing a CLI.
+  Rust program instead of producing a CLI.
 - [Auto-generated library docs](library-documentation.md) — produce
   a reference `README.md` from your library to bundle with the
   release.

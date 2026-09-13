@@ -1,3 +1,6 @@
+> **HISTORICAL.** Describes an earlier design, written when the engine was
+> implemented in Go. The engine is now Rust under `rust/`. Kept for reference.
+
 # VHCO Architecture & Code Style Guide
 
 > **VHCO** — Vertical Hierarchy with Closed-world Operations

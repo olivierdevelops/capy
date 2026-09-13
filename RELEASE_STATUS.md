@@ -10,8 +10,8 @@ A snapshot of where the repo stands against [RELEASE_PLAN.md](RELEASE_PLAN.md).
 
 | Phase | Item | Status |
 |-------|------|--------|
-| **0 — Hygiene** | LICENSE, CHANGELOG, CONTRIBUTING, CODE_OF_CONDUCT, SECURITY, .gitignore, README, issue/PR templates, CODEOWNERS, golangci config | ✅ |
-| **1 — Tests + CI** | Unit tests + 52 golden tests + matrix CI (Go 1.22/1.23 × Linux/macOS/Windows) | ✅ |
+| **0 — Hygiene** | LICENSE, CHANGELOG, CONTRIBUTING, CODE_OF_CONDUCT, SECURITY, .gitignore, README, issue/PR templates, CODEOWNERS | ✅ |
+| **1 — Tests + CI** | Unit tests + 116 golden tests + wasm check + matrix CI (Linux/macOS/Windows) | ✅ |
 | **2 — CLI** | `capy run/check/init/version/help` + caret-pointed errors | ✅ |
 | **3 — Docs** | 16 doc pages + 4 tutorials + **50 sample demos** with verified goldens | ✅ |
 | **4 — Tooling** | JSON schema + VS Code extension | ✅ (tree-sitter deferred) |
@@ -27,13 +27,13 @@ A snapshot of where the repo stands against [RELEASE_PLAN.md](RELEASE_PLAN.md).
 | # | Action | Done? |
 |---|--------|-------|
 | 1 | Replace `capyhq` placeholder org with `olivierdevelops` (~20 files) | ✅ |
-| 2 | Set Go module path to `github.com/olivierdevelops/capy` + fix all imports | ✅ |
+| 2 | Cargo workspace under `rust/` (`capy-core`, `capy-cli`, `capy-mcp`) | ✅ |
 | 3 | Update `SECURITY.md` reporting channel | ✅ (uses GitHub Security Advisories) |
 | 4 | Decide install URL + update README/install.sh | ✅ (uses raw.githubusercontent.com) |
 | 5 | MkDocs config + GitHub Pages workflow | ✅ |
 | 6 | Create `olivierdevelops/homebrew-tap` repo, uncomment `brews:` block | ⏳ optional, can defer |
 | 7 | Push to GitHub, enable Discussions | ⏳ on you |
-| 8 | Test `goreleaser release --snapshot --clean` locally | ⏳ on you |
+| 8 | Test a release build locally: `cargo build --release --manifest-path rust/Cargo.toml` | ⏳ on you |
 | 9 | `git tag v0.1.0 && git push --tags` → release workflow auto-publishes | ⏳ on you |
 | 10 | Publish blog post → HN → Reddit → social | ⏳ from drafts in `docs/launch/` |
 
@@ -48,7 +48,7 @@ A snapshot of where the repo stands against [RELEASE_PLAN.md](RELEASE_PLAN.md).
  4  progressive tutorials
 20  AI / agent integration files (skills, commands, editors, system prompt)
  9  GitHub workflow + CODEOWNERS + issue templates
- 0  go vet / go build / go test failures
+ 0  cargo clippy / cargo build / cargo test failures
  0  remaining placeholders in real project URLs
 ```
 
@@ -89,14 +89,14 @@ git push origin main
 
 # 3. enable GitHub Discussions in repo Settings
 
-# 4. (optional) test goreleaser locally
-goreleaser release --snapshot --clean
+# 4. (optional) test a release build locally
+cargo build --release --manifest-path rust/Cargo.toml
 # confirms dist/ has all 5 platform binaries
 
 # 5. cut the release
 git tag v0.1.0
 git push origin v0.1.0
-# → release.yml runs goreleaser, publishes binaries to Releases
+# → release.yml cross-compiles with cargo, publishes binaries to Releases
 
 # 6. test install script against the new release
 curl -fsSL https://raw.githubusercontent.com/olivierdevelops/capy/main/scripts/install.sh | sh
@@ -112,7 +112,7 @@ curl -fsSL https://raw.githubusercontent.com/olivierdevelops/capy/main/scripts/i
 
 ## Open optional items (low priority)
 
-- **Homebrew tap.** Create `olivierdevelops/homebrew-tap` repo, then uncomment the `brews:` block in `.goreleaser.yaml`. Until then, install via `go install` or the release-binary script.
+- **Homebrew tap.** Create `olivierdevelops/homebrew-tap` repo and add a formula pointing at the release archives. Until then, install via `cargo install` or the release-binary script.
 - **Logo + demo GIF.** Drop in `assets/`. Needs design / terminal recording.
 - **Publish VS Code extension to Marketplace.** Sources are ready in `editors/vscode/capy/`.
 - **`awesome-capy` repo.** Curated list of community libraries.

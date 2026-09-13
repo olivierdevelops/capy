@@ -1,4 +1,4 @@
-# CLAUDE.md — working notes for this repo
+# AGENTS.md — working notes for this repo
 
 Capy is a **target-agnostic transpiler**: it ships *zero* source-language
 grammar. A `.capy` library defines the source language; one source can

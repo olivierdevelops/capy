@@ -9,7 +9,7 @@ outputs shown are produced by the engine, not hand-written. Run any of
 them yourself:
 
 ```sh
-go build -o capy ./cmd/capy
+cargo build --release --manifest-path rust/Cargo.toml -p capy-cli
 ./capy run lib.capy script.capy
 ```
 

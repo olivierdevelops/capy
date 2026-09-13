@@ -35,8 +35,8 @@ text (success) or the parser/type error message (`isError: true`).
 ## Install
 
 ```sh
-# Via Go (the simplest)
-go install github.com/olivierdevelops/capy/cmd/capy-mcp@latest
+# Via Cargo (the simplest)
+cargo install --git https://github.com/olivierdevelops/capy capy-mcp
 
 # Or extract from a release tarball
 curl -sL https://github.com/olivierdevelops/capy/releases/download/v0.3.0/capy_0.3.0_darwin_arm64.tar.gz \
@@ -90,13 +90,13 @@ claude mcp add --scope user capy capy-mcp
 Any client that supports MCP stdio servers takes the same `command: "capy-mcp"`
 form. Refer to your client's docs for the exact config-file location.
 
-### Custom Go agent
+### Custom Rust agent
 
-```go
-import "github.com/olivierdevelops/capy"
+```rust
+use capy_core::capy::Library;
 
-lib, _ := capy.NewLibrary(libSrc)
-out, _ := lib.Run(scriptSrc)
+let lib = Library::new(lib_src)?;
+let out = lib.run(script_src)?;
 ```
 
 Sometimes you don't need MCP at all — embed the engine directly. See

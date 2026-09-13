@@ -114,7 +114,7 @@ file_template                # whole-file assembler
 end
 ```
 
-Strings use double quotes (with Go-style escapes `\n` `\t` `\"`
+Strings use double quotes (with C-style escapes `\n` `\t` `\"`
 `\\`) or backticks (multi-line, with `${EXPR}` interpolation).
 Bare words are accepted for `extension`, type names, and capture
 names. Indentation delimits the function body and `file_template`.
@@ -245,9 +245,9 @@ list parents on an integer. A missing key / out-of-range index is `nil`
 
 When you reference a capture, you get the **evaluated** value:
 
-- String literal `"foo"` → Go string `"foo"` (no quotes).
-- Number `42` → `int64(42)`.
-- List `[1, 2]` → `[]any{int64(1), int64(2)}`.
+- String literal `"foo"` → `Val::Str("foo")` (no quotes).
+- Number `42` → `Val::Int(42)`.
+- List `[1, 2]` → `Val::List([Val::Int(1), Val::Int(2)])`.
 - Object `{a: 1}` → `map[string]any{"a": int64(1)}`.
 - Bare identifier `x` → string `"x"`.
 
@@ -454,5 +454,5 @@ caret-pointed at line:col.
 
 ## Format note
 
-Libraries are always `.capy` files. The embedded Go API uses
-`capy.NewLibrary` to load a `.capy` source.
+Libraries are always `.capy` files. The embedded Rust API uses
+`Library::new` to load a `.capy` source.

@@ -1,7 +1,7 @@
 # Integrating Capy into Your Project
 
 > A complete, example-driven guide to adopting Capy — what it is, when it
-> earns its place in a project, the three ways to wire it in (CLI, Go
+> earns its place in a project, the three ways to wire it in (CLI, Rust
 > library, WebAssembly), and five full walkthroughs from first script to
 > production integration. Read top-to-bottom the first time; use it as a
 > reference after that.
@@ -25,7 +25,7 @@
 13. [Metaprogramming with `define`](#13-metaprogramming-with-define)
 14. [Host capabilities (env, args, files)](#14-host-capabilities-env-args-files)
 15. [Introspection — powering editors and tools](#15-introspection-powering-editors-and-tools)
-16. [Walkthrough A — a config DSL in a Go CLI](#16-walkthrough-a-a-config-dsl-in-a-go-cli)
+16. [Walkthrough A — a config DSL in a Rust CLI](#16-walkthrough-a-a-config-dsl-in-a-rust-cli)
 17. [Walkthrough B — a SQL query DSL on the command line](#17-walkthrough-b-a-sql-query-dsl-on-the-command-line)
 18. [Walkthrough C — an HTML component system with a live editor](#18-walkthrough-c-an-html-component-system-with-a-live-editor)
 19. [Walkthrough D — a multi-file project scaffolder](#19-walkthrough-d-a-multi-file-project-scaffolder)
@@ -38,7 +38,7 @@
 26. [FAQ](#26-faq)
 27. [Appendix 1 — grammar cheat sheet](#appendix-1-grammar-cheat-sheet)
 28. [Appendix 2 — CLI reference](#appendix-2-cli-reference)
-29. [Appendix 3 — Go API reference](#appendix-3-go-api-reference)
+29. [Appendix 3 — Rust API reference](#appendix-3-rust-api-reference)
 
 ---
 
@@ -73,7 +73,7 @@ What Capy is **not**:
   Kubernetes manifests. The target lives entirely in your library's
   `write` templates.
 - **Not a templating language with a fixed host.** Capy runs as a CLI, as
-  an embedded Go library, and as WebAssembly in a browser — same engine,
+  an embedded Rust library, and as WebAssembly in a browser — same engine,
   same `.capy` files, no per-host dialect.
 
 ---
@@ -139,7 +139,7 @@ domain (`route GET "/users" listUsers` instead of a nested mapping).
 Prisma turns `model User { name String }` into migrations and a client.
 GraphQL SDL turns a schema into resolvers. These are transpilers. With
 Capy you write the grammar declaratively instead of hand-rolling a lexer
-and parser in Go.
+and parser by hand.
 
 ### You want one source to feed many outputs
 
@@ -171,7 +171,7 @@ earns its keep when the **grammar itself** is worth defining.
 ### As a command-line tool
 
 ```sh
-go install github.com/olivierdevelops/capy/cmd/capy@latest
+cargo install --git https://github.com/olivierdevelops/capy capy-cli
 capy version
 ```
 
@@ -179,31 +179,42 @@ This puts a `capy` binary on your `PATH`. You can now `capy run lib.capy
 script.capy` from any shell, wire it into a Makefile, or call it from a
 build step in any language.
 
-### As a Go library dependency
+### As a Rust library dependency
 
-From your module root:
+From your crate root. `capy-core` is not on crates.io yet, so depend on it from
+git — cargo finds the crate inside the repo's `rust/` subdirectory on its own:
 
 ```sh
-go get github.com/olivierdevelops/capy@latest
-go mod tidy
+cargo add --git https://github.com/olivierdevelops/capy capy-core
 ```
 
-Then `import "github.com/olivierdevelops/capy"`. If you need a specific commit
-(for a feature that's on `main` but not yet tagged), pin it:
+Then `use capy_core::capy::Library;`. If you need a specific commit (for a
+feature that's on `main` but not yet tagged), pin it:
+
+```toml
+[dependencies]
+capy-core = { git = "https://github.com/olivierdevelops/capy", rev = "<commit-sha>" }
+```
 
 ```sh
-go get github.com/olivierdevelops/capy@<commit-sha>
-go list -m github.com/olivierdevelops/capy   # verify what resolved
+cargo tree -p capy-core   # verify what resolved
 ```
 
 ### As a WebAssembly bundle
 
-Capy builds to `js/wasm` with the standard Go toolchain:
+Capy builds to `wasm32-unknown-unknown` with the standard Rust toolchain:
 
 ```sh
-GOOS=js GOARCH=wasm go build -o capy.wasm ./cmd/capy-wasm
-cp "$(go env GOROOT)/lib/wasm/wasm_exec.js" .
+rustup target add wasm32-unknown-unknown
+cargo build --release --target wasm32-unknown-unknown \
+  --manifest-path rust/Cargo.toml -p capy-wasm-abi
+cp rust/target/wasm32-unknown-unknown/release/capy_wasm_abi.wasm capy.wasm
+cp rust/playground/web/wasm_exec.js .
 ```
+
+`wasm_exec.js` here is Capy's own loader shim, not the file Go used to ship: it
+defines a `Go` class with the same surface, so a page written against the old
+loader works unchanged.
 
 Ship `capy.wasm` + `wasm_exec.js` to the browser and call the exported
 globals (covered in [Walkthrough E](#20-walkthrough-e-running-capy-in-the-browser-wasm)).
@@ -218,6 +229,31 @@ capy run lib.capy script.capy
 
 If that prints rendered output, you're ready.
 
+### Version & compatibility
+
+`capy version` prints the build's version string. Capy follows
+[Semantic Versioning](https://semver.org), with one **pre-1.0 caveat**:
+while the major version is `0`, the library `.capy` schema may evolve
+between **minor** versions — pin a version you've tested against rather
+than tracking `@latest` in production:
+
+```toml
+[dependencies]
+# Pin a commit you have tested. Release tags up to v0.20.0 predate the Rust
+# engine, so a `tag =` older than that will not resolve this crate at all.
+capy-core = { git = "https://github.com/olivierdevelops/capy", rev = "<commit-sha>" }
+```
+
+Engine changes are **additive** by policy — new syntax and helpers are
+added without breaking existing libraries — but pinning still protects you
+from a schema tweak landing mid-release-cycle. This guide reflects the
+syntax current as of **v0.20.x** (indexed reads/writes, optional args,
+`block_verbatim`/`block_sections`, group types, the full helper set, and
+`${line}`/`${col}` source mapping). The [What's new](whats-new.md) page and
+[CHANGELOG](https://github.com/olivierdevelops/capy/blob/main/CHANGELOG.md)
+track what shipped in each release; if a feature here is missing in your
+build, upgrade to the version that introduced it.
+
 ---
 
 ## 5. The three integration modes
@@ -229,7 +265,7 @@ runs.
 | Mode | You call… | Best when |
 |------|-----------|-----------|
 | **CLI** | `capy run lib.capy in.capy` | Build steps, codegen pipelines, any language that can shell out |
-| **Go library** | `capy.NewLibrary(src)` → `lib.Run(src)` | Your app is in Go and wants in-process transpilation, hot-reload, or introspection |
+| **Rust library** | `Library::new(src)` → `lib.run(src)` | Your app is in Rust and wants in-process transpilation, hot-reload, or introspection |
 | **WASM** | exported JS globals | Browser playgrounds, live editors, client-side preview |
 
 ### Mode 1 — CLI (language-agnostic)
@@ -261,42 +297,29 @@ out = subprocess.run(
 
 Any ecosystem that can run a subprocess can use Capy. No FFI, no bindings.
 
-### Mode 2 — Go library (in-process)
+### Mode 2 — Rust library (in-process)
 
-When your application is written in Go, embed the engine directly. You
+When your application is written in Rust, embed the engine directly. You
 compile the library once and run many scripts against it:
 
-```go
-package main
+```rust
+use capy_core::capy::Library;
 
-import (
-	"fmt"
-	"log"
-
-	"github.com/olivierdevelops/capy"
-)
-
-const librarySrc = `
+const LIBRARY_SRC: &str = r#"
 extension html
 function button
     arg literal "button"
     arg capture label string
-    write ` + "`" + `<button>${unquote label}</button>
-` + "`" + `
-end
+    write `<button>${unquote label}</button>
 `
+end
+"#;
 
-func main() {
-	lib, err := capy.NewLibrary(librarySrc)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	out, err := lib.Run(`button "Click me"`)
-	if err != nil {
-		log.Fatal(err)
-	}
-	fmt.Print(out) // <button>Click me</button>
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let lib = Library::new(LIBRARY_SRC)?;
+    let out = lib.run(r#"button "Click me""#)?;
+    print!("{out}"); // <button>Click me</button>
+    Ok(())
 }
 ```
 
@@ -311,7 +334,7 @@ This is what powers live playgrounds and in-editor previews — your grammar
 validates and renders without a round-trip to a server.
 
 Pick the mode per surface. A common production shape uses **all three**:
-the CLI in CI for codegen, the Go library in the backend for request-time
+the CLI in CI for codegen, the Rust library in the backend for request-time
 rendering, and WASM in the editor for instant feedback — one grammar, three
 deployment targets.
 
@@ -592,14 +615,14 @@ function pre
     arg literal "pre"
     arg capture lang ident
     block_verbatim end
-    write `<pre><code class="language-${lang}">${html body}</code></pre>
+    write `<pre><code class="language-${lang}">${escapeHtml body}</code></pre>
 `
 end
 ```
 
 The body is captured as raw source bytes — blank lines, `#` lines, and
 arbitrary syntax survive untouched, *not* parsed as Capy. This is how you
-embed code blocks, SVG, or raw HTML. Combine with the `html` helper to
+embed code blocks, SVG, or raw HTML. Combine with the `escapeHtml` helper to
 escape it safely.
 
 ### Mode E — multi-section blocks
@@ -703,6 +726,22 @@ merge  context.config {"k": "v"}     # shallow-merge a map
 delete context.tmp                   # remove a field/key
 ```
 
+A write target may itself be **indexed** — into a map by key, or into a
+list by position (negative counts from the end):
+
+```
+set    context.counts[word] (add context.counts[word] 1)  # map slot
+set    context.buf[i] `… eliminated`                       # overwrite list elem
+set    context.buf[-1] last                                # last element
+append context.grid[r] cell                                # nested list reached via index
+```
+
+The increment idiom above works because arithmetic helpers treat a
+missing slot as `0`, so a counter needs no initialisation. Overwriting a
+buffered list element in place is the primitive a code generator uses to
+**back-patch already-emitted output** (null a dead store, fix a jump
+offset) once a later decision is known.
+
 ### Control flow (library-side, runs at transpile time)
 
 ```
@@ -725,20 +764,42 @@ error "duplicate id"     # abort transpilation with a message
 > It is not emitted into the output. `if x … end` here means "if `x` is
 > truthy *while generating*, include this text" — not "emit a runtime if."
 
-### Paths
+### Paths and indexed reads
 
-Rooted at `context` (or a `loop` local):
+Rooted at `context` (or a `loop` local). A path is a root name followed by
+any mix of `.field` steps and `[expr]` index steps — and `[expr]` works in
+**read** position exactly as it does on the write side:
 
 ```
-context.imports
-context.config.api.url
-context.scripts[name]      # `name` evaluated to a key
+context.imports                       # field
+context.config.api.url                # nested fields
+context.scripts[name]                 # map read — `name` evaluated to a key
+context.buf[i]                        # list read by a loop index
+context.buf[(sub n 1)]                # computed index expression
+context.buf[-1]                       # negative → counts from the end
+context.grid[i][j]                    # nested index
+context.rows[i].name                  # index, then field
 ```
+
+Read and write semantics are identical: a value written with
+`set context.buf[i] …` reads back by the same index. **Map** parents key
+on the index's string form; **list** parents key on an integer. A missing
+map key or out-of-range list index is `nil` — falsy in a value position
+(`if context.seen[k]`) and the empty string in a template
+(`${context.palette[name]}`). This retires the
+`for k,v in … / if k == name` linear-scan idiom: read the slot directly.
+
+These work in both inner-DSL value position (inside `if`/`for`/`set`) and
+`${…}` template interpolation. See the
+[Indexed reads showcase](showcase.md#indexed-reads-lists-maps-read-back-by-index-or-key)
+for ten worked examples (lookup tables, memoisation, stacks, counters).
 
 ### Expressions
 
 - Literals: numbers, strings (with `${interp}`), `true`, `false`, `null`.
 - Identifier paths resolve: locals (loop vars) → captures → context.
+- Index access `path[expr]` — map by key, list by integer (negative from
+  the end); the index is any expression, including a paren-subcall.
 - Lists `[1, 2, 3]`, objects `{"k": "v", name: "Alice"}` (unquoted keys ok).
 - Comparison: `==`, `!=`, `<`, `<=`, `>`, `>=`; unary `not expr`.
 - `(regex_match value pattern)` returns a boolean for use in `if`.
@@ -765,18 +826,55 @@ editor can map output back to source.
 Inside a `write` backtick literal, `${expr}` interpolates and you can pipe
 through helpers two ways: `${expr | helper}` or `${helper arg expr}`.
 
+The complete, authoritative list lives in the
+[Built-in function cookbook](function-cookbook.md) (one worked example per
+helper, mirrored by the CI-checked `samples/builtin-functions/`). The full
+set, grouped:
+
+**Layout & case**
+
 | Helper | Effect |
 |--------|--------|
 | `indent N` | Pad every line with N spaces — use for block bodies |
-| `lower` / `upper` | Case conversion |
-| `join SEP` | Join a list with a separator |
-| `toQuoted` | Wrap a string in `"…"` |
+| `lower` / `upper` | Lower/upper-case the whole string |
+| `pascalCase` / `camelCase` / `snakeCase` | Re-case an identifier (`PascalCase`, `camelCase`, `snake_case`) |
+| `dasherize` | Convert to `kebab-case` |
+
+**Strings & escaping**
+
+| Helper | Effect |
+|--------|--------|
 | `unquote` | Strip surrounding quotes from a captured string |
-| `toPyLit` | Python literal formatting (True/False/None, lists, dicts) |
-| `toJSON` / `toJSONIndent` | JSON marshal a value |
-| `asString` | Normalise a capture to ONE valid JSON string — quotes iff not already a string. Handles bare ident OR quoted string uniformly |
-| `html` | HTML-escape (`<`, `>`, `&`, `"`, `'`) — your XSS guard |
+| `toQuoted` | Wrap a string in `"…"` |
 | `decoded` | Resolve escape sequences (`\n`, `\t`, `\"`, …) without choking on embedded quotes |
+| `unescape` | Single-pass `strconv` unescape of a quoted source string |
+| `escapeHtml` | HTML-escape (`<`, `>`, `&`, `"`, `'`) — your XSS guard |
+| `asString` | Normalise a capture to ONE valid JSON string — quotes iff not already a string. Handles bare ident OR quoted string uniformly |
+| `trimPrefix S` / `trimSuffix S` | Drop a leading/trailing substring |
+
+**Collections**
+
+| Helper | Effect |
+|--------|--------|
+| `join SEP` | Join a list with a separator |
+| `split SEP` | Split a string into a list (quote-aware) |
+| `nonEmpty` | Drop empty entries from a list |
+| `toJSON` / `toJSONIndent` | JSON-marshal a value (compact / 2-space) |
+| `toPyLit` | Python literal formatting (True/False/None, lists, dicts) |
+
+**Numbers**
+
+| Helper | Effect |
+|--------|--------|
+| `add` / `sub` / `mul` | Integer arithmetic (`add a b`, …) |
+| `div` / `mod` | Integer quotient / remainder (return `0` when divisor is `0`) |
+| `align N A` | Round `N` **up** to the next multiple of `A` — ABI-correct layout offsets |
+| `percent N D` | `N/D` as an integer percentage |
+| `stars N` | A 5-slot `★`/`☆` bar for a 0–5 rating |
+
+Pipe through a helper two ways: `${expr | helper}` or `${helper arg expr}`.
+Helpers compose: `${escapeHtml (decoded text)}` decodes escapes, then
+HTML-escapes the result.
 
 ### The quoting problem, solved
 
@@ -785,18 +883,18 @@ want exactly one valid JSON string out either way. `asString` does that:
 
 | Source | `${asString bin}` |
 |--------|-------------------|
-| `exec git` | `"git"` |
-| `exec "git"` | `"git"` |
+| `run git` | `"git"` |
+| `run "git"` | `"git"` |
 | `emit "he said \"hi\""` | `"he said \"hi\""` |
 
 No more double-quoting real strings; no `unquote`+`toJSON` dance.
 
 ### Escaping HTML
 
-Any user value going into an HTML target should pass through `html`:
+Any user value going into an HTML target should pass through `escapeHtml`:
 
 ```
-write `<p>${html (unquote text)}</p>
+write `<p>${escapeHtml (unquote text)}</p>
 `
 ```
 
@@ -847,13 +945,13 @@ def ${r.handler}(): ...
 end
 ```
 
-From the Go API, `RunMulti` returns the file map:
+From the Rust API, `run_multi` returns the file map:
 
-```go
-out, files, err := lib.RunMulti(scriptSrc)
+```rust
+let (out, files) = lib.run_multi(script_src)?;
 // files["README.md"], files["app/routes.py"], …
-for path, content := range files {
-	os.WriteFile(filepath.Join(outDir, path), []byte(content), 0o644)
+for (path, content) in &files {
+    std::fs::write(std::path::Path::new(out_dir).join(path), content)?;
 }
 ```
 
@@ -908,7 +1006,7 @@ end
 shout "hello"      # → <h1>HELLO</h1>
 ```
 
-This works identically on the CLI, in the embedded Go library (`Run` /
+This works identically on the CLI, in the embedded Rust library (`run` /
 `RunMulti` handle it), and in the WASM playground — so a user can extend
 the language from inside their own document without touching the library
 file. It's how you give power users an escape hatch without recompiling
@@ -935,13 +1033,16 @@ read your environment or filesystem.
 
 To opt in (only for trusted library source), install `OSHost`:
 
-```go
-import "github.com/olivierdevelops/capy/infra"
+```rust
+use capy_core::infra::os_host::OsHost;
+use std::sync::Arc;
 
-lib.SetHost(infra.OSHost{
-	Env:  os.Getenv,
-	Args: os.Args[2:],            // pass through CLI args after the script
-})
+lib.set_host(Some(Arc::new(OsHost {
+    // CLI args after the library + script paths
+    user_args: std::env::args().skip(3).collect(),
+    // `read_file` resolves relative paths against this directory
+    base_dir: ".".into(),
+})));
 ```
 
 The CLI installs `OSHost` automatically (it's running trusted local
@@ -958,16 +1059,16 @@ A compiled library can describe itself. This is the key to building
 editor support (autocomplete, hover-docs, syntax highlighting) without
 hand-maintaining a parallel catalogue that drifts out of sync.
 
-```go
-for _, fn := range lib.Introspect() {
-	fmt.Printf("%s  block=%q  priority=%d\n", fn.Name, fn.Block, fn.Priority)
-	for _, a := range fn.Args {
-		if a.Kind == "literal" {
-			fmt.Printf("    literal %q\n", a.Value)
-		} else {
-			fmt.Printf("    capture %s : %s  %s\n", a.Name, a.Type, a.Description)
-		}
-	}
+```rust
+for f in lib.introspect() {
+    println!("{}  block={:?}  priority={}", f.name, f.block, f.priority);
+    for a in &f.args {
+        if a.kind == "literal" {
+            println!("    literal {:?}", a.value);
+        } else {
+            println!("    capture {} : {}  {}", a.name, a.type_, a.description);
+        }
+    }
 }
 ```
 
@@ -978,9 +1079,9 @@ closer:end"`, `"dedent"`, `"open:{ close:}"`), and priority.
 
 Two companion methods:
 
-```go
-lib.FunctionNames()    // sorted []string of declared function names
-lib.CommentMarkers()   // the library's comment markers, e.g. ["#"]
+```rust
+lib.function_names();   // sorted Vec<String> of declared function names
+lib.comment_markers();  // the library's comment markers, e.g. ["#"]
 ```
 
 An editor derives its entire keyword set, argument hints, and comment
@@ -990,10 +1091,10 @@ Markdown reference docs.
 
 ---
 
-## 16. Walkthrough A — a config DSL in a Go CLI
+## 16. Walkthrough A — a config DSL in a Rust CLI
 
 **Goal.** Replace a verbose JSON config with a friendly DSL, parsed
-in-process by a Go program.
+in-process by a Rust program.
 
 ### Step 1 — the target
 
@@ -1062,39 +1163,21 @@ end
 
 Note `path` is captured as `word` so `/health` survives as one token.
 
-### Step 4 — wire it into Go
+### Step 4 — wire it into Rust
 
-```go
-package main
+```rust
+use capy_core::capy::Library;
 
-import (
-	_ "embed"
-	"fmt"
-	"log"
-	"os"
+// include_str! is the equivalent of Go's //go:embed — the library source is
+// compiled into the binary, so there is no file to ship alongside it.
+const LIBRARY_SRC: &str = include_str!("config.capy");
 
-	"github.com/olivierdevelops/capy"
-)
-
-//go:embed config.capy
-var librarySrc string
-
-func main() {
-	lib, err := capy.NewLibrary(librarySrc)
-	if err != nil {
-		log.Fatalf("library error: %v", err)
-	}
-
-	src, err := os.ReadFile(os.Args[1])
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	out, err := lib.Run(string(src))
-	if err != nil {
-		log.Fatalf("transpile error: %v", err)
-	}
-	fmt.Print(out)
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let lib = Library::new(LIBRARY_SRC)?;
+    let path = std::env::args().nth(1).ok_or("usage: tool <script.capy>")?;
+    let src = std::fs::read_to_string(path)?;
+    print!("{}", lib.run(&src)?);
+    Ok(())
 }
 ```
 
@@ -1105,7 +1188,7 @@ every config you parse.
 ### Step 5 — run it
 
 ```sh
-go run . service.conf
+cargo run -- service.conf
 # {
 #   "service": "checkout",
 #   "replicas": 3,
@@ -1206,7 +1289,7 @@ function card
     block_closer end
     template
         <section class="card" data-line="${line}">
-          <h2>${html (unquote title)}</h2>
+          <h2>${escapeHtml (unquote title)}</h2>
           ${body}
         </section>
     end
@@ -1216,7 +1299,7 @@ function p
     description "A paragraph of prose."
     arg literal "p"
     arg capture text string  "The paragraph text."
-    write `<p data-line="${line}">${html (unquote text)}</p>
+    write `<p data-line="${line}">${escapeHtml (unquote text)}</p>
 `
 end
 
@@ -1225,7 +1308,7 @@ end
 ```
 
 Two things to notice: `data-line="${line}"` stamps the source line onto
-each element (for scroll-sync / click-to-source in the editor), and `html`
+each element (for scroll-sync / click-to-source in the editor), and `escapeHtml`
 escapes user content (XSS-safe).
 
 ### The source
@@ -1239,22 +1322,27 @@ end
 
 ### Powering the editor with introspection
 
-```go
-lib, _ := capy.NewLibrary(componentsSrc)
+```rust
+let lib = Library::new(components_src)?;
 
-type EditorMeta struct {
-	Keywords []string                `json:"keywords"`
-	Comments []string                `json:"comments"`
-	Docs     []capy.FunctionInfo     `json:"docs"`
+#[derive(serde::Serialize)]
+struct EditorMeta {
+    keywords: Vec<String>,
+    comments: Vec<String>,
+    docs: Vec<FunctionInfoDto>,
 }
 
-meta := EditorMeta{
-	Keywords: lib.FunctionNames(),     // ["card", "end", "p"]
-	Comments: lib.CommentMarkers(),    // ["#"]
-	Docs:     lib.Introspect(),        // full arg shapes + descriptions
-}
-json.NewEncoder(w).Encode(meta)
+let meta = EditorMeta {
+    keywords: lib.function_names(),  // ["card", "end", "p"]
+    comments: lib.comment_markers(), // ["#"]
+    docs: lib.introspect().into_iter().map(Into::into).collect(),
+};
+serde_json::to_writer(w, &meta)?;
 ```
+
+`capy-core` has no `serde` dependency — the engine only ever *writes* JSON — so
+derive `Serialize` on your own DTO and convert from `FunctionInfo` rather than
+expecting it to serialize itself.
 
 The editor consumes `meta`:
 
@@ -1269,13 +1357,12 @@ extra code** — the metadata is derived, not duplicated.
 
 ### Rendering on the server
 
-```go
-out, err := lib.Run(userSource)
-if err != nil {
-	// err carries a caret-pointed line:col — surface it inline in the editor
-	return renderError(err)
+```rust
+match lib.run(user_source) {
+    // e.line / e.col / e.hint are on the error — surface it inline in the editor
+    Err(e) => return render_error(&e),
+    Ok(out) => w.write_all(out.as_bytes())?,
 }
-w.Write([]byte(out))
 ```
 
 ---
@@ -1365,18 +1452,17 @@ project "checkout-service"
 end
 ```
 
-### Generate the tree (Go)
+### Generate the tree (Rust)
 
-```go
-out, files, err := lib.RunMulti(string(src))
-if err != nil {
-	log.Fatal(err)
-}
-_ = out // empty when everything goes to file blocks
-for path, content := range files {
-	full := filepath.Join("generated", path)
-	os.MkdirAll(filepath.Dir(full), 0o755)
-	os.WriteFile(full, []byte(content), 0o644)
+```rust
+let (out, files) = lib.run_multi(&src)?;
+let _ = out; // empty when everything goes to file blocks
+for (path, content) in &files {
+    let full = std::path::Path::new("generated").join(path);
+    if let Some(parent) = full.parent() {
+        std::fs::create_dir_all(parent)?;
+    }
+    std::fs::write(full, content)?;
 }
 ```
 
@@ -1405,8 +1491,11 @@ client-side, no server round-trip.
 ### Build the bundle
 
 ```sh
-GOOS=js GOARCH=wasm go build -o web/capy.wasm ./cmd/capy-wasm
-cp "$(go env GOROOT)/lib/wasm/wasm_exec.js" web/
+rustup target add wasm32-unknown-unknown
+cargo build --release --target wasm32-unknown-unknown \
+  --manifest-path rust/Cargo.toml -p capy-wasm-abi
+cp rust/target/wasm32-unknown-unknown/release/capy_wasm_abi.wasm web/capy.wasm
+cp rust/playground/web/wasm_exec.js web/
 ```
 
 ### Load it in the page
@@ -1418,7 +1507,7 @@ cp "$(go env GOROOT)/lib/wasm/wasm_exec.js" web/
   WebAssembly.instantiateStreaming(fetch("capy.wasm"), go.importObject)
     .then((result) => {
       go.run(result.instance);
-      // The Go bundle registers global functions on `globalThis` here.
+      // The shim registers the capy* global functions on `globalThis` here.
       boot();
     });
 
@@ -1445,7 +1534,7 @@ end`;
 
 ### Why this matters
 
-The browser runs the **same engine** as your CLI and your Go backend. So:
+The browser runs the **same engine** as your CLI and your Rust backend. So:
 
 - The editor validates as the user types — same grammar, same errors.
 - Preview is instant — no network latency, works offline.
@@ -1461,12 +1550,13 @@ native one.
 
 ## 21. Integration patterns by ecosystem
 
-### Go services
+### Rust services
 
-Embed via `capy.NewLibrary`. Compile the library at process start (or
+Embed via `Library::new`. Compile the library at process start (or
 lazily, once, behind a `sync.Once`), store the `*Library` on your server
 struct, and call `Run`/`RunMulti` per request. The library is safe to
-share across goroutines for reads; `Run` is re-entrant.
+share across threads for reads: `Library` is `Send + Sync` and `run` takes
+`&self`, so no lock is needed.
 
 ### Node / TypeScript
 
@@ -1518,39 +1608,25 @@ The repo's sample convention is a directory with `lib.capy`,
 `script.capy`, and `script.expected.txt`. A test runs the library against
 the script and diffs against the expected output:
 
-```go
-func TestLibrary(t *testing.T) {
-	lib, err := capy.NewLibraryFromFile("lib.capy")
-	if err != nil {
-		t.Fatal(err)
-	}
-	src, _ := os.ReadFile("script.capy")
-	got, err := lib.Run(string(src))
-	if err != nil {
-		t.Fatal(err)
-	}
-	want, _ := os.ReadFile("script.expected.txt")
-	if got != string(want) {
-		t.Errorf("mismatch:\n got: %q\nwant: %q", got, want)
-	}
+```rust
+#[test]
+fn library_matches_golden() {
+    let lib = Library::from_file("lib.capy").expect("library compiles");
+    let src = std::fs::read_to_string("script.capy").unwrap();
+    let got = lib.run(&src).expect("transpile");
+    let want = std::fs::read_to_string("script.expected.txt").unwrap();
+    assert_eq!(got, want);
 }
 ```
 
 ### Unit tests with inline sources
 
-```go
-func TestButtonEscapes(t *testing.T) {
-	lib, err := capy.NewLibrary(librarySrc)
-	if err != nil {
-		t.Fatal(err)
-	}
-	out, err := lib.Run(`button "<script>"`)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if strings.Contains(out, "<script>") {
-		t.Fatal("XSS: unescaped output")
-	}
+```rust
+#[test]
+fn button_escapes() {
+    let lib = Library::new(LIBRARY_SRC).expect("library compiles");
+    let out = lib.run(r#"button "<script>""#).expect("transpile");
+    assert!(!out.contains("<script>"), "XSS: unescaped output");
 }
 ```
 
@@ -1563,7 +1639,7 @@ func TestButtonEscapes(t *testing.T) {
 - **Edge cases** — empty bodies, omitted optional args, omitted block
   sections, Unicode prose, embedded quotes.
 
-`go test ./...` should be green before you ship a grammar.
+`cargo test --workspace` should be green before you ship a grammar.
 
 ---
 
@@ -1591,11 +1667,10 @@ Capy errors are **caret-pointed at `line:col`**. When `Run` returns an
 error, surface it directly — it tells the user exactly where the source
 broke.
 
-```go
-out, err := lib.Run(src)
-if err != nil {
-	// e.g. "script.capy:3:14: no function matches `route GT /x h`"
-	fmt.Fprintln(os.Stderr, err)
+```rust
+if let Err(e) = lib.run(src) {
+    // e.g. "script.capy:3:14: no function matches `route GT /x h`"
+    eprintln!("{e}");
 }
 ```
 
@@ -1612,7 +1687,7 @@ Debugging checklist:
 5. **`{}` ambiguity** — `{...}` is an object literal by default. For
    `{}`-delimited *blocks*, declare `block_open "{"` / `block_close "}"`.
 6. **Quoting** — `string` captures keep their source quotes in templates.
-   Use `unquote` to strip, `asString` to normalise, `html` to escape.
+   Use `unquote` to strip, `asString` to normalise, `escapeHtml` to escape.
 7. **Determinism** — if a parse seems to flip between runs, you have a
    keyword collision; disambiguate with distinct keywords or lookahead.
 
@@ -1631,7 +1706,7 @@ Capy is **additive** — adopting it never forces a rewrite. A low-risk path:
    you need an unreleased feature:
 
    ```sh
-   go get github.com/olivierdevelops/capy@<tag-or-commit>
+   cargo add --git https://github.com/olivierdevelops/capy capy-core
    go list -m github.com/olivierdevelops/capy   # confirm what resolved
    ```
 
@@ -1639,7 +1714,7 @@ Capy is **additive** — adopting it never forces a rewrite. A low-risk path:
    depends on the output. Lock determinism with a repeat-run test.
 
 4. **Grow into embedding.** Once the grammar earns trust, move
-   transpilation in-process (`capy.NewLibrary`) for hot-reload, better
+   transpilation in-process (`Library::new`) for hot-reload, better
    errors, and introspection-driven tooling.
 
 5. **Add an editor.** Derive autocomplete/hover/highlighting from
@@ -1678,7 +1753,7 @@ WASM.
 
 **Is it safe to run an untrusted library?**
 The default host is `NoOpHost` — no env, no args, no file reads. Only call
-`SetHost(infra.OSHost{...})` for libraries you trust. The transpiler does
+`set_host(Some(Arc::new(OsHost { .. })))` for libraries you trust. The transpiler does
 not execute user code regardless.
 
 **How do I get Unicode prose to work?**
@@ -1749,7 +1824,9 @@ function <NAME>
         multi-line ${interp}
     end
     set / append / prepend / merge / delete <path> <value>
-    if <expr> … end
+    set context.map[key] <value>          # indexed write (map key / list index)
+    set context.buf[-1] <value>           # negative index = from the end
+    if <expr> … end                       # reads may index: if context.seen[k]
     for <v> in <expr> … end
     for <i>, <v> in <expr> … end
     error "<message>"
@@ -1774,14 +1851,33 @@ define <NAME> … end            # in a user script
 `any` `ident` `raw` `string` `int` `float` `bool` `word` `dotted_ident`
 `tail` — plus any library `type`.
 
+### Indexed access (read & write)
+
+```
+context.map[key]      # map read/write by key
+context.list[i]       # list read/write by integer index
+context.list[-1]      # negative = from the end
+context.grid[i][j]    # nested
+context.buf[(sub n 1)]# computed index expression
+```
+
+Missing map key / out-of-range list index → `nil` (falsy / empty).
+
 ### Render-time locals
 
 `body` `top_level` `depth` `line` `col` — plus block-section names.
 
 ### Helpers
 
-`indent N` `lower` `upper` `join SEP` `toQuoted` `unquote` `toPyLit`
-`toJSON` `toJSONIndent` `asString` `html` `decoded`
+Layout/case: `indent N` `lower` `upper` `pascalCase` `camelCase`
+`snakeCase` `dasherize`
+Strings: `unquote` `toQuoted` `decoded` `unescape` `escapeHtml` `asString`
+`trimPrefix S` `trimSuffix S`
+Collections: `join SEP` `split SEP` `nonEmpty` `toJSON` `toJSONIndent`
+`toPyLit`
+Numbers: `add` `sub` `mul` `div` `mod` `align N A` `percent N D` `stars N`
+
+Full reference with examples: [function cookbook](function-cookbook.md).
 
 ---
 
@@ -1807,60 +1903,66 @@ capy docs lib.capy > REFERENCE.md
 
 ---
 
-## Appendix 3 — Go API reference
+## Appendix 3 — Rust API reference
 
-```go
-import "github.com/olivierdevelops/capy"
+```rust
+use capy_core::capy::{render_library_docs, Library};
+use capy_core::infra::os_host::OsHost;
+use std::sync::Arc;
 
-// Compile a library (do this once, reuse).
-lib, err := capy.NewLibrary(librarySrc)        // from a string
-lib, err := capy.NewLibraryFromFile("lib.capy") // from disk
+// Compile a library (do this once, reuse — Library is Send + Sync).
+let lib = Library::new(library_src)?;          // from a string
+let lib = Library::from_file("lib.capy")?;     // from disk
 
 // Transpile.
-out, err := lib.Run(scriptSrc)                  // single output string
-out, files, err := lib.RunMulti(scriptSrc)      // + map[path]content for file blocks
+let out = lib.run(script_src)?;                // single output string
+let (out, files) = lib.run_multi(script_src)?; // + BTreeMap<path, content>
 
 // Host capabilities (opt in only for trusted libraries).
-lib.SetHost(infra.OSHost{Env: os.Getenv, Args: os.Args[2:]})
-// default after NewLibrary is domain.NoOpHost (no env/args/file access)
+let mut lib = lib;
+lib.set_host(Some(Arc::new(OsHost {
+    user_args: vec![],
+    base_dir: ".".into(),
+})));
+// default after Library::new is NoOpHost (no env/args/file access)
 
 // Metadata.
-lib.Extension()        // declared `extension`
-lib.OutputFile()       // declared `output_file`
-lib.FunctionNames()    // sorted []string
-lib.CommentMarkers()   // declared comment markers
-lib.Introspect()       // []FunctionInfo — name, args, block kind, priority
-capy.RenderLibraryDocs(lib) // Markdown docs string (same as `capy docs`)
+lib.extension();         // declared `extension`
+lib.output_file();       // declared `output_file`
+lib.function_names();    // sorted Vec<String>
+lib.comment_markers();   // declared comment markers
+lib.introspect();        // Vec<FunctionInfo> — name, args, block kind, priority
+render_library_docs(&lib); // Markdown docs string (same as `capy docs`)
 ```
 
 ### `FunctionInfo` / `ArgInfo`
 
-```go
-type FunctionInfo struct {
-	Name        string
-	Description string
-	Args        []ArgInfo
-	Block       string  // "" | "closer:NAME" | "open:X close:Y" |
-	                     // "dedent" | "verbatim:NAME" |
-	                     // "sections:S1,S2 closer:CLOSER"
-	Priority    int
+```rust
+pub struct FunctionInfo {
+    pub name: String,
+    pub description: String,
+    pub args: Vec<ArgInfo>,
+    // "" | "closer:NAME" | "open:X close:Y" | "dedent" |
+    // "verbatim:NAME" | "sections:S1,S2 closer:CLOSER"
+    pub block: String,
+    pub priority: i64,
 }
 
-type ArgInfo struct {
-	Kind        string // "literal" | "capture"
-	Value       string // literal text (Kind == "literal")
-	Name        string // capture name (Kind == "capture")
-	Type        string // capture type (Kind == "capture")
-	Description string // trailing doc string on the arg line
-	Optional    bool   // trailing capture declared with `default`
-	Default     string // value bound when an Optional capture is omitted
+pub struct ArgInfo {
+    pub kind: String,        // "literal" | "capture"
+    pub value: String,       // literal text (kind == "literal")
+    pub name: String,        // capture name (kind == "capture")
+    pub type_: String,       // capture type — `type` is a Rust keyword
+    pub description: String, // trailing doc string on the arg line
+    pub optional: bool,      // trailing capture declared with `default`
+    pub default: String,     // value bound when an optional capture is omitted
 }
 ```
 
 ### Concurrency contract
 
 A compiled `*Library` is immutable after `NewLibrary`. `Run` / `RunMulti`
-are safe to call concurrently from multiple goroutines on the same
+are safe to call concurrently from multiple threads on the same
 `*Library`. Do not call `SetHost` concurrently with `Run`. Each `Run`
 gets a fresh accumulating context — no state leaks between calls.
 

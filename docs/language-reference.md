@@ -127,7 +127,7 @@ Every capture has two faces:
 - **In `write` literals** — captures resolve to **source text**. `if x > 0` exposes
   `cond` as the literal `x > 0` so a Python emitter can write `if ${cond}:`.
 - **In state-mutation statements** — captures resolve to **evaluated values**.
-  `say "hello"` exposes `msg` as the Go string `"hello"` (no quotes) so
+  `say "hello"` exposes `msg` as the string `hello` (no quotes) so
   `append context.greetings msg` stores the raw value.
 
 This dual model lets one capture serve both render-by-text (templates) and

@@ -198,7 +198,7 @@ The only primitive call defined is `error <message>` (abort transpilation).
 
 When you reference a capture by name, you get the **evaluated** value:
 
-- A string literal `"foo"` becomes the Go string `"foo"` (no surrounding quotes).
+- A string literal `"foo"` becomes the string `foo` (no surrounding quotes).
 - A number becomes `int64` or `float64`.
 - A list becomes `[]any` of evaluated items.
 - An object becomes `map[string]any`.

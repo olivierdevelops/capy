@@ -1,14 +1,14 @@
 # Reddit launch posts (drafts)
 
-## /r/golang
+## /r/rust
 
-**Title**: Capy — a transpiler engine in Go where the grammar is a `.capy` file
+**Title**: Capy — a transpiler engine in Rust where the grammar is a `.capy` file
 
 **Body**:
 
 I shipped v0.1.0 of Capy today.
 
-It's a small Go binary (≈1500 lines) that reads input text, matches it
+It's a small Rust binary that reads input text, matches it
 against library-defined patterns from a `.capy` file, and produces target
 output. Think: "Jinja templates but with a real parser, scoped to code
 generation."
@@ -34,7 +34,7 @@ Repo: https://github.com/olivierdevelops/capy
 Six worked examples in `samples/` covering Python, JSON, SQL, Makefile,
 HTML components, and TypeScript. Single-binary install, MIT.
 
-Curious what shapes this would or wouldn't fit for /r/golang.
+Curious what shapes this would or wouldn't fit for /r/rust.
 
 ---
 
@@ -110,4 +110,4 @@ end
 
 …produces valid Python.
 
-Open-source (MIT), single Go binary. New, so feedback welcome.
+Open-source (MIT), single Rust binary. New, so feedback welcome.

@@ -177,20 +177,24 @@ projects, or pipe to `less` for single-output.
 
 ## Embedding-API errors
 
-When using Capy from Go (`capy.NewLibrary(...)`), the same
+When using Capy from Rust (`Library::new(...)`), the same
 `*domain.CapyError` is returned. You can type-assert it to render
 your own UI:
 
-```go
-out, err := lib.Run(source)
-if err != nil {
-    if ce, ok := err.(*domain.CapyError); ok {
-        fmt.Printf("at line %d: %s\n", ce.Line, ce.Msg)
-        if ce.Hint != "" {
-            fmt.Printf("  → %s\n", ce.Hint)
+```rust
+use capy_core::domain::errors::format_with_source;
+
+match lib.run(source) {
+    Ok(out) => { /* … */ }
+    Err(e) => {
+        // Every error is a CapyError, with the position and hint already on it.
+        println!("at line {}: {}", e.line, e.msg);
+        if !e.hint.is_empty() {
+            println!("  → {}", e.hint);
         }
-    } else {
-        fmt.Println("other error:", err)
+        // Or let the engine render it the way the CLI does — `error:` prefix,
+        // hint line, and a caret under the offending column:
+        eprintln!("{}", format_with_source(&e, source));
     }
 }
 ```

@@ -72,13 +72,13 @@ capy docs samples/recipe-card/lib.capy --out RECIPE_LIB.md
 The output is plain Markdown — open it in any viewer, paste it into
 a README, ship it with the library.
 
-### Embedded in your Go program
+### Embedded in your Rust program
 
-```go
-import "github.com/olivierdevelops/capy"
+```rust
+use capy_core::capy::{render_library_docs, Library};
 
-lib, _ := capy.NewLibraryFromFile("lib.capy")
-md := capy.RenderLibraryDocs(lib)
+let lib = Library::from_file("lib.capy")?;
+let md = render_library_docs(&lib);
 // → "# Library reference (→ `.html`)\n\n..."
 ```
 

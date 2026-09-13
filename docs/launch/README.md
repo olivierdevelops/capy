@@ -7,13 +7,13 @@ has been tagged and the binaries are out.
 |---|---|
 | [blog-post.md](blog-post.md) | First. Goes on your personal site or dev.to. |
 | [hn.md](hn.md) | Day of release. Tuesday or Wednesday morning PT. |
-| [reddit.md](reddit.md) | Day of release. /r/golang, /r/ProgrammingLanguages. |
+| [reddit.md](reddit.md) | Day of release. /r/rust, /r/ProgrammingLanguages. |
 | [twitter.md](twitter.md) | Same day. Drop the link. |
 
 Order of operations:
 
 1. Tag `v0.1.0`. Confirm GoReleaser produced binaries for all platforms.
-2. Verify `go install github.com/olivierdevelops/capy/cmd/capy@latest` works.
+2. Verify `cargo install --git https://github.com/olivierdevelops/capy capy-cli` works.
 3. Test the install script on a fresh Linux VM and a fresh macOS shell.
 4. Publish the blog post.
 5. Submit HN.

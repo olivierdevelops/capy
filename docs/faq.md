@@ -55,7 +55,7 @@ collect imports/dependencies at the top, emit them via `file_template`.
 Templates see the **source text** (with quotes for string literals) so a
 target like Python receives `"alice"` directly. `set` / `append`
 expressions see **evaluated values** so `append context.imports name`
-stores the Go string `"json"` without quotes.
+stores the string `json` without quotes.
 
 ## How do I define `x = 1`?
 
@@ -116,7 +116,7 @@ reproduces the issue.
 ## How do I add a new built-in primitive in the inner DSL?
 
 Open an issue first to discuss the API. Implementation lives in
-`orchestrator/features/inner_evaluator.go`. Document in `docs/inner-dsl.md`.
+`rust/src/orchestrator/features/inner_evaluator.rs`. Document in `docs/inner-dsl.md`.
 
 ## Why is the project structure so opinionated (VHCO)?
 

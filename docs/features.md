@@ -10,11 +10,11 @@ links; this page is a quick reference for "is X supported?".
 | Feature | Status | Where |
 |---------|--------|-------|
 | Zero default grammar — every shape is library-defined | ✅ | [language-reference](language-reference.md) |
-| Single-binary Go engine, no runtime deps | ✅ | `go install github.com/olivierdevelops/capy/cmd/capy@latest` |
-| Programmatic Go API | ✅ | `capy.NewLibrary(src)` → `lib.Run(script)` / `lib.RunMulti(script)`. See [embedding](embedding.md). |
+| Single-binary Rust engine, no runtime deps | ✅ | `cargo install --git https://github.com/olivierdevelops/capy capy-cli` |
+| Programmatic Rust API | ✅ | `Library::new(src)` → `lib.run(script)` / `lib.run_multi(script)`. See [embedding](embedding.md). |
 | Library introspection (names, args, docstrings, optional/default flags) | ✅ | `lib.Introspect()` / `lib.CommentMarkers()` — see [embedding](embedding.md#introspection-the-library-describes-itself) |
 | Browser playground — same engine compiled to WebAssembly | ✅ | [playground](playground.md) |
-| Caret-pointed error messages with line:col + did-you-mean | ✅ | [`domain.CapyError`](https://github.com/olivierdevelops/capy/blob/main/domain/errors.go), [errors-and-debugging](errors-and-debugging.md) |
+| Caret-pointed error messages with line:col + did-you-mean | ✅ | [`domain::errors::CapyError`](https://github.com/olivierdevelops/capy/blob/main/rust/src/domain/errors.rs), [errors-and-debugging](errors-and-debugging.md) |
 
 ## Library schema
 
@@ -32,7 +32,7 @@ links; this page is a quick reference for "is X supported?".
 | Field | Purpose |
 |-------|---------|
 | `args` | Ordered list of `{kind: literal, value}` and `{kind: capture, name, type}` entries. |
-| `template` | Go `text/template` rendered into the body per match. |
+| `template` | A literal block emitted into the body per match (no interpolation; prefer `write`). |
 | `run` | Inner-DSL snippet that mutates `context`. Does NOT execute user code. |
 | `block.closer` | Mode-A block opener (INDENT/DEDENT body + named closer function). |
 | `block.open` + `block.close` | Mode-B block opener (explicit delimiter pair). |
@@ -150,10 +150,10 @@ or `${helper arg expr}`, in both per-function bodies and the top-level
 | `join SEP <list>` | Join a list of strings. |
 | `split SEP <string>` | Split a string into a list. |
 | `unquote` | Strip one layer of surrounding `"..."`, `'...'`, or `` `...` ``. |
-| `unescape` | Resolve standard Go escape sequences (legacy; prefer `decoded`). |
+| `unescape` | Resolve standard C-style escape sequences (legacy; prefer `decoded`). |
 | `toQuoted` | Wrap a string in JSON-style double quotes. |
 | `asString` | Normalise a capture to ONE valid JSON string, quoting iff not already a string — correct for both a bare ident and a quoted string. |
-| `toPyLit` | Format a Go value as a Python literal (`True`/`False`/`None`/lists/dicts). |
+| `toPyLit` | Format a value as a Python literal (`True`/`False`/`None`/lists/dicts). |
 | `toJSON` / `toJSONIndent` | Marshal any value to compact / pretty JSON. |
 | `trimPrefix P` / `trimSuffix S` | Strip a leading / trailing substring. |
 | `nonEmpty` | True when the string is non-empty (handy in `if`). |
@@ -323,7 +323,7 @@ A capture has two faces:
   exposes `cond` as the literal text `x > 0` and a Python emitter
   can write `if ${cond}:` unchanged.
 - **In `set` / `append` / `if` expressions** — captures resolve to
-  **evaluated Go values**. Strings become Go strings without quotes,
+  **evaluated values**. Strings lose their quotes,
   numbers become int64/float64, lists become `[]any`, objects become
   `map[string]any`. Unresolved bare identifiers fall back to their
   literal name.
@@ -356,7 +356,7 @@ sandboxing patterns.
 
 | Method | Command |
 |--------|---------|
-| Go | `go install github.com/olivierdevelops/capy/cmd/capy@latest` |
+| Rust | `cargo install --git https://github.com/olivierdevelops/capy capy-cli` |
 | Binary release | [Releases page](https://github.com/olivierdevelops/capy/releases) |
 | Install script | `curl -fsSL https://raw.githubusercontent.com/olivierdevelops/capy/main/scripts/install.sh \| sh` |
 | Docker | `docker build -t capy .` (Dockerfile in repo root) |

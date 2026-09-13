@@ -138,7 +138,7 @@ for:
 3. Author `lib.yaml`. Run `capy check lib.yaml`.
 4. Author `script.capy` exercising every pattern.
 5. Run `capy run lib.yaml script.capy`. Iterate.
-6. Once stable, capture the golden via `go test ./cmd/capy/... -update`.
+6. Once stable, capture the golden via `CAPY_UPDATE_GOLDENS=1 cargo test --manifest-path rust/Cargo.toml --test golden`.
 
 ## Hard rules
 

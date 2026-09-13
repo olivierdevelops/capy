@@ -86,12 +86,12 @@ generated artifacts match what consumers were planning around.
 
 ## The continually-tested loop
 
-Every Capy sample includes a `*.expected.txt` golden file. The Go
+Every Capy sample includes a `*.expected.txt` golden file. The Rust
 test harness runs `script.capy` through every library and diffs
 against the golden:
 
 ```sh
-go test ./cmd/capy/...
+cargo test --manifest-path rust/Cargo.toml --test golden
 ```
 
 What this catches:
@@ -122,7 +122,7 @@ samples/contract-first-api/
 └── script_markdown.expected.txt
 ```
 
-One source, three targets. The CI test (`cmd/capy/contract_first_test.go`)
+One source, three targets. The CI test (`rust/tests/golden.rs`)
 runs all three libraries against `script.capy` on every commit. Add a
 4th target (Postman, FastAPI server, Rust `reqwest` client) by
 writing one new `lib_<X>.capy` + one new `script_<X>.expected.txt`.

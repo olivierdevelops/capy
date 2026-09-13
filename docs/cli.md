@@ -46,7 +46,7 @@ capy check lib.capy
 #   type     Status
 ```
 
-Use this in CI alongside `go test ./...` to catch broken libraries early.
+Use this in CI alongside `cargo test --workspace` to catch broken libraries early.
 
 ## `capy init [<dir>]`
 
@@ -71,9 +71,9 @@ capy build greet -o greet
 ./greet run hello.greet
 ```
 
-Honors `GOOS` / `GOARCH` env vars for cross-compilation. One macOS
-developer can produce Linux x86-64, Linux ARM64, Windows, and WASM
-binaries in seconds. Full walkthrough + size benchmarks + tips:
+Takes `--target <triple>` for cross-compilation (the target needs
+`rustup target add` plus a linker for it first). Full walkthrough + size
+benchmarks + tips:
 [Compile a library to a standalone binary](compiling-libraries.md).
 
 ## `capy version`
@@ -96,14 +96,14 @@ when called with one.
 
 ## Embedding Capy
 
-If you want to call Capy from Go code, the top-level package
+If you want to call Capy from Rust code, the `capy_core::capy` module
 exposes a small embedding API:
 
-```go
-import "github.com/olivierdevelops/capy"
+```rust
+use capy_core::capy::Library;
 
-lib, err := capy.NewLibraryFromFile("lib.capy")
-out, err := lib.Run(scriptSource)
+let lib = Library::from_file("lib.capy")?;
+let out = lib.run(script_source)?;
 ```
 
 See [embedding.md](embedding.md) for the full surface (in-memory

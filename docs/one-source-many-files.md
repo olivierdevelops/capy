@@ -195,7 +195,7 @@ Generated tree:
     <span class="lights" style="display:inline-flex;gap:6px;"><span style="width:12px;height:12px;border-radius:50%;background:#ff5f57;display:inline-block;"></span><span style="width:12px;height:12px;border-radius:50%;background:#ffbd2e;display:inline-block;"></span><span style="width:12px;height:12px;border-radius:50%;background:#28c940;display:inline-block;"></span></span>
     <span class="title">~/handlers — zsh</span>
   </div>
-<pre><span class="muted">$ go test ./...</span>
+<pre><span class="muted">$ cargo test --workspace</span>
 ok    example/handlers   <span class="ok">0.448s</span>
 
 <span class="muted">$ go test -v ./...</span>

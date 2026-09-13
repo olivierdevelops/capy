@@ -449,7 +449,7 @@ needs no `capy` install on the target host:
 
 ```sh
 $ capy build recipe -o recipe-tool
-building recipe (this needs the Go toolchain)…
+building recipe (this needs the Cargo toolchain)…
 ✓ wrote ./recipe-tool (5.4 MB)
   try:  ./recipe-tool --help
 
@@ -460,16 +460,16 @@ $ ./recipe-tool build cake.recipe -o cake.txt
 wrote cake.txt
 ```
 
-How it works: `capy build` writes a tiny Go wrapper `main.go`
+How it works: `capy build` writes a tiny Rust wrapper `src/main.rs`
 that embeds the library source as a string constant + dispatches
-via `orchestrator.RunCommand`, then shells out to `go build`. The
-user needs a Go toolchain installed to run `capy build`; the
-OUTPUT binary has no such requirement.
+via `run_command`, then shells out to `cargo build`. The user needs a Cargo
+toolchain installed to run `capy build`; the OUTPUT binary has no such
+requirement.
 
 Caveats:
-- The build is single-target by default (your current `GOOS` /
-  `GOARCH`). Cross-compile by setting them: `GOOS=linux GOARCH=arm64
-  capy build recipe -o recipe-linux-arm64`.
+- The build targets the host by default. Cross-compile with `--target`:
+  `capy build recipe --target aarch64-unknown-linux-gnu -o recipe-linux-arm64`
+  (the target needs `rustup target add` plus a linker for it first).
 - The compiled binary embeds the library at build time;
   upgrade-on-the-fly isn't a thing — rebuild.
 - Section 2(b) of the [LICENSE](https://github.com/olivierdevelops/capy/blob/main/LICENSE)

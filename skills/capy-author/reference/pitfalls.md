@@ -148,7 +148,7 @@ end
 After every behavior change:
 
 ```sh
-go test ./cmd/capy/... -update
+CAPY_UPDATE_GOLDENS=1 cargo test --manifest-path rust/Cargo.toml --test golden
 ```
 
 …to refresh `*.expected.txt` files. Then `go test ./...` to confirm.

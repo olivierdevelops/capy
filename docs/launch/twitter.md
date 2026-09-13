@@ -2,7 +2,7 @@
 
 Short version (single post):
 
-> 🌱 Capy v0.1.0 — a transpiler engine in Go where the grammar is a YAML
+> 🌱 Capy v0.1.0 — a transpiler engine in Rust where the grammar is a `.capy`
 > file. Define your DSL, get a code generator. Zero default keywords.
 > Single-binary install. Six worked examples (Python, JSON, SQL,
 > Makefile, HTML, TS).
@@ -13,7 +13,7 @@ Short version (single post):
 
 Thread version (5 posts):
 
-1/ 🌱 Just shipped Capy v0.1.0. It's a small Go binary (~1500 LOC) that
+1/ 🌱 Just shipped Capy v0.1.0. It's a small Rust binary that
 turns a `.capy` file describing a grammar into a working transpiler. No
 parser-generator, no code generation, no template engine alone — one
 runtime that does all three.
@@ -37,7 +37,7 @@ Python-flavored DSL from scratch — `import`, `say`, `assign`, `if`,
 `loop` — that transpiles to runnable Python.
 
 4/ Six samples in the repo covering Python, JSON, SQL, Makefile, HTML
-components, and TypeScript interfaces. Install via `go install` or one
+components, and TypeScript interfaces. Install via `cargo install` or one
 of the binary releases. MIT.
 
 5/ Pre-1.0 — the `.capy` schema will likely evolve. Roadmap includes:

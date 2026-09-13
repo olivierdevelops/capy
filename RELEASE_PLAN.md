@@ -1,3 +1,8 @@
+> **HISTORICAL PLANNING RECORD.** Written for the Go implementation, before the
+> Rust port. The file paths, linters and release tooling named below describe
+> that codebase; the engine is now Rust under `rust/` and releases are built with
+> cargo. Kept for the plan and acceptance criteria, not as current instructions.
+
 # Capy Public Release Plan
 
 > **Status: completed for v0.1.0.** Phases 0–7 have been executed in this
@@ -89,7 +94,7 @@ jobs:
     steps:
       - actions/checkout
       - actions/setup-go
-      - go test ./...
+      - cargo test --workspace
       - golangci-lint run
 ```
 
@@ -426,7 +431,7 @@ Phases 6 and 7 can be moved to a v0.2 if you'd rather ship sooner. The minimum c
 
 - [ ] All Phase 0 files exist
 - [ ] CI green on `main`
-- [ ] `go test ./...` passes
+- [ ] `cargo test --workspace` passes
 - [ ] `golangci-lint run` clean
 - [ ] Every `samples/*/expected.txt` matches actual output
 - [ ] `capy --version` prints the tag

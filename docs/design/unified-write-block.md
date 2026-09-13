@@ -1,3 +1,7 @@
+> **HISTORICAL DESIGN RECORD.** Written while the engine was implemented in Go.
+> File paths and language references below describe that codebase; the engine is
+> now Rust under `rust/`. Kept for the reasoning, not as current documentation.
+
 # Design — unified `write:` block
 
 > Status: **proposed, not implemented**. Captured here so the

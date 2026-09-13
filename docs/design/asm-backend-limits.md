@@ -1,3 +1,7 @@
+> **HISTORICAL DESIGN RECORD.** Written while the engine was implemented in Go.
+> File paths and language references below describe that codebase; the engine is
+> now Rust under `rust/`. Kept for the reasoning, not as current documentation.
+
 # Capy as a cross-arch assembler: the 4 hard problems
 
 **Who this is for:** anyone considering Capy as a "universal assembler"

@@ -1,28 +1,28 @@
 ---
-title: Embed Capy in Go
+title: Embed Capy in Rust
 ---
 
-# Embed Capy in a Go program
+# Embed Capy in a Rust program
 
-Capy is a Go library. You don't have to ship the `capy` binary or maintain
+Capy is a Rust library. You don't have to ship the `capy` binary or maintain
 separate `lib.capy` files — your program can carry its own grammar inline
-and transpile user input at runtime, all in pure Go.
+and transpile user input at runtime.
 
-```go
-import "github.com/olivierdevelops/capy"
+```rust
+use capy_core::capy::Library;
 
-lib, _ := capy.NewLibrary(`
-    extension html
+let lib = Library::new(r#"
+extension html
 
-    function button
-        arg literal "button"
-        arg capture label string
-        write `<button>${label}</button>
+function button
+    arg literal "button"
+    arg capture label string
+    write `<button>${label}</button>
 `
-    end
-`)
+end
+"#)?;
 
-out, _ := lib.Run(`button "Click me"`)
+let out = lib.run(r#"button "Click me""#)?;
 // → <button>"Click me"</button>
 ```
 
@@ -31,11 +31,11 @@ That's the entire API surface for the common case.
 ## When to embed Capy
 
 - **Your CLI takes a config file** in a friendlier-than-YAML DSL. Write
-  the parser in 50 lines of Capy instead of 500 of `encoding/yaml` +
-  string interpolation.
+  the parser in 50 lines of Capy instead of 500 lines of `serde` plumbing
+  and string interpolation.
 - **Your tool generates code** (think Prisma's `model User { ... }` →
   SQL migrations). Embedding Capy lets users write that DSL natively
-  while your Go code consumes the generated output.
+  while your Rust code consumes the generated output.
 - **You want hot-swappable grammars** — read a library file at startup,
   let users contribute new ones without recompiling.
 - **You want a sandboxed scripting surface** for an AI agent — let it
@@ -43,42 +43,98 @@ That's the entire API surface for the common case.
 
 ## Install
 
-```sh
-go get github.com/olivierdevelops/capy
+Not on crates.io yet, so depend on it from git — cargo finds the crate inside the
+repo's `rust/` subdirectory on its own:
+
+```toml
+[dependencies]
+capy-core = { git = "https://github.com/olivierdevelops/capy" }
 ```
 
-That's it. No CLI dependency, no `capy` binary required at runtime.
+One dependency (`regex`), no C symbols, no build script. Minimum supported Rust
+version is 1.74.
 
 ## The full API
 
-The `capy` package exposes a tiny, intentionally-stable surface:
+`capy_core::capy` exposes a tiny, intentionally-stable surface:
 
-```go
-// Compile a library from an in-memory string.
-func NewLibrary(librarySrc string) (*Library, error)        // .capy native syntax
-func NewLibraryFromFile(path string) (*Library, error)      // disk
+```rust
+// Compile a library from an in-memory string, a file, or raw bytes.
+impl Library {
+    pub fn new(library_src: &str) -> Result<Library, CapyError>;
+    pub fn from_file(path: &str) -> Result<Library, CapyError>;
+    pub fn from_bytes(format: &str, src: &[u8]) -> Result<Library, CapyError>;
 
-// Run a source script through the library.
-func (l *Library) Run(scriptSrc string) (string, error)
+    // Run a source script through the library.
+    pub fn run(&self, script_src: &str) -> Result<String, CapyError>;
+    // …and the multi-file form, for libraries declaring `file "path"` blocks.
+    pub fn run_multi(&self, script_src: &str)
+        -> Result<(String, BTreeMap<String, String>), CapyError>;
 
-// Diagnostic helpers.
-func (l *Library) Extension() string         // declared `extension:` field
-func (l *Library) OutputFile() string        // declared `output_file:` field
-func (l *Library) FunctionNames() []string   // declared function keys
+    // Diagnostic helpers.
+    pub fn extension(&self) -> &str;            // declared `extension:` field
+    pub fn output_file(&self) -> &str;          // declared `output_file:` field
+    pub fn function_names(&self) -> Vec<String>;// declared function keys, sorted
 
-// Introspection — the library describes itself (see below).
-func (l *Library) Introspect() []FunctionInfo // every declared function
-func (l *Library) CommentMarkers() []string   // declared comment markers
+    // Introspection — the library describes itself (see below).
+    pub fn introspect(&self) -> Vec<FunctionInfo>;
+    pub fn comment_markers(&self) -> Vec<String>;
+
+    // Opt in to real env / args / filesystem access.
+    pub fn set_host(&mut self, h: Option<Arc<dyn Host + Send + Sync>>);
+}
+
+// Markdown reference docs — the same text `capy docs <lib>` prints.
+pub fn render_library_docs(lib: &Library) -> String;
 ```
 
-That's the whole package. Everything else is convention.
+That's the whole module. Everything else is convention.
 
-`*Library` is safe to reuse across many `Run` calls (each call gets a
-fresh accumulating context).
+## Reuse and threads
+
+`Library` is `Send + Sync`. Compile the grammar once and share it: `run` takes
+`&self` and builds a fresh accumulating context per call, so concurrent
+transpiles need no lock.
+
+```rust
+use std::sync::{Arc, OnceLock};
+
+static LIB: OnceLock<Arc<Library>> = OnceLock::new();
+
+fn grammar() -> &'static Arc<Library> {
+    LIB.get_or_init(|| Arc::new(Library::new(MY_GRAMMAR).expect("valid grammar")))
+}
+
+// From an axum handler, a rayon map, a spawned thread — all fine:
+let lib = Arc::clone(grammar());
+std::thread::spawn(move || lib.run(script));
+```
+
+A custom `Host` must therefore be `Send + Sync` too: use `Mutex`/`RwLock` for
+interior mutability, not `RefCell`.
+
+## Sandboxing
+
+A fresh `Library` runs on `NoOpHost`: the `env`, `arg` and `read_file` inner-DSL
+primitives return empty values and `read_file` errors. That is the safe default
+for untrusted library sources. Opt in explicitly:
+
+```rust
+use capy_core::infra::os_host::OsHost;
+use std::sync::Arc;
+
+let mut lib = Library::new(src)?;
+lib.set_host(Some(Arc::new(OsHost {
+    user_args: vec![],
+    base_dir: "/path/to/scripts".into(),
+})));
+```
+
+See [Host capabilities](host-capabilities.md) for the full surface.
 
 ## Introspection — the library describes itself
 
-`Introspect()` returns the full declared shape of every function —
+`introspect()` returns the full declared shape of every function —
 name, doc string, argument list (literal vs. capture, capture type,
 per-arg description, and whether the arg is **optional** with a
 **default**), block kind, and priority. The data comes straight from
@@ -89,30 +145,30 @@ This is what powers a live editor's autocomplete, hover-docs, syntax
 highlighting, and reference panel — all from one source of truth (the
 `.capy` library itself).
 
-```go
-type FunctionInfo struct {
-    Name        string    `json:"name"`
-    Description string    `json:"description,omitempty"`
-    Args        []ArgInfo `json:"args"`
-    Block       string    `json:"block,omitempty"`     // e.g. "verbatim:end", "dedent", "closer:end"
-    Priority    int       `json:"priority,omitempty"`
+```rust
+pub struct FunctionInfo {
+    pub name: String,
+    pub description: String,
+    pub args: Vec<ArgInfo>,
+    pub block: String,   // e.g. "verbatim:end", "dedent", "closer:end"
+    pub priority: i64,
 }
 
-type ArgInfo struct {
-    Kind        string `json:"kind"`                  // "literal" or "capture"
-    Value       string `json:"value,omitempty"`       // literal token text
-    Name        string `json:"name,omitempty"`        // capture's bound name
-    Type        string `json:"type,omitempty"`        // capture's declared type
-    Description string `json:"description,omitempty"` // trailing doc string
-    Optional    bool   `json:"optional,omitempty"`    // trailing arg with a default
-    Default     string `json:"default,omitempty"`     // value bound when omitted
+pub struct ArgInfo {
+    pub kind: String,        // "literal" or "capture"
+    pub value: String,       // literal token text
+    pub name: String,        // capture's bound name
+    pub type_: String,       // capture's declared type (`type` is a Rust keyword)
+    pub description: String, // trailing doc string
+    pub optional: bool,      // trailing arg with a default
+    pub default: String,     // value bound when omitted
 }
 ```
 
 Example — introspecting a one-function library:
 
-```go
-lib, _ := capy.NewLibrary(`
+```rust
+let lib = Library::new(r##"
 extension html
 
 comments
@@ -124,23 +180,24 @@ function button
     arg literal "button"
     arg capture label   string "Visible text."
     arg capture variant string default "primary"   "Style variant."
-    write ` + "`<button class=\"btn-${variant}\">${label}</button>`" + `
+    write `<button class="btn-${variant}">${label}</button>`
 end
-`)
+"##)?;
 
-for _, fn := range lib.Introspect() {
-    fmt.Println(fn.Name, "-", fn.Description)
-    for _, a := range fn.Args {
-        if a.Kind == "capture" {
-            opt := ""
-            if a.Optional {
-                opt = fmt.Sprintf(" (optional, default %q)", a.Default)
-            }
-            fmt.Printf("  %s: %s%s — %s\n", a.Name, a.Type, opt, a.Description)
+for fn_ in lib.introspect() {
+    println!("{} - {}", fn_.name, fn_.description);
+    for a in &fn_.args {
+        if a.kind == "capture" {
+            let opt = if a.optional {
+                format!(" (optional, default {:?})", a.default)
+            } else {
+                String::new()
+            };
+            println!("  {}: {}{} — {}", a.name, a.type_, opt, a.description);
         }
     }
 }
-fmt.Println("comment markers:", lib.CommentMarkers())
+println!("comment markers: {:?}", lib.comment_markers());
 ```
 
 Output:
@@ -149,23 +206,22 @@ Output:
 button - A clickable button.
   label: string — Visible text.
   variant: string (optional, default "primary") — Style variant.
-comment markers: [#]
+comment markers: ["#"]
 ```
 
-The same data is available from the browser via the wasm builds —
-`capyIntrospect(librarySrc)` in the generic engine, `pagesIntrospect()`
-in a library-embedded build — returning the identical JSON shape. An
+The same data is available from the browser via the wasm build —
+`capyIntrospect(librarySrc)` returns the identical JSON shape. An
 editor can `JSON.parse` it and build autocomplete with zero
 hand-maintenance.
 
 ## A real example
 
 The repo ships [`examples/embed-html-dsl/`](https://github.com/olivierdevelops/capy/tree/main/examples/embed-html-dsl)
-— a 50-line Go program that defines its own HTML DSL inline and
+— a small Rust program that defines its own HTML DSL inline and
 transpiles a hardcoded source. Run it:
 
 ```sh
-go run ./examples/embed-html-dsl
+cargo run --manifest-path examples/embed-html-dsl/Cargo.toml
 ```
 
 Output (real, no escaping omitted):
@@ -176,7 +232,7 @@ Output (real, no escaping omitted):
   <head><title>"Hello from embedded Capy"</title></head>
   <body>
     <h1>"Welcome!"</h1>
-    <p>"This entire page was generated by a Capy library compiled INTO this Go binary."</p>
+    <p>"This entire page was generated by a Capy library compiled INTO this Rust binary."</p>
     <p>"No external lib.capy, no separate capy CLI."</p>
     <a href="https://github.com/olivierdevelops/capy">"Source"</a>
   </body>
@@ -184,14 +240,14 @@ Output (real, no escaping omitted):
 ```
 
 Everything between `<!DOCTYPE html>` and `</html>` came from a Capy
-library compiled into the Go binary. No filesystem, no subprocess.
+library compiled into the Rust binary. No filesystem, no subprocess.
 
 ## Patterns
 
 ### Pattern 1 — your config is your CLI's input
 
-```go
-const configLib = `
+```rust
+const CONFIG_LIB: &str = r#"
 extension json
 
 function server
@@ -214,14 +270,12 @@ end
 
 function end
 end
-`
+"#;
 
-func loadConfig(userInput string) (*ServerConfig, error) {
-    lib, err := capy.NewLibrary(configLib)
-    if err != nil { return nil, err }
-    jsonStr, err := lib.Run(userInput)
-    if err != nil { return nil, err }
-    return parseJSON(jsonStr)
+fn load_config(user_input: &str) -> Result<ServerConfig, Box<dyn std::error::Error>> {
+    let lib = Library::new(CONFIG_LIB)?;
+    let json_str = lib.run(user_input)?;
+    Ok(serde_json::from_str(&json_str)?)
 }
 ```
 
@@ -234,7 +288,7 @@ server "api"
 end
 ```
 
-…and your Go binary parses real JSON without you writing any DSL parser
+…and your Rust binary parses real JSON without you writing any DSL parser
 code.
 
 ### Pattern 2 — let users extend your tool
@@ -242,40 +296,41 @@ code.
 Ship a default library compiled into the binary, but allow a user-supplied
 override:
 
-```go
-func loadLib(path string) (*capy.Library, error) {
-    if path != "" {
-        return capy.NewLibraryFromFile(path)   // user-provided
+```rust
+fn load_lib(path: Option<&str>) -> Result<Library, CapyError> {
+    match path {
+        Some(p) => Library::from_file(p),   // user-provided
+        None => Library::new(BUILTIN_LIB),  // baked-in default
     }
-    return capy.NewLibrary(builtinLib)         // baked-in default
 }
 ```
 
-The same `*Library` works in both cases.
+The same `Library` works in both cases.
 
 ### Pattern 3 — multiple grammars in one process
 
-Each `*Library` is independent. Run the same source through different
+Each `Library` is independent. Run the same source through different
 libraries to compare outputs, or pick a grammar at runtime based on
 some flag:
 
-```go
-htmlLib := mustCompile(htmlGrammar)
-mdLib   := mustCompile(markdownGrammar)
+```rust
+let html_lib = Library::new(HTML_GRAMMAR)?;
+let md_lib = Library::new(MARKDOWN_GRAMMAR)?;
 
-switch outputFormat {
-case "html": return htmlLib.Run(src)
-case "md":   return mdLib.Run(src)
+match output_format {
+    "html" => html_lib.run(src),
+    "md" => md_lib.run(src),
+    other => Err(CapyError::msg(format!("unknown format {other:?}"))),
 }
 ```
 
 ## Performance notes
 
-- `NewLibrary` compiles the grammar once. Reuse the returned `*Library`
+- `Library::new` compiles the grammar once. Reuse the returned `Library`
   — don't recompile per request.
-- `Run` is allocation-heavy (template rendering, AST walking). For
+- `run` is allocation-heavy (template rendering, AST walking). For
   hot paths consider caching outputs keyed by source hash.
-- No goroutines are spawned. Run is synchronous and CPU-bound.
+- No threads are spawned. `run` is synchronous and CPU-bound.
 
 ## Caveats and edge cases
 
@@ -286,17 +341,23 @@ case "md":   return mdLib.Run(src)
   the bare value, or strip the quotes inline with the `unquote` helper:
   `${text | unquote}`.
 - **Errors include line numbers** from the source — wire them through
-  to your user-facing error path.
+  to your user-facing error path. `domain::errors::format_with_source`
+  renders an error with a source caret, the way the CLI does.
+- **Raw-string fences need care.** A `.capy` library routinely contains
+  `"#` (a `line "#"` comment marker, a shell comment in a template),
+  which closes an `r#"…"#` literal early. Widen the fence to `r##"…"##`
+  when that happens — several examples above do.
 - **There is no eval of user code.** A Capy library defines patterns
-  and templates; it cannot execute arbitrary Go from the source
+  and templates; it cannot execute arbitrary Rust from the source
   script. Embedding Capy in a server is safe from that angle.
 
 ## What it's not
 
-- Not a Go-side imperative API for building libraries. Libraries are
+- Not a Rust-side imperative API for building libraries. Libraries are
   always declarative `.capy` text. If you need to construct one
-  programmatically, write a Go function that builds the string.
-- Not a hot-reload watcher — that's your responsibility. `NewLibrary`
+  programmatically, write a function that builds the string.
+- Not a hot-reload watcher — that's your responsibility. `Library::new`
   is cheap to call; just re-call it when the source changes.
-- Not concurrent-write-safe. Compile once, then `Run` from many
-  goroutines on the same `*Library`.
+- Not mutable from several threads at once. `set_host` takes `&mut self`,
+  so install the host before sharing; after that, `run(&self)` is free to
+  be called concurrently.

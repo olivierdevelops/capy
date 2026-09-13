@@ -79,7 +79,7 @@ to add a new endpoint and all three outputs regenerate.
 ## Continually tested
 
 The committed `script_*.expected.txt` files are **golden snapshots**.
-Running `go test ./cmd/capy/...` re-runs every library against
+Running `cargo test --manifest-path rust/Cargo.toml --test golden` re-runs every library against
 `script.capy` and diffs against the golden — any drift fails CI.
 
 This is the test-loop that makes the contract trustworthy: the agent

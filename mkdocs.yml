@@ -90,6 +90,7 @@ nav:
   # Reference — everything technical you need when building a library.
   - Reference:
     - Library authoring: library-authoring.md
+    - Syntax cheat sheet: syntax-cheat-sheet.md
     - Library keyword cookbook: library-keywords.md
     - ".capy library syntax": capy-libraries.md
     - Language reference (source side): language-reference.md
@@ -102,6 +103,8 @@ nav:
     - Block functions: block-functions.md
     - Multi-file output & imports: multi-file-and-imports.md
     - Errors & debugging: errors-and-debugging.md
+    - Troubleshooting: troubleshooting.md
+    - Testing your library: library-testing.md
     - Transpiler patterns: transpiler-patterns.md
     - CLI reference: cli.md
     - Auto-generated library docs: library-documentation.md
@@ -112,6 +115,7 @@ nav:
   - Integrate:
     - Integration guide (any project): integration-guide.md
     - Embed in your Go program: embedding.md
+    - Editor & tooling integration: editor-tooling.md
     - Compile a library to a standalone binary: compiling-libraries.md
     - "Compile cookbook (CLI, WASM, Docker, npm, …)": cookbook-compile.md
     - MCP server (for AI agents): mcp.md

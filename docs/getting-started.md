@@ -10,8 +10,8 @@ Examples in this doc are all `.capy`.
 ## 1. Install
 
 ```sh
-# Go users
-go install github.com/olivierdevelops/capy/cmd/capy@latest
+# Rust users
+cargo install --git https://github.com/olivierdevelops/capy capy-cli
 
 # Or download a binary from
 # https://github.com/olivierdevelops/capy/releases

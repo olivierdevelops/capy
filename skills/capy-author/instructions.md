@@ -42,7 +42,7 @@ Check output matches what you sketched in step 1. If not, iterate.
 ## 6. Capture the golden
 
 ```sh
-go test ./cmd/capy/... -update
+CAPY_UPDATE_GOLDENS=1 cargo test --manifest-path rust/Cargo.toml --test golden
 ```
 
 (only relevant if the user has already added the sample to the repo)

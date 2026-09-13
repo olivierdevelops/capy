@@ -19,7 +19,7 @@ Use this when the user types `/capy-new <target>` (e.g. `/capy-new python`, `/ca
    - Add a basic `file_template:`.
 4. Replace the stub `script.capy` with something that exercises both example functions.
 5. Run `capy run` and show the output.
-6. Capture the golden via `go test ./cmd/capy/... -update` if the user wants to commit.
+6. Capture the golden via `CAPY_UPDATE_GOLDENS=1 cargo test --manifest-path rust/Cargo.toml --test golden` if the user wants to commit.
 
 ## Target-specific defaults
 

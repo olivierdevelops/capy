@@ -62,5 +62,5 @@ capy check lib.yaml
 capy run lib.yaml script.capy
 # read error, edit lib.yaml or script.capy
 # repeat until happy
-go test ./cmd/capy/... -update    # capture golden once stable
+CAPY_UPDATE_GOLDENS=1 cargo test --manifest-path rust/Cargo.toml --test golden   # capture golden once stable
 ```

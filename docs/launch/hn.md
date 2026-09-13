@@ -24,7 +24,7 @@
 > assignment, `x = 1` is a parse error.
 >
 > v0.1.0 today. Six worked examples in the repo (Python, JSON, SQL,
-> Makefile, HTML components, TypeScript interfaces). Built in Go, single
+> Makefile, HTML components, TypeScript interfaces). Built in Rust, single
 > binary install, MIT.
 >
 > Caveats up front:

@@ -19,7 +19,7 @@ example. The examples are mirrored by a runnable sample —
 engine actually produces.
 
 > **Maintenance rule.** This list must stay in lock-step with the helper
-> table in `infra/helpers.go`. Whenever a built-in function is added,
+> table in `rust/src/infra/helpers.rs`. Whenever a built-in function is added,
 > renamed, or removed, update this page (and `samples/builtin-functions/`)
 > in the same change. See `CLAUDE.md`.
 
@@ -49,7 +49,7 @@ The same helpers are available in inner-DSL expressions, so
 
 Every helper, its **parameters with types**, **arity**, and **return
 type** — taken directly from the `funcs` map and the `ApplyHelper`
-dispatch in `infra/helpers.go`. Call order matches the parameter order
+dispatch in `rust/src/infra/helpers.rs`. Call order matches the parameter order
 (prefix style, space-separated). See the [type glossary](#parameter-return-types)
 below the table.
 
@@ -63,7 +63,7 @@ below the table.
 | [`snakeCase`](#pascalcase-camelcase-snakecase) | `s any` | 1 | `string` | `display name` → `display_name` |
 | [`dasherize`](#dasherize) | `s any` | 1 | `string` | `_` → `-` (snake → kebab) |
 | [`unquote`](#unquote) | `s any` | 1 | `string` | Strip one layer of surrounding quotes |
-| [`unescape`](#unescape) | `s any` | 1 | `string` | Reverse Go string escaping (`strconv.Unquote`) |
+| [`unescape`](#unescape) | `s any` | 1 | `string` | Reverse string escaping (Go `strconv.Unquote` semantics) |
 | [`decoded`](#decoded) | `s any` | 1 | `string` | User-intended string: unquote + resolve escapes |
 | [`escapeHtml`](#escapehtml) | `s any` | 1 | `string` | Neutralise `& < > " '` for HTML |
 | [`toQuoted`](#toquoted) | `s any` | 1 | `string` | Wrap in JSON-style double quotes |
@@ -87,7 +87,7 @@ below the table.
 
 ### Parameter & return types
 
-The types above are the actual Go types each helper accepts; here's what
+The types above are the value kinds each helper accepts; here's what
 each means at a Capy call site:
 
 | Type | At the call site | Notes |
@@ -195,7 +195,7 @@ spots that just need the quotes gone.
 ### `decoded`
 
 `decoded str` — deliver the **user-intended** string: strip the outer
-quotes *and* fully resolve Go-style escapes (`\"`, `\n`, `\t`, `\\`,
+quotes *and* fully resolve C-style escapes (`\"`, `\n`, `\t`, `\\`,
 `\xNN`, `\uNNNN`). This is what you want when a capture may contain
 escaped quotes or whitespace:
 
@@ -231,12 +231,12 @@ He said "hi" <b>   →   He said &quot;hi&quot; &lt;b&gt;
 
 ### `unescape`
 
-`unescape str` — reverse Go string escaping with `strconv.Unquote`
+`unescape str` — reverse string escaping (Go `strconv.Unquote` semantics)
 (wrapping in `"…"` first if unquoted). Use it when the **target** wants
 the literal escape sequence resolved — assembler `.asciz`, C string
 literals, JSON on the wire. For HTML/template work prefer `decoded`, which
 is lenient about bare quotes; `unescape` falls back to the raw input if
-the value isn't valid Go-string syntax.
+the value isn't valid escaped-string syntax.
 
 ### `toQuoted`
 

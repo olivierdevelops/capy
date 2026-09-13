@@ -29,8 +29,8 @@ playground stays safe.
 | `(arg_count)`         | how many positional args were supplied | `len(os.Args[2:])` |
 | `(args)`              | full positional args list        | `os.Args[2:]`        |
 | `(read_file "PATH")`  | file contents (errors abort)     | `os.ReadFile`        |
-| `(os)`                | host OS identifier ("linux", "darwin", "windows", …) | `runtime.GOOS` |
-| `(arch)`              | host arch ("amd64", "arm64", …)  | `runtime.GOARCH`     |
+| `(os)`                | host OS identifier ("linux", "darwin", "windows", …) | Rust `std::env::consts::OS`, mapped to Go's names |
+| `(arch)`              | host arch ("amd64", "arm64", …)  | Rust `std::env::consts::ARCH`, mapped to Go's names |
 | `(cwd)`               | current working directory        | `os.Getwd`           |
 | `(home_dir)`          | user's home directory            | `os.UserHomeDir`     |
 
@@ -52,13 +52,15 @@ end
 Capy doesn't call `os.Getenv` directly from the evaluator. Instead the
 inner evaluator holds a `domain.Host` interface:
 
-```go
-type Host interface {
-    Env(name string) string
-    Arg(i int) string
-    ArgCount() int
-    Args() []string
-    ReadFile(path string) (string, error)
+```rust
+pub trait Host {
+    fn env(&self, name: &str) -> String;
+    fn arg(&self, i: usize) -> String;
+    fn arg_count(&self) -> usize;
+    fn args(&self) -> Vec<String>;
+    fn read_file(&self, path: &str) -> Result<String, CapyError>;
+    // …plus os / arch / cwd / home_dir and the exec surface; see
+    // capy_core::domain::host for the full 15-method trait.
 }
 ```
 
@@ -68,31 +70,33 @@ Three implementations ship in the engine:
   CLI installs this so `capy run lib.capy script.capy a b c` works.
   `ReadFile` resolves relative paths against the script's directory.
 - **`domain.NoOpHost`** — every method returns the zero value (or an
-  error for `ReadFile`). The **default** for embedded Go callers and
+  error for `read_file`). The **default** for embedded Rust callers and
   the **only** host the wasm playground uses. Sandboxed by design.
 - **anything else you implement.** Test mocks, in-memory file maps,
   feature-flag stores, secret-manager backends — anything that
   satisfies the four methods.
 
-## Opting into real host access from Go
+## Opting into real host access from Rust
 
-`capy.NewLibrary` defaults to `NoOpHost`. If you're embedding Capy in a
+`Library::new` defaults to `NoOpHost`. If you're embedding Capy in a
 trusted environment and want libraries to see your env/files, opt in:
 
-```go
-import (
-    "os"
-    "github.com/olivierdevelops/capy"
-    "github.com/olivierdevelops/capy/infra"
-)
+```rust
+use capy_core::capy::Library;
+use capy_core::infra::os_host::OsHost;
+use std::sync::Arc;
 
-lib, _ := capy.NewLibraryFromFile("lib.capy")
-lib.SetHost(infra.OSHost{
-    UserArgs: os.Args[1:],
-    BaseDir:  ".",
-})
-out, _ := lib.Run(scriptSrc)
+let mut lib = Library::from_file("lib.capy")?;
+lib.set_host(Some(Arc::new(OsHost {
+    user_args: std::env::args().skip(1).collect(),
+    base_dir: ".".into(),
+})));
+let out = lib.run(script_src)?;
 ```
+
+A custom `Host` must be `Send + Sync`, since `Library` is shareable across
+threads — reach for `Mutex`/`RwLock` rather than `RefCell` if yours needs
+interior mutability.
 
 The opt-in is explicit on purpose: when you compose Capy with
 user-supplied libraries, leaving the default `NoOpHost` means the

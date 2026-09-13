@@ -106,7 +106,7 @@ file "path/to/output.ext"                 # multi-file output
 end
 ```
 
-- **Strings** use double quotes with Go-style escapes (`\n`, `\t`,
+- **Strings** use double quotes with C-style escapes (`\n`, `\t`,
   `\"`, `\\`) — or backticks (multi-line, with `${EXPR}` interpolation).
 - **Bare words** are accepted for `extension`, type names, and
   capture names.

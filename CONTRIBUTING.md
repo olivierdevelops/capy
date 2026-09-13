@@ -13,7 +13,7 @@ contributor; we may close or delete unsolicited PRs without review.
 ## What you CAN do
 
 - **Read the code.** Browse the engine, samples, and docs.
-- **Build it locally.** Clone the repo and run `go build ./...` for
+- **Build it locally.** Clone the repo and run `cargo build --workspace` (from `rust/`) for
   personal evaluation.
 - **Try the playground.** <https://olivierdevelops.github.io/capy/playground/>
 - **File a bug report.** Use the templates under

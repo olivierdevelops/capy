@@ -10,12 +10,12 @@ are the vocabulary of the *author*.
 > see the [Built-in function cookbook](function-cookbook.md).
 
 Every keyword below is dispatched by the library parser in
-`infra/capy_lib_parser.go`; the canonical `if … end` example is mirrored
+`rust/src/infra/capy_lib_parser.rs`; the canonical `if … end` example is mirrored
 by the CI-checked sample
 [`samples/library-keywords/`](https://github.com/olivierdevelops/capy/tree/main/samples/library-keywords).
 
 > **Maintenance rule.** This list must stay in lock-step with the
-> directive switches in `infra/capy_lib_parser.go`. Add/rename/remove a
+> directive switches in `rust/src/infra/capy_lib_parser.rs`. Add/rename/remove a
 > directive → update this page in the same change. See `CLAUDE.md`.
 
 ## The shape of a library

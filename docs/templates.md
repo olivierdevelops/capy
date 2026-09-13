@@ -4,10 +4,9 @@ Capy emits text via `write` calls inside function bodies and
 `file_template`. The string body of a `write` call is a backtick
 literal with `${EXPR}` interpolation — that's the primary surface.
 
-Under the hood Capy translates `write \`...\`` and the control
-flow that wraps it into Go [`text/template`](https://pkg.go.dev/text/template)
-syntax, so the helpers below are Go-template helpers but you call
-them Capy-style via `${func arg arg}`.
+The renderer walks the parsed template AST directly — there is no
+intermediate template language. The helpers below are called Capy-style via
+`${func arg arg}`.
 
 ## Per-function values in scope
 
@@ -58,7 +57,7 @@ end
 > a worked example — see the [Built-in function cookbook](function-cookbook.md).
 > The highlights below cover the most common ones.
 
-Beyond Go's stdlib helpers, Capy provides:
+Capy provides these helpers:
 
 ### `indent N`
 
@@ -90,9 +89,9 @@ end
 
 ### `toPyLit`
 
-Formats a Go value as a Python literal (`True`/`False`, `None`,
+Formats a value as a Python literal (`True`/`False`, `None`,
 quoted strings, list/dict syntax). Useful when accumulated `context`
-carries real Go values you want to splat into Python.
+carries real values you want to splat into Python.
 
 ```
 file_template
@@ -177,7 +176,7 @@ captures that need their quotes stripped first:
 
 ### `decoded <string>`
 
-Strip outer quotes (if present) AND fully resolve Go-style escape
+Strip outer quotes (if present) AND fully resolve C-style escape
 sequences (`\"` → `"`, `\n` → newline, `\t` → tab, `\\` → `\`,
 plus `\xNN` / `\uNNNN`). Use this when a `string`-typed capture
 contains escaped quotes or whitespace that the user wrote

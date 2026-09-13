@@ -105,12 +105,13 @@ LLM → DSL → Server (passthrough)  → Host iframe → WASM renders DSL → D
 - **Cons**: needs a small JS wrapper in the host iframe; first call
   pays a one-time WASM load.
 
-The compile step is one line — Capy's `cmd/capy-wasm` is the
+The compile step is one line — Capy's `capy-wasm-abi` crate is the
 engine; pair it with your library:
 
 ```sh
-GOOS=js GOARCH=wasm go build -o widgets.wasm \
-  github.com/olivierdevelops/capy/cmd/capy-wasm
+cargo build --release --target wasm32-unknown-unknown \
+  --manifest-path rust/Cargo.toml -p capy-wasm-abi
+cp rust/target/wasm32-unknown-unknown/release/capy_wasm_abi.wasm widgets.wasm
 ```
 
 The iframe wrapper then does:
@@ -126,10 +127,11 @@ const { ok, output } = capyRun(WIDGET_LIBRARY_SOURCE, llmDsl);
 document.body.innerHTML = output;
 ```
 
-For a fully-baked option (library embedded, no separate library
-source to ship), use `GOOS=js GOARCH=wasm capy build widgets -o
-widgets.wasm` — the library is hard-coded inside; the iframe just
-feeds DSL and gets HTML back.
+There is no fully-baked variant that works in a browser: `capy build
+--target wasm32-…` stages the embedded library through a temp file, which wasm
+has no filesystem for. Ship the engine module plus your library source as a JS
+string constant — the source is a few KB, and the iframe still just feeds DSL
+and gets HTML back.
 
 ---
 

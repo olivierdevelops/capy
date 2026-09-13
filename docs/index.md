@@ -208,7 +208,7 @@ library. <strong><code>go test</code> on the generated code passes.</strong></p>
     <span class="lights" style="display:inline-flex;gap:6px;"><span style="width:10px;height:10px;border-radius:50%;background:#ff5f57;display:inline-block;"></span><span style="width:10px;height:10px;border-radius:50%;background:#ffbd2e;display:inline-block;"></span><span style="width:10px;height:10px;border-radius:50%;background:#28c940;display:inline-block;"></span></span>
     <span class="title">go test</span>
   </div>
-<pre style="font-size:11.5px;"><span class="muted">$ go test ./...</span>
+<pre style="font-size:11.5px;"><span class="muted">$ cargo test --workspace</span>
 <span class="ok">--- PASS: Test_ListUsers_RouteRegistered (0.00s)</span>
 <span class="ok">--- PASS: Test_GetUser_RouteRegistered (0.00s)</span>
 <span class="ok">--- PASS: Test_CreateUser_RouteRegistered (0.00s)</span>
@@ -367,7 +367,7 @@ typed and validated at the boundary. The grammar is expressive
 enough to parse **matched-pair HTML and XML** — one generic
 `<tag>…</tag>` function, with mismatched nesting caught as a parse
 error ([see it in the playground](playground.md)). Use it from the
-CLI, embed it as a Go library, ship it through an MCP server to AI
+CLI, embed it as a Rust library, ship it through an MCP server to AI
 agents, or [try it right now in your browser](playground.md) — the
 compiler runs as WebAssembly.
 
@@ -383,15 +383,15 @@ compiler runs as WebAssembly.
 
 ```sh
 # CLI
-go install github.com/olivierdevelops/capy/cmd/capy@latest
+cargo install --git https://github.com/olivierdevelops/capy capy-cli
 
-# Embed as a Go library
-go get github.com/olivierdevelops/capy
+# Embed as a Rust library
+cargo add --git https://github.com/olivierdevelops/capy capy-core
 
 # MCP server for AI agents
-go install github.com/olivierdevelops/capy/cmd/capy-mcp@latest
+cargo install --git https://github.com/olivierdevelops/capy capy-mcp
 
-# Or grab a release tarball (no Go needed)
+# Or grab a release tarball (no Rust toolchain needed)
 curl -fsSL https://raw.githubusercontent.com/olivierdevelops/capy/main/scripts/install.sh | sh
 ```
 

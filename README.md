@@ -6,7 +6,6 @@
 [![CI](https://github.com/olivierdevelops/capy/actions/workflows/ci.yml/badge.svg)](https://github.com/olivierdevelops/capy/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/olivierdevelops/capy?include_prereleases)](https://github.com/olivierdevelops/capy/releases)
 [![License: Source-Available](https://img.shields.io/badge/License-Source--Available-orange.svg)](LICENSE)
-[![Go Report Card](https://goreportcard.com/badge/github.com/olivierdevelops/capy)](https://goreportcard.com/report/github.com/olivierdevelops/capy)
 
 Capy reads source code, matches each statement against library-defined
 function shapes, and for each match (a) renders a template fragment and
@@ -111,21 +110,21 @@ Continue, and Aider.
 ## Install
 
 ```sh
-# Go users — CLI
-go install github.com/olivierdevelops/capy/cmd/capy@latest
+# Rust users — CLI
+cargo install --git https://github.com/olivierdevelops/capy capy-cli
 
-# Go users — embed Capy as a library
-go get github.com/olivierdevelops/capy
+# Rust users — embed Capy as a library
+cargo add --git https://github.com/olivierdevelops/capy capy-core
 
 # MCP server for AI agents (Claude Desktop, Claude Code, Cursor, Zed)
-go install github.com/olivierdevelops/capy/cmd/capy-mcp@latest
+cargo install --git https://github.com/olivierdevelops/capy capy-mcp
 
 # Or: try it in your browser, no install — playground runs Capy compiled
 # to WebAssembly with six curated samples (recipe / invite / meal plan /
 # reading log / Breakout / Snake). Live editor, preview, download:
 # https://olivierdevelops.github.io/capy/playground/
 
-# macOS / Linux (binary, no Go required)
+# macOS / Linux (binary, no Rust toolchain required)
 curl -fsSL https://raw.githubusercontent.com/olivierdevelops/capy/main/scripts/install.sh | sh
 
 # Homebrew
@@ -134,22 +133,25 @@ brew install olivierdevelops/tap/capy
 
 Or download a binary from the [releases page](https://github.com/olivierdevelops/capy/releases).
 
-### Embed in your Go program
+### Embed in your Rust program
 
 No `capy` binary required at runtime. Your program defines its own grammar inline:
 
-```go
-import "github.com/olivierdevelops/capy"
+```rust
+use capy_core::capy::Library;
 
-lib, _ := capy.NewLibrary(`
-    extension html
-    function button
-        arg literal "button"
-        arg capture label string
-        template_str "<button>{{ .label }}</button>\n"
-    end
-`)
-out, _ := lib.Run(`button "Click me"`)
+let lib = Library::new(r#"
+extension html
+
+function button
+    arg literal "button"
+    arg capture label string
+    write `<button>${label}</button>
+`
+end
+"#)?;
+
+let out = lib.run(r#"button "Click me""#)?;
 // → <button>"Click me"</button>
 ```
 
@@ -164,8 +166,8 @@ patterns (loading from disk, multiple grammars per process, hot-swap).
 ```sh
 git clone https://github.com/olivierdevelops/capy
 cd capy
-go build -o capy ./cmd/capy
-./capy run samples/recipe-card/lib.capy samples/recipe-card/script.capy
+cargo build --release --manifest-path rust/Cargo.toml -p capy-cli
+./rust/target/release/capy run samples/recipe-card/lib.capy samples/recipe-card/script.capy
 ```
 
 ---
@@ -175,7 +177,7 @@ go build -o capy ./cmd/capy
 | Reading order | What it covers |
 |---|---|
 | [docs/getting-started.md](docs/getting-started.md) | Five-minute tour |
-| [docs/embedding.md](docs/embedding.md) | Embedding Capy as a Go library in your own program |
+| [docs/embedding.md](docs/embedding.md) | Embedding Capy as a Rust library in your own program |
 | [docs/mcp.md](docs/mcp.md) | MCP server setup for Claude Desktop / Claude Code / Cursor / Zed |
 | [docs/cookbook-ai.md](docs/cookbook-ai.md) | AI integration cookbook (10 recipes) |
 | [docs/library-authoring.md](docs/library-authoring.md) | Writing your own `lib.capy` |
@@ -205,7 +207,7 @@ Compared to alternatives:
 |-------------------------|------------------------------------|----------------|
 | Jinja, Go templates     | Substitute values into text        | A real parser + accumulated context + types |
 | ANTLR, lark, tree-sitter| Parse a language you defined       | Targeted at code generation; ships with a runtime; no Java/Python required |
-| Custom Go transpilers   | Full control                       | A `.capy` library replaces hundreds of lines of code per project |
+| Hand-written transpilers| Full control                       | A `.capy` library replaces hundreds of lines of code per project |
 | gomplate, ytt           | Powerful templating with data      | A source language with custom syntax, not just template inputs |
 
 Use Capy when you'd otherwise hand-roll a tiny parser to drive

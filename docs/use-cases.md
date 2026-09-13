@@ -114,7 +114,7 @@ changes in one PR that touches one file.
 - One library file is easier to read than 800 lines of Go template
   string-builder code.
 - Diffs to the library are trivial to review.
-- Product teams can read the source language without learning Go.
+- Product teams can read the source language without learning the target language.
 - New conventions ship by editing one file.
 
 ---
@@ -347,7 +347,7 @@ explicit and inspectable. There's no generated code to read; the
 library *is* the parser.
 
 For a programming-language-theory course: the engine itself is
-~1500 lines of Go, all readable in an afternoon.
+a few thousand lines of Rust, all readable in an afternoon.
 
 ---
 

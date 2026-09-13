@@ -1,4 +1,4 @@
-# Capy — a transpiler engine in 1000 lines of Go
+# Capy — a transpiler engine where the grammar is a file
 
 *Draft. Tighten before publishing.*
 
@@ -15,7 +15,7 @@ generator, no template engine alone — a small runtime that does all
 three.
 
 ```sh
-go install github.com/olivierdevelops/capy/cmd/capy@latest
+cargo install --git https://github.com/olivierdevelops/capy capy-cli
 ```
 
 ## The shape
@@ -141,7 +141,7 @@ See [docs/roadmap.md](https://github.com/olivierdevelops/capy/blob/main/docs/roa
 ## Try it
 
 ```sh
-go install github.com/olivierdevelops/capy/cmd/capy@latest
+cargo install --git https://github.com/olivierdevelops/capy capy-cli
 git clone https://github.com/olivierdevelops/capy
 cd capy
 capy run samples/transpile-py/lib.capy samples/transpile-py/script.capy

@@ -5,7 +5,7 @@ title: AI integration cookbook
 # AI integration cookbook
 
 Recipes for wiring Capy into AI workflows — MCP servers, agent
-skills, embedded Go agents, prompt-side patterns. Each recipe is
+skills, embedded Rust agents, prompt-side patterns. Each recipe is
 self-contained and copy-pasteable.
 
 ## Recipe 1 — Drop-in MCP server for Claude Desktop / Claude Code
@@ -13,7 +13,7 @@ self-contained and copy-pasteable.
 **Goal:** any tool-capable AI agent on this machine can call Capy.
 
 ```sh
-go install github.com/olivierdevelops/capy/cmd/capy-mcp@latest
+cargo install --git https://github.com/olivierdevelops/capy capy-mcp
 ```
 
 Add to your MCP config (Claude Desktop, Claude Code, Cursor, Zed all
@@ -64,12 +64,12 @@ The 4 lines go through `lib_unity.capy` (a library the human audited
 once). The output is byte-identical every time and uses only the
 Unity API calls the library explicitly enumerates.
 
-```go
+```rust
 // In your agent loop:
-lib, _ := capy.NewLibraryFromFile("lib_unity.capy")
-for _, source := range agentEmissions {
-    out, err := lib.Run(source)
-    // out is guaranteed-shape Unity C# OR err is a precise parse failure
+let lib = Library::from_file("lib_unity.capy")?;
+for source in agent_emissions {
+    let result = lib.run(&source);
+    // Ok(out) is guaranteed-shape Unity C#; Err(e) is a precise parse failure.
 }
 ```
 
@@ -207,15 +207,15 @@ When the user says "now make this work in Blender too," the agent
 runs `capy_run_file` with `lib_blender.capy` and emits exactly the
 right Python — no manual translation.
 
-## Recipe 7 — Bake Capy into your Go-based AI tool
+## Recipe 7 — Bake Capy into your Rust-based AI tool
 
-If you're building an agent in Go, skip MCP entirely — embed the
+If you're building an agent in Rust, skip MCP entirely — embed the
 engine:
 
-```go
-import "github.com/olivierdevelops/capy"
+```rust
+use capy_core::capy::Library;
 
-const grammar = `
+const GRAMMAR: &str = r#"
 extension html
 
 function card
@@ -225,27 +225,25 @@ function card
     write `<div class="card"><h3>${title}</h3><p>\$${price}</p></div>
 `
 end
-`
+"#;
 
-func main() {
-    lib, err := capy.NewLibrary(grammar)
-    if err != nil { panic(err) }
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let lib = Library::new(GRAMMAR)?;
 
     // Inside your agent loop:
-    for _, source := range modelEmissions {
-        html, err := lib.Run(source)
-        if err != nil {
+    for source in model_emissions {
+        match lib.run(&source) {
+            Ok(html) => write_file(&html),
             // Surface the precise parse error back to the model.
-            agent.ToolError(err.Error())
-            continue
+            Err(e) => agent.tool_error(&e.to_string()),
         }
-        writeFile(html)
     }
+    Ok(())
 }
 ```
 
 No subprocess, no MCP framing — just function calls. The library is
-a Go string literal compiled into your binary. See
+a string constant compiled into your binary. See
 [docs/embedding.md](embedding.md) for the full guide.
 
 ## Recipe 8 — Skills + MCP together (Claude Code)
@@ -257,7 +255,7 @@ For Claude Code specifically, you want both:
 
 ```sh
 # 1. Install the MCP server
-go install github.com/olivierdevelops/capy/cmd/capy-mcp@latest
+cargo install --git https://github.com/olivierdevelops/capy capy-mcp
 
 # 2. Register it with Claude Code
 claude mcp add --scope user capy capy-mcp

@@ -1,3 +1,7 @@
+> **HISTORICAL DESIGN RECORD.** Written while the engine was implemented in Go.
+> File paths and language references below describe that codebase; the engine is
+> now Rust under `rust/`. Kept for the reasoning, not as current documentation.
+
 # Value-position indexing: `${context.buf[i]}` reads
 
 **Status:** ✅ implemented (Phases 1 & 2) · Phase 3 (parser unification)

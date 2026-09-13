@@ -1,3 +1,7 @@
+> **HISTORICAL DESIGN RECORD.** Written while the engine was implemented in Go.
+> File paths and language references below describe that codebase; the engine is
+> now Rust under `rust/`. Kept for the reasoning, not as current documentation.
+
 # Migration: Go templates → write-style
 
 ## Goal
@@ -72,7 +76,7 @@ To drop the engine entirely:
 ### Phase C — cleanup
 
 Delete the legacy `file_template:` (colon form) parsing path from
-`infra/capy_lib_parser.go` once no sample uses it. Same for the
+`rust/src/infra/capy_lib_parser.rs` once no sample uses it. Same for the
 legacy `template:` field on `RawFunction` once every function
 declares its output via `write` in the function body.
 

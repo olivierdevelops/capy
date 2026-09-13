@@ -184,7 +184,7 @@ the whole team should have it.
 
 ## Implementation notes
 
-The pre-pass is a tiny string-level scanner in `infra/define_extractor.go`.
+The pre-pass is a tiny string-level scanner in `rust/src/infra/define_extractor.rs`.
 It:
 
 1. Walks the source line-by-line.

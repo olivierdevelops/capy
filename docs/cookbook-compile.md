@@ -25,16 +25,18 @@ single tarball with every binary they might need.
 
 ```sh
 mkdir -p dist
+# Each triple needs `rustup target add <triple>` and a linker for it first.
 for t in \
-  "linux amd64" "linux arm64" \
-  "darwin amd64" "darwin arm64" \
-  "windows amd64"
+  "linux amd64 x86_64-unknown-linux-gnu" \
+  "linux arm64 aarch64-unknown-linux-gnu" \
+  "darwin amd64 x86_64-apple-darwin" \
+  "darwin arm64 aarch64-apple-darwin" \
+  "windows amd64 x86_64-pc-windows-msvc"
 do
-  set -- $t                                # split into $1=os $2=arch
+  set -- $t                                # $1=os $2=arch $3=triple
   out="greet-$1-$2"
   [ "$1" = "windows" ] && out="$out.exe"
-  GOOS=$1 GOARCH=$2 GOFLAGS='-trimpath -ldflags=-s -w' \
-    capy build greet -o "dist/$out"
+  capy build greet --target "$3" -o "dist/$out"
 done
 (cd dist && shasum -a 256 greet-* > SHA256SUMS)
 tar czf greet-v0.1.0.tgz dist/
@@ -77,34 +79,35 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
+        # Build each target on its own OS runner. A Rust cross-compile needs a
+        # linker for the target, so this is simpler than cross-compiling all
+        # five from ubuntu.
         include:
-          - { goos: linux,   goarch: amd64,  ext: ''     }
-          - { goos: linux,   goarch: arm64,  ext: ''     }
-          - { goos: darwin,  goarch: amd64,  ext: ''     }
-          - { goos: darwin,  goarch: arm64,  ext: ''     }
-          - { goos: windows, goarch: amd64,  ext: '.exe' }
-          - { goos: js,      goarch: wasm,   ext: '.wasm' }
+          - { os: ubuntu-latest,  name: linux-amd64,   target: x86_64-unknown-linux-gnu,  ext: ''     }
+          - { os: ubuntu-latest,  name: linux-arm64,   target: aarch64-unknown-linux-gnu, ext: ''     }
+          - { os: macos-latest,   name: darwin-amd64,  target: x86_64-apple-darwin,       ext: ''     }
+          - { os: macos-latest,   name: darwin-arm64,  target: aarch64-apple-darwin,      ext: ''     }
+          - { os: windows-latest, name: windows-amd64, target: x86_64-pc-windows-msvc,    ext: '.exe' }
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v5
-      - uses: actions/setup-go@v6
-        with: { go-version: '1.22', cache: true }
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
 
       - name: Install capy
-        run: go install github.com/olivierdevelops/capy/cmd/capy@latest
+        run: cargo install --git https://github.com/olivierdevelops/capy capy-cli
 
       - name: Build
-        env:
-          GOOS:    ${{ matrix.goos }}
-          GOARCH:  ${{ matrix.goarch }}
-          GOFLAGS: '-trimpath -ldflags=-s -w'
+        shell: bash
         run: |
-          OUT="greet-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.ext }}"
-          capy build greet -o "$OUT"
+          OUT="greet-${{ matrix.name }}${{ matrix.ext }}"
+          capy build greet --target ${{ matrix.target }} -o "$OUT"
           ls -lh "$OUT"
 
       - uses: actions/upload-artifact@v4
         with:
-          name: greet-${{ matrix.goos }}-${{ matrix.goarch }}
+          name: greet-${{ matrix.name }}
           path: greet-*
 
   release:
@@ -146,11 +149,12 @@ Best when you want to swap libraries at runtime (e.g. a playground).
 
 ```sh
 # 1. Build the engine for wasm.
-GOOS=js GOARCH=wasm go build -o engine.wasm \
-  github.com/olivierdevelops/capy/cmd/capy-wasm
+cargo build --release --target wasm32-unknown-unknown \
+  --manifest-path rust/Cargo.toml -p capy-wasm-abi
+cp rust/target/wasm32-unknown-unknown/release/capy_wasm_abi.wasm engine.wasm
 
-# 2. Copy Go's wasm loader.
-cp "$(go env GOROOT)/lib/wasm/wasm_exec.js" .
+# 2. Copy Capy's wasm loader shim.
+cp rust/playground/web/wasm_exec.js .
 ```
 
 ```html
@@ -196,7 +200,12 @@ demos.
 Best when the library is fixed and you want a smaller surface area.
 
 ```sh
-GOOS=js GOARCH=wasm capy build greet -o greet.wasm
+# NOTE: `capy build --target wasm32-…` does NOT produce a usable module — the
+# generated wrapper stages the library through a temp file and wasm has no
+# filesystem. Build the engine instead and pass the library source at run time
+# (Recipe above).
+cargo build --release --target wasm32-unknown-unknown \
+  --manifest-path rust/Cargo.toml -p capy-wasm-abi
 ```
 
 `greet.wasm` is ~7 MB (unstripped) and contains the library hard-
@@ -207,7 +216,7 @@ embedded binary dispatches to the right command:
 <script>
   const go = new Go();
   go.argv = ["greet", "run", "/dev/stdin"];
-  // Wire stdin from a textarea and capture stdout. See cmd/capy-wasm
+  // Call capyRun(libSrc, "auto", scriptSrc) directly — no stdin wiring. See rust/wasm/src/lib.rs
   // for a polished version of this pattern.
 </script>
 ```
@@ -281,12 +290,12 @@ container deployments.
 
 ```dockerfile
 # ─── build stage ────────────────────────────────────────────
-FROM golang:1.22-alpine AS build
-RUN apk add --no-cache git
-RUN go install github.com/olivierdevelops/capy/cmd/capy@latest
+FROM rust:1-alpine AS build
+RUN apk add --no-cache git musl-dev
+RUN cargo install --git https://github.com/olivierdevelops/capy capy-cli
 WORKDIR /src
 COPY greet.capy .
-RUN GOFLAGS='-trimpath -ldflags=-s -w' capy build greet -o /out/greet
+RUN capy build greet -o /out/greet
 
 # ─── runtime stage ──────────────────────────────────────────
 FROM gcr.io/distroless/static:nonroot
@@ -299,9 +308,9 @@ docker build -t greet:0.1.0 .
 docker run --rm -v "$PWD:/work" -w /work greet:0.1.0 run hello.greet
 ```
 
-Image size: ~6 MB (distroless static + a 3.8 MB stripped binary).
-The image has **no shell**, **no package manager**, **no Go** — just
-the embedded library + the dispatching runtime.
+Image size: ~3 MB (distroless static + a ~1.5 MB stripped binary).
+The image has **no shell**, **no package manager**, **no Rust
+toolchain** — just the embedded library + the dispatching runtime.
 
 ---
 
@@ -367,8 +376,10 @@ brew install greet
 
 ```sh
 # 1. Build the wasm.
-GOOS=js GOARCH=wasm capy build greet -o pkg/greet.wasm
-cp "$(go env GOROOT)/lib/wasm/wasm_exec.js" pkg/
+cargo build --release --target wasm32-unknown-unknown \
+  --manifest-path rust/Cargo.toml -p capy-wasm-abi
+cp rust/target/wasm32-unknown-unknown/release/capy_wasm_abi.wasm pkg/capy.wasm
+cp rust/playground/web/wasm_exec.js pkg/
 ```
 
 `pkg/index.js`:
@@ -384,7 +395,7 @@ async function init() {
   const go = new Go();
   const wasm = await fs.readFile(new URL("./greet.wasm", import.meta.url));
   const inst = await WebAssembly.instantiate(wasm, go.importObject);
-  // Wire stdin/stdout for the embedded binary (see cmd/capy-wasm for
+  // Call the capy* globals the shim installs (see rust/wasm/src/lib.rs for
   // an alternative that exposes a function-style API instead).
   initialized = { go, inst };
   return initialized;
@@ -412,7 +423,7 @@ export async function greet(scriptSrc) {
 cd pkg && npm publish --access public
 ```
 
-For a smoother JS API, use the engine `capy-wasm` approach (Recipe
+For a smoother JS API, use the engine `capy-wasm-abi` approach (Recipe
 3A) and publish a thin JS wrapper that calls `capyRun(library,
 script)` — no stdin plumbing required.
 
@@ -437,9 +448,8 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v5
-      - uses: actions/setup-go@v6
-        with: { go-version: '1.22', cache: true }
-      - run: go install github.com/olivierdevelops/capy/cmd/capy@latest
+      - uses: dtolnay/rust-toolchain@stable
+      - run: cargo install --git https://github.com/olivierdevelops/capy capy-cli
       - run: capy check greet.capy
       - name: Parse every example script
         shell: bash
@@ -462,19 +472,29 @@ OSes.
 **Scenario:** you ship a `greet v1.4.2` binary and want both
 `greet --version` AND the library's reported version to be visible.
 
-The build's `main.version` is what `--version` prints:
+`capy build` embeds the library, not a version string — the binary answers
+`--help` and dispatches everything else to your library's commands. So declare
+the version as a command, and it lives with the source it describes:
 
-```sh
-GOFLAGS='-ldflags=-X main.version=v1.4.2' capy build greet -o greet
-./greet --version
-# greet 1.4.2
+```
+command "version"
+    description "Print the tool version."
+    print "greet v1.4.2"
+end
 ```
 
-The library's own manifest version (`version "0.1.0"` at the top of
-`greet.capy`) is what `greet --help` shows in the per-command help
-header. They can differ — `greet` the CLI vs `greet` the language
-spec. For releases you usually want them in sync; bump them together
-with a release script:
+```sh
+capy build greet -o greet
+./greet version
+# greet v1.4.2
+```
+
+The library also carries its own manifest version (`version "0.1.0"` at the top
+of `greet.capy`). Note that neither `greet --help` nor `greet <cmd> --help`
+prints it today — the help header shows the command's `description` only — so the
+`version` command above is what actually surfaces a version to users. The two can
+differ (`greet` the CLI vs `greet` the language spec); for releases you usually
+want them in sync, so bump them together with a release script:
 
 ```sh
 #!/usr/bin/env bash
@@ -494,25 +514,26 @@ CI (Recipe 2) takes it from there.
 **Scenario:** prove the binary on the release page matches the
 source. Anyone can rebuild the exact same bytes.
 
-Three ingredients:
+Two ingredients:
 
-1. **`-trimpath`** removes the build-machine's absolute file paths.
-2. **`-ldflags=-s -w`** removes the symbol table and DWARF debug
-   info, both of which can otherwise differ between builds.
-3. **Fix `SOURCE_DATE_EPOCH`** for any timestamps the Go linker
-   embeds.
+1. **`--remap-path-prefix`** removes the build-machine's absolute file paths.
+   The generated project already strips symbols and debug info via its release
+   profile, so there is no separate flag for that.
+2. **Fix `SOURCE_DATE_EPOCH`** for any timestamps that get embedded.
 
 ```sh
 export SOURCE_DATE_EPOCH=$(git log -1 --format=%ct)
-GOFLAGS='-trimpath -ldflags=-s -w' \
+RUSTFLAGS="--remap-path-prefix=$HOME=~" \
   capy build greet -o greet-v1.4.2
 
 # Verify bit-for-bit reproduction:
 shasum -a 256 greet-v1.4.2
 ```
 
-Run the same incantation on a different machine with the same Capy
-+ Go versions and the same source tree — the SHA-256 will match.
+Run the same incantation on a different machine with the same Capy and
+Rust versions and the same source tree — the SHA-256 should match. Note
+`capy build` compiles inside a fresh temp directory each run, so pass
+`--keep-temp` if you need to prove what was fed to the compiler.
 
 Sign the artefacts with [minisign](https://jedisct1.github.io/minisign/)
 or [cosign](https://github.com/sigstore/cosign):
@@ -686,7 +707,7 @@ shebang, the kernel does the rest.
   fundamentals + walkthrough.
 - [Library commands + `CAPY_LIBS`](library-commands.md) — how
   command bodies actually work.
-- [Embedding Capy in Go](embedding.md) — when you want Capy linked
-  into a larger Go program instead of producing a standalone binary.
+- [Embedding Capy in Rust](embedding.md) — when you want Capy linked
+  into a larger Rust program instead of producing a standalone binary.
 - [Capy for AI agents](ai-agents.md) — the agent-side story, where
   the binary becomes a tool an LLM can call.

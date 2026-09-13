@@ -3,6 +3,7 @@ package orchfeatures
 import (
 	"fmt"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -19,6 +20,7 @@ import (
 //   - args list → []ArgEntry → []PatternElement
 //   - run: snippet → InnerBlock AST (parsed via the outer lexer + inner parser)
 //   - types/context/file_template carried through
+//
 // LoadLibraryFromBytes compiles an in-memory library written in
 // Capy's native (.capy) syntax. The `format` argument is reserved
 // for future formats; today only "capy" (the default) is supported.
@@ -296,8 +298,17 @@ func mapLibrary(r infra.RawLibrary, tokenize func(string) ([]domain.Token, error
 		lib.Commands[name] = cd
 	}
 
-	// Validate cross-references after all functions are loaded.
-	for _, fd := range lib.Functions {
+	// Validate cross-references after all functions are loaded. Iterate in
+	// NAME ORDER: validation returns on the first failure, so unsorted map
+	// iteration meant a library with two invalid functions reported a
+	// different error on each run.
+	validationOrder := make([]string, 0, len(lib.Functions))
+	for name := range lib.Functions {
+		validationOrder = append(validationOrder, name)
+	}
+	sort.Strings(validationOrder)
+	for _, fdName := range validationOrder {
+		fd := lib.Functions[fdName]
 		// Optional captures must be trailing: once an optional arg is
 		// declared, every later arg must also be optional (otherwise
 		// the matcher couldn't know whether a supplied value fills the

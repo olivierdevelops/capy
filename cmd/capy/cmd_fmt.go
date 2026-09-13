@@ -102,6 +102,13 @@ func formatCapy(src string) string {
 				inBacktick = false
 			}
 			if c == '\n' {
+				// Drop the newline from the stored line: flushLine() records the
+				// line break itself, and the emit loop re-adds exactly one. Keeping
+				// it here appended a second newline on every pass, so `capy fmt`
+				// grew the file each run and never converged.
+				cur := line.String()
+				line.Reset()
+				line.WriteString(strings.TrimSuffix(cur, "\n"))
 				flushLine()
 			}
 			continue
@@ -120,16 +127,23 @@ func formatCapy(src string) string {
 	if line.Len() > 0 {
 		flushLine()
 	}
-	// Apply per-line rules — but only on lines NOT inside a
-	// multi-line backtick. We re-scan with the same toggle.
+	// Apply per-line rules — but only where the text is NOT inside a
+	// multi-line backtick, since whitespace there is part of the emitted
+	// output. Two states matter per line:
+	//
+	//	startInBacktick — the line's leading text is literal content
+	//	endInBacktick   — the line's TRAILING text is literal content
+	//	                  (true for the line that OPENS a backtick)
+	//
+	// Leading-indent normalisation is safe whenever the line starts outside a
+	// literal; trailing-space stripping is only safe when the line both starts
+	// and ends outside one. Getting that second condition wrong silently eats
+	// significant whitespace on the `write \`…` opening line.
 	inBacktick = false
 	prevBlank := false
 	for i, ln := range lines {
-		if !inBacktick {
-			ln = stripTrailingSpaces(ln)
-			ln = tabsToSpaces(ln, 4)
-		}
-		// Update backtick state by counting unescaped backticks.
+		startInBacktick := inBacktick
+		// Advance the backtick state over this line's unescaped backticks.
 		for j := 0; j < len(ln); j++ {
 			if ln[j] == '\\' && j+1 < len(ln) {
 				j++
@@ -139,8 +153,15 @@ func formatCapy(src string) string {
 				inBacktick = !inBacktick
 			}
 		}
+		endInBacktick := inBacktick
+		if !startInBacktick {
+			ln = tabsToSpaces(ln, 4)
+			if !endInBacktick {
+				ln = stripTrailingSpaces(ln)
+			}
+		}
 		// Skip extra consecutive blank lines (only outside backticks).
-		if !inBacktick && strings.TrimSpace(ln) == "" {
+		if !startInBacktick && !endInBacktick && strings.TrimSpace(ln) == "" {
 			if prevBlank {
 				continue
 			}

@@ -88,7 +88,7 @@ func parseCapyLib(src string) (RawLibrary, error) {
 //     non-blank leading indent so the captured text starts flush-
 //     left. ${…} interpolation runs at render time, same as a
 //     hand-authored `write ` ... ` `.
-//   - Backticks (`) inside the body are escaped (`\``) so the synth
+//   - Backticks (`) inside the body are escaped (`\“) so the synth
 //     is a valid backtick literal.
 //
 // baseLineNo is the source line number of `raws[0]` — used to make
@@ -563,6 +563,9 @@ func (p *capyLibParser) parseTop() (RawLibrary, error) {
 			// `file "path" ... end` — multi-file output. The body is
 			// an inner-DSL write-style block (same grammar as
 			// `file_template` and `function` bodies).
+			if len(tokens) < 2 {
+				return lib, p.errf("file requires a path string")
+			}
 			path := tokens[1]
 			p.nextLine()
 			body, err := p.parseFunctionBodyStatements(0)
@@ -1184,7 +1187,6 @@ func (p *capyLibParser) parseFunctionBodyStatements(startIndent int) (string, er
 	return strings.Join(raws, "\n") + "\n", nil
 }
 
-
 // parseContext reads the body of a `context ... end` block. Each line is
 //
 //	NAME [ ] | { } | <STRING> | <NUMBER>
@@ -1341,7 +1343,6 @@ func (p *capyLibParser) parseType() (RawType, error) {
 		}
 	}
 }
-
 
 func stripIndent(s string, n int) string {
 	i := 0

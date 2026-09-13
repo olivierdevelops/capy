@@ -16,12 +16,16 @@ func cmdInit(args []string) error {
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		return err
 	}
-	files := map[string]string{
-		"lib.yaml":    starterLib,
-		"script.capy": starterScript,
-		"README.md":   starterReadme,
+	// An ORDERED list, not a map: map iteration is randomised, so both the
+	// "created …" order and — worse — which file the "refusing to overwrite"
+	// error named varied per run, making the failure impossible to assert on.
+	files := []struct{ name, content string }{
+		{"lib.yaml", starterLib},
+		{"script.capy", starterScript},
+		{"README.md", starterReadme},
 	}
-	for name, content := range files {
+	for _, f := range files {
+		name, content := f.name, f.content
 		p := filepath.Join(dir, name)
 		if _, err := os.Stat(p); err == nil {
 			return fmt.Errorf("refusing to overwrite existing file: %s", p)

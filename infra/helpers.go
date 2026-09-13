@@ -8,6 +8,7 @@ package infra
 import (
 	"encoding/json"
 	"fmt"
+	"sort"
 	"strconv"
 	"strings"
 )
@@ -433,9 +434,17 @@ func pyLit(v any) string {
 		}
 		return "[" + strings.Join(parts, ", ") + "]"
 	case map[string]any:
-		parts := []string{}
-		for k, v := range x {
-			parts = append(parts, fmt.Sprintf("%q: %s", k, pyLit(v)))
+		// Sort keys: Go map iteration is randomised, so without this the same
+		// input produced a different Python literal on each run — i.e. a
+		// transpiler with non-reproducible output.
+		keys := make([]string, 0, len(x))
+		for k := range x {
+			keys = append(keys, k)
+		}
+		sort.Strings(keys)
+		parts := make([]string, 0, len(keys))
+		for _, k := range keys {
+			parts = append(parts, fmt.Sprintf("%q: %s", k, pyLit(x[k])))
 		}
 		return "{" + strings.Join(parts, ", ") + "}"
 	}

@@ -129,7 +129,7 @@ func (l *Library) RunMulti(scriptSrc string) (string, map[string]string, error) 
 	// `preprocess` block. The wasm/embedded sandbox has no filesystem
 	// (NoOpHost), so most directives will fail to read — but the
 	// engine still defers entirely to the library on what shapes count.
-	scriptSrc, err := infra.Preprocess(scriptSrc, ".", l.lib.Preprocess)
+	scriptSrc, err := infra.Preprocess(scriptSrc, ".", l.lib.Preprocess, l.host)
 	if err != nil {
 		return "", nil, err
 	}
@@ -193,6 +193,9 @@ func (l *Library) FunctionNames() []string {
 	for name := range l.lib.Functions {
 		out = append(out, name)
 	}
+	// The doc comment promises a sorted list and callers (capy-mcp, capy check)
+	// rely on stable output; Go map iteration is randomised, so sort explicitly.
+	sort.Strings(out)
 	return out
 }
 

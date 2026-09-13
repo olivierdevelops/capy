@@ -18,7 +18,7 @@ It gives you syntax highlighting and basic editing affordances for editing
 Code and run the extension (or symlink it into `~/.vscode/extensions/`).
 
 > Scope: the bundled grammar highlights the `.capy` *library* format (directives
-> like `function`, `arg`, `template:`). Highlighting a *source* file in the
+> like `function`, `arg`, `write`). Highlighting a *source* file in the
 > language a library defines is a per-library concern — derive it from
 > introspection (below) rather than hand-writing a grammar per library.
 

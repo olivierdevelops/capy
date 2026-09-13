@@ -110,9 +110,10 @@ Common patterns shipped with samples: `Email`, `Slug`, `EnvName`,
 | Multi-line literals | `{...}`, `[...]`, `(...)` allow newlines inside; value parsers skip them. |
 | Object literal keys | Quoted strings OR bare identifiers (`{name: "x", "id": 1}`). |
 
-## Inner DSL (`run:` field)
+## Inner DSL (function body)
 
-All operations available inside a `run:` snippet:
+All operations available in a function body, interleaved freely with
+`write` / `template` output:
 
 | Statement | Purpose |
 |-----------|---------|

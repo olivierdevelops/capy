@@ -25,7 +25,7 @@ Top-level directives in a `.capy` library file:
 | `function` | `function NAME … end` | Declare a source construct. See below. |
 | `type` | `type NAME … end` | Declare a capture type / validator. See below. |
 | `context` | `context … end` | Initial mutable state (scalars, lists, objects). |
-| `file_template` | `file_template: … ` | Wrapper rendered around the whole body; `${body}` is the accumulated output. |
+| `file_template` | `file_template … end` | Wrapper rendered around the whole body; `write body` emits the accumulated output. |
 | `file` | `file "path": … end` | Declare an additional output file (path may interpolate `${…}`). See [multi-file](multi-file-and-imports.md). |
 | `command` | `command "name" … end` | A CLI subcommand (`capy <lib> name …`). See [library-commands](library-commands.md). |
 | `impl` / `default_impl` | `impl NAME file "other.capy"` | Alternate backend selectable with `--impl`. |
@@ -42,8 +42,9 @@ function button
     arg capture color string default "#007bff"
     priority 10
     block_closer end_button
-    template:
+    template
         <button style="background:${color}">${label}
+    end
 end
 ```
 
@@ -53,8 +54,8 @@ end
 | `arg capture NAME TYPE [default "…"]` | Bind a value of `TYPE` to `NAME`. |
 | `arg capture NAME TYPE optional` / `required` / `bare` | Capture modifiers (optional value, required, bare/unquoted). |
 | `priority N` | Higher wins when multiple functions could match (default 0). |
-| `template:` / `template_str "…"` | The output template (write-style; `${expr}` interpolates). |
-| `run: … end` | Mutate `context` when this function matches (inner DSL). |
+| `` write `…` `` / `template … end` | Emit output. Backtick strings are multi-line; `${expr}` interpolates. `template … end` is block sugar for the same thing. |
+| `set` / `append` / `prepend` / `merge` / `delete` | Mutate `context` when this function matches. Written directly in the body, interleaved with `write`. |
 | `block_closer NAME` | Body is INDENT/DEDENT-delimited; `NAME` runs after the body. |
 | `block_open "{" … block_close "}"` | Body delimited by literal tokens. |
 | `block_close_seq "</" cap ">"` | Matched-pair closer (HTML tags); closer depends on a capture. |

@@ -30,7 +30,7 @@ script.capy ──► Lexer ──► tokens ──► Outer Parser ──► AS
                                           │                              │
                                           ▼                              ▼
                                     type defs                Inner Evaluator
-                                                          (mutates context via run:)
+                                                            (mutates context)
                                                                          │
                                                                          ▼
                                                                File template render
@@ -112,8 +112,8 @@ Capy has two grammars in the engine:
    library-defined function shapes. No hard-coded keywords.
 
 2. **Inner (small fixed grammar)** — the language inside each library's
-   `run:` field. Has a fixed parser/evaluator pair (`inner_parser.rs` /
-   `inner_evaluator.rs`).
+   function body — the statements that mutate `context`. Has a fixed
+   parser/evaluator pair (`inner_parser.rs` / `inner_evaluator.rs`).
 
 Both grammars share the same lexer (it's purely lexical and library-
 agnostic) and the same value-expression parser (`value_parser.rs`).

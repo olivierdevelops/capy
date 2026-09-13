@@ -22,7 +22,7 @@ The error happens before any script runs — it's in the `.capy` library itself.
 | `unknown directive "…"` | Typo in a directive, or a function-body directive used at top level | Check it against the [cheat sheet](syntax-cheat-sheet.md). |
 | `unknown type "…"` | A `capture` references a `type` you didn't declare (or declared after use) | Declare the `type` block; built-in types are `string int float bool ident raw expr`. |
 | `duplicate function`/literal | Two functions share the same literal and priority | Give one a higher `priority`, or differentiate the literal. |
-| Template never closes | A `template:` block missing its `end`, or an unbalanced backtick | Backticks inside templates are significant — escape or rebalance them. |
+| Template never closes | A `template` block missing its `end`, or an unbalanced backtick | Backticks inside templates are significant — escape or rebalance them. |
 
 ---
 
@@ -57,7 +57,7 @@ The library loads, but a script line doesn't match any function.
 
 ---
 
-## My `run:` mutations don't stick
+## My `set` / `append` mutations don't stick
 
 - **Context isn't accumulating.** `set` replaces; use `append`/`prepend` to
   build lists. Confirm you're writing to `context.x` (persists) not a `let`
@@ -85,7 +85,7 @@ The library loads, but a script line doesn't match any function.
   sandbox (`domain.NoOpHost`) — install `infra.OSHost` (or your own) via
   `SetHost`. The CLI wires the OS host automatically.
 - **`exec`/`write_file` do nothing.** Side-effecting primitives only run inside
-  a `command` body, never in a `template:`/`run:` render path. See
+  a `command` body, never in a `write` / `template` render path. See
   [host-capabilities.md](host-capabilities.md).
 
 ---

@@ -14,9 +14,11 @@ host calls (`env`, `arg`, `read_file`, `os`, `arch`, …). It **does
 not execute user-script code** — library authors compose primitives
 to describe what each match contributes to the final output.
 
-> Legacy form: the inner DSL also lives inside a `run:` block when
-> a library uses the older two-block shape. Both shapes work; new
-> libraries should prefer the unified body.
+> Removed form: older libraries wrapped these statements in a `run:`
+> block, separate from the output template. That shape no longer parses —
+> `capy check` reports `unexpected token ":" in value`. Inner-DSL
+> statements now sit directly in the function body, interleaved with
+> `write` calls.
 
 ## Tokens & expressions
 
@@ -258,19 +260,23 @@ function import
     arg capture name ident
     if (regex_match name "^[a-z][a-z_]*$")
         append context.imports name
-    end
-    if not (regex_match name "^[a-z][a-z_]*$")
-        error "invalid module name"
+    else
+        append context.rejected name
     end
 end
 ```
+
+To *reject* invalid input rather than route it, declare a `type` with a
+`pattern` and capture against it — validation is the type system's job, and it
+produces a proper `line:col` error. There is no `error` statement in the inner
+DSL.
 
 ## What's NOT here (and why)
 
 The inner DSL is intentionally small. It does not have:
 
 - User-defined inner functions. Compose with multiple library functions or with `loop`.
-- `else` branches. Use two `if` statements or invert with `not`.
+- An `error` statement. Reject invalid input with a `type` `pattern` / `options` instead.
 - Arithmetic operators (`+`, `-`, …). Compute at template time with helpers, or accumulate into a count.
 
 These omissions keep the runtime tiny and predictable. If you find yourself

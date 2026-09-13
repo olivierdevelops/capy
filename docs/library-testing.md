@@ -126,7 +126,7 @@ for (name, script, want) in cases {
 - **Type validation** — a script that violates a `type` `pattern`/`options`
   produces a `.expected-error.txt`.
 - **Blocks** — nesting, the closer output, multi-section ordering.
-- **Context accumulation** — `run:` mutations across multiple statements.
+- **Context accumulation** — `set` / `append` mutations across multiple statements.
 - **Multi-file** — assert each declared `file` appears in `RunMulti`'s map.
 
 See [troubleshooting.md](troubleshooting.md) when a test fails and the cause

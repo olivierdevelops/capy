@@ -63,7 +63,7 @@ on a line; everything from the marker to the end of the line is
 discarded by the lexer.
 
 This declaration only affects **user scripts**. The library
-manifest itself, and inner-DSL `run:`/command bodies, always use
+manifest itself, and inner-DSL / command bodies, always use
 `#` for comments — that's Capy's own config syntax.
 
 Why opt-in: a library targeting a host language that uses `#` as
@@ -88,11 +88,13 @@ common forms:
 
 ```
 function greet
+    arg literal "greet"
     arg capture name Email             # built-in OR library-declared type
+    priority 0                         # higher wins; default 0 — must come
+                                       # BEFORE the output statements
     write `Hello, ${name}!
 `
     append context.greetings name
-    priority 0                         # higher wins; default 0
 end
 ```
 

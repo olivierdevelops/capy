@@ -16,7 +16,7 @@
 >
 > Concretely: each function in the library declares an args pattern (mix
 > of literal tokens and typed captures), a template fragment, and an
-> optional `run:` snippet that updates an accumulated context. A
+> optional inner-DSL statements that update an accumulated context. A
 > file-level template assembles `body` + `context` into the final output.
 >
 > The engine has zero default grammar — no keywords reserved by the

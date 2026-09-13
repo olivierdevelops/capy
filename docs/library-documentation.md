@@ -29,9 +29,7 @@ Add a `description` line at any of four scopes:
 
 ```
 extension html
-description "Recipe DSL for home cooks. Six keywords (recipe, serves,
-             time, ingredient, step, tip) produce a polished printable
-             HTML recipe card."
+description "Recipe DSL for home cooks. Six keywords (recipe, serves, time, ingredient, step, tip) produce a polished printable HTML recipe card."
 
 type Email
     description "An email address used for owner contact info."
@@ -39,8 +37,7 @@ type Email
 end
 
 function recipe
-    description "Open a new recipe with a title. Wraps the rest of the
-                 file; closed by `end`."
+    description "Open a new recipe with a title. Wraps the rest of the file; closed by `end`."
     arg literal "recipe"
     arg capture title string  "Display name of the dish, shown as the H1."
     block_closer end

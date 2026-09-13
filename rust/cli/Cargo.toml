@@ -1,0 +1,13 @@
+[package]
+name = "capy-cli"
+version = "0.12.0"
+edition = "2021"
+description = "Capy CLI — port of cmd/capy"
+
+[[bin]]
+name = "capy"
+path = "src/main.rs"
+
+[dependencies]
+capy-core = { path = ".." }
+zip = { version = "2", default-features = false, features = ["deflate"] }

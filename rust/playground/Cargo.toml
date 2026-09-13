@@ -1,0 +1,16 @@
+[package]
+name = "capy-playground-bundle"
+version = "0.12.0"
+edition = "2021"
+description = "Bundles curated Capy samples into the JSON the browser playground fetches"
+license = "MIT"
+
+[[bin]]
+name = "playground-bundle"
+path = "src/main.rs"
+
+[dependencies]
+# No serde: Go's json.Encoder HTML-escapes `<`, `>` and `&` by default (this
+# program never calls SetEscapeHTML(false)), and serde_json has no such mode.
+# capy-core's gojson::marshal_string already reproduces Go's escaping exactly.
+capy-core = { path = ".." }

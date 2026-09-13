@@ -1,0 +1,18 @@
+[package]
+name = "capy-wasm-abi"
+version = "0.12.0"
+edition = "2021"
+description = "Linear-memory wasm ABI for the Capy engine — for wazero and browser hosts"
+license = "MIT"
+
+[lib]
+# cdylib is what produces a .wasm; the ABI's #[no_mangle] symbols live here
+# rather than in capy-core so a normal Rust dependency inherits no C symbols.
+crate-type = ["cdylib"]
+path = "src/lib.rs"
+
+[dependencies]
+capy-core = { path = ".." }
+
+# NOTE: release profile settings live at the workspace root (Cargo ignores them
+# in member crates), so the size-optimised wasm build is configured there.

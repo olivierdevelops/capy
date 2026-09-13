@@ -1,0 +1,16 @@
+# Cargo build output — `target/` at any depth (the workspace root plus any
+# stale per-crate dirs from before the crates were unified into a workspace).
+target/
+
+# Locally installed CLI (cargo install --path cli --root .)
+/bin/
+
+# The embedded engine for the wazero binding is a BUILD ARTIFACT, not source.
+# Regenerate with:
+#   cargo build --release --target wasm32-unknown-unknown -p capy-wasm-abi
+#   cp target/wasm32-unknown-unknown/release/capy_wasm_abi.wasm gobind/capy_core.wasm
+gobind/capy_core.wasm
+
+# Scratch binaries from the devtools comparison scripts.
+gobind/smokebin
+gobind/benchbin

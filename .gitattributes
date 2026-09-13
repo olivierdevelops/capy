@@ -8,6 +8,7 @@
 *.capy  text eol=lf
 *.yaml  text eol=lf
 *.yml   text eol=lf
+*.rs    text eol=lf
 *.go    text eol=lf
 
 # Windows-native scripts keep CRLF.
@@ -21,3 +22,26 @@
 *.gif   binary
 *.ico   binary
 *.svg   binary
+
+# ── GitHub language statistics ───────────────────────────────────────────
+# Everything that IMPLEMENTS Capy is Rust. The files below are generated
+# fixtures, a thin consumer shim, or repo tooling; counting them as source
+# misrepresents what this repo is.
+
+# Transpiler OUTPUT checked in as golden fixtures — what Capy PRODUCES, not
+# code anyone wrote. They must stay (the golden tests compare against them)
+# but they are data, not implementation.
+samples/*/expected/** linguist-generated=true
+
+# The wazero binding: a small Go module embedding capy_core.wasm so Go
+# programs can call the Rust engine. A consumer of this repo's output, in its
+# own module, deliberately not part of the Rust workspace.
+rust/gobind/** linguist-vendored=true
+
+# The browser loader shim and its test harness — glue for the wasm module.
+rust/playground/web/** linguist-vendored=true
+
+# Repo tooling, not the product: the wasm check, the publishability checker,
+# the playground build, the installer.
+rust/devtools/** linguist-vendored=true
+scripts/** linguist-vendored=true

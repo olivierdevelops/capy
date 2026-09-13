@@ -27,3 +27,10 @@ Thumbs.db
 /docs/assets/playground/wasm_exec.js
 /docs/assets/playground/samples.json
 commands.yaml
+
+# Build output from the standalone example projects.
+examples/*/target/
+examples/*/Cargo.lock
+
+# Gradle build cache, if someone runs gradle inside a sample expected/ tree.
+.gradle/

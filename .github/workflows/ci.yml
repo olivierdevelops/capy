@@ -9,89 +9,96 @@ concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
-env:
-  GOPROXY: https://proxy.golang.org,direct
-  GOFLAGS: -mod=readonly
-
 jobs:
   test:
-    name: test (Go ${{ matrix.go }} / ${{ matrix.os }})
+    name: test (${{ matrix.os }})
     strategy:
       fail-fast: false
       matrix:
-        go: ['1.22', '1.23']
         os: [ubuntu-latest, macos-latest, windows-latest]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v5
-      - uses: actions/setup-go@v6
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
         with:
-          go-version: ${{ matrix.go }}
-          cache: true
-      - name: go vet
-        run: go vet ./...
-      - name: go test
-        run: go test -race -cover ./...
+          workspaces: rust
+      - name: cargo test
+        # Includes tests/golden.rs, which walks the samples/ corpus — the
+        # acceptance suite that replaced the Go differential comparison.
+        working-directory: rust
+        run: cargo test --workspace
 
-  # Lint is opt-in for now. Run locally with:
-  #   golangci-lint run
-  # Re-enable in CI by un-commenting the block below once the style
-  # baseline is comfortable.
-  #
-  # lint:
-  #   name: lint
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - uses: actions/checkout@v5
-  #     - uses: actions/setup-go@v6
-  #       with:
-  #         go-version: '1.23'
-  #         cache: true
-  #     - uses: golangci/golangci-lint-action@v7
-  #       with:
-  #         version: latest
-  #         args: --timeout=3m
-
-  # The Rust port under rust/ must stay behaviourally identical to the Go
-  # reference implementation. This job builds BOTH and diffs them at every layer
-  # (lexer → library parser → loader → parser → evaluator → embedding API → CLI →
-  # MCP → playground bundle), then runs the Rust engine against the same
-  # checked-in goldens the Go suite uses.
-  #
-  # Additive on purpose: it changes nothing about what ships. The published
-  # playground and release binaries still come from the Go tree.
-  conformance:
-    name: rust/go conformance
+  # capy-core is published to crates.io and imported by other Rust projects, so
+  # the packaging guarantees need continuous verification — each of these has
+  # broken silently before:
+  #   * path dependencies without a `version` make the crate unpublishable;
+  #   * `include` can drop a file the crate needs, which only shows up once the
+  #     package is built OUTSIDE the workspace;
+  #   * the declared MSRV drifts as soon as anyone uses a newer std API.
+  crate:
+    name: crate (publishable / MSRV)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
-      - uses: actions/setup-go@v6
-        with:
-          go-version: '1.23'
-          cache: true
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: clippy
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: rust
-      - name: rust build + clippy (deny warnings)
+      - name: clippy (all targets, deny warnings)
+        # --all-targets so tests and the devtools harnesses are linted too, not
+        # just the library.
         working-directory: rust
-        run: |
-          cargo build --workspace
-          cargo clippy --workspace -- -D warnings
-      - name: rust tests (incl. the golden suite)
+        run: cargo clippy --workspace --all-targets -- -D warnings
+      - name: every publishable crate is publish-ready
         working-directory: rust
-        run: cargo test --workspace
-      - name: cross-implementation conformance
-        run: ./rust/devtools/conformance.sh
-      - name: wasm conformance
-        # The browser-facing wasm surface: same JS harness, both engines.
+        # Static manifest check rather than `cargo package -p capy-cli`: until
+        # capy-core is on crates.io, cargo can't resolve the dependents' path
+        # deps against the registry even with --no-verify.
+        run: python3 devtools/check_publishable.py
+      - name: package capy-core
+        working-directory: rust
+        run: cargo package -p capy-core
+      - name: the packaged crate builds and tests standalone
+        # Unpack the .crate somewhere with no workspace and no repo around it —
+        # exactly what a downstream `cargo add capy-core` gets.
         run: |
-          rustup target add wasm32-unknown-unknown
-          curl -fsSL https://deno.land/install.sh | DENO_INSTALL="$HOME/.deno" sh -s -- -y >/dev/null
-          export PATH="$HOME/.deno/bin:$PATH"
-          ./rust/devtools/wasm_compare.sh
+          mkdir -p /tmp/standalone && cd /tmp/standalone
+          tar xzf "$GITHUB_WORKSPACE/rust/target/package/capy-core-"*.crate
+          cd capy-core-*/
+          cargo test
+      - name: MSRV
+        run: |
+          MSRV=$(grep -m1 '^rust-version' rust/Cargo.toml | cut -d'"' -f2)
+          echo "declared MSRV: $MSRV"
+          rustup toolchain install "$MSRV" --profile minimal
+          # Build the PACKAGED crate, not the workspace: the repo's Cargo.lock is
+          # version 4 and needs cargo 1.78+, which is a contributor requirement,
+          # not a consumer one.
+          cd /tmp/standalone/capy-core-*/ && rm -f Cargo.lock
+          cargo "+$MSRV" build
+
+  wasm:
+    name: wasm (browser surface)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: rust
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+      - name: wasm check
+        # Runs the same golden corpus through the wasm module and JS shim that
+        # docs.yml publishes, so a break in the linear-memory ABI or the loader
+        # fails here rather than in someone's browser.
+        run: ./rust/devtools/wasm_check.sh
 
   build:
     name: build (${{ matrix.os }})
@@ -102,12 +109,13 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v5
-      - uses: actions/setup-go@v6
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
         with:
-          go-version: '1.23'
-          cache: true
+          workspaces: rust
       - name: build
-        run: go build -o capy ./cmd/capy
+        working-directory: rust
+        run: cargo build --release -p capy-cli
       - name: smoke test
-        run: ./capy run samples/transpile-py/lib.capy samples/transpile-py/script.capy
+        run: ./rust/target/release/capy run samples/transpile-py/lib.capy samples/transpile-py/script.capy
         shell: bash

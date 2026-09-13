@@ -31,10 +31,12 @@ jobs:
           # or **/pyproject.toml". Our docs reqs live at the repo root.
           cache-dependency-path: requirements-docs.txt
 
-      - uses: actions/setup-go@v6
+      - uses: dtolnay/rust-toolchain@stable
         with:
-          go-version: '1.24'
-          cache: true
+          targets: wasm32-unknown-unknown
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: rust
 
       - name: Install MkDocs Material
         run: pip install -r requirements-docs.txt
@@ -43,26 +45,25 @@ jobs:
         # The playground at docs/assets/playground/ needs capy.wasm +
         # wasm_exec.js + samples.json. Build them fresh from main so the
         # deployed playground tracks the current engine.
+        #
+        # capy.wasm comes from the capy-wasm-abi crate, and wasm_exec.js is our
+        # own loader shim rather than the one that used to be copied out of
+        # GOROOT. The shim installs the same globals the page already calls
+        # (capyRun / capyDocs / capyIntrospect / capyVersion), so index.html is
+        # unchanged and the browser-facing contract is identical.
         run: |
           set -euxo pipefail
-          # Inject the engine version into the wasm binary so the
-          # playground UI shows the correct release in its toolbar.
+          # Stamp the release into the module so the playground toolbar shows it;
+          # replaces the Go build's -ldflags "-X main.version=...".
           VERSION=$(git describe --tags --always 2>/dev/null || echo dev)
-          GOOS=js GOARCH=wasm go build \
-            -ldflags="-s -w -X main.version=$VERSION" \
-            -o docs/assets/playground/capy.wasm ./cmd/capy-wasm
-          # wasm_exec.js moved between Go releases: lib/wasm/ in 1.24+,
-          # misc/wasm/ in earlier versions. Try both so the build doesn't
-          # break when CI updates its toolchain.
-          GOROOT=$(go env GOROOT)
-          if [ -f "$GOROOT/lib/wasm/wasm_exec.js" ]; then
-            cp "$GOROOT/lib/wasm/wasm_exec.js" docs/assets/playground/wasm_exec.js
-          elif [ -f "$GOROOT/misc/wasm/wasm_exec.js" ]; then
-            cp "$GOROOT/misc/wasm/wasm_exec.js" docs/assets/playground/wasm_exec.js
-          else
-            echo "wasm_exec.js not found under $GOROOT"; exit 1
-          fi
-          go run ./cmd/playground-bundle > docs/assets/playground/samples.json
+          CAPY_VERSION="$VERSION" cargo build --release \
+            --target wasm32-unknown-unknown \
+            --manifest-path rust/Cargo.toml -p capy-wasm-abi
+          cp rust/target/wasm32-unknown-unknown/release/capy_wasm_abi.wasm \
+            docs/assets/playground/capy.wasm
+          cp rust/playground/web/wasm_exec.js docs/assets/playground/wasm_exec.js
+          cargo run --release --manifest-path rust/Cargo.toml \
+            -p capy-playground-bundle > docs/assets/playground/samples.json
           ls -lh docs/assets/playground/
 
       - name: Configure Pages

@@ -9,7 +9,7 @@
 
 Capy reads source code, matches each statement against library-defined
 function shapes, and for each match (a) renders a template fragment and
-(b) updates an accumulated **context**. A top-level `file_template:`
+(b) updates an accumulated **context**. A top-level `file_template`
 assembles `body` + `context` into the final output file.
 
 There are **no built-in keywords**. `if`, `loop`, `=`, blocks, comments —
@@ -31,20 +31,23 @@ end
 function import
     arg literal "import"
     arg capture name ident
-    template_str ""
-    run:
-        append context.imports name
+    append context.imports name
 end
 
 function say
+    arg literal "say"
     arg capture msg any
-    template_str "print({{ .msg }})\n"
+    write `print(${msg})
+`
 end
 
-file_template:
-    {{- range .context.imports }}import {{ . }}
-    {{ end }}
-    {{- .body -}}
+file_template
+    for imp in context.imports
+        write `import ${imp}
+`
+    end
+    write body
+end
 ```
 
 **`script.capy`**
@@ -67,9 +70,10 @@ The library is the entire grammar. Swap it and the same engine produces
 HTML, SQL, JSON, Makefiles — anything you can describe with patterns,
 templates, and run blocks.
 
-YAML is supported as a secondary format for teams that need
-yq / JSON-schema tooling — same library, same engine. See
-[`docs/library-authoring.md`](docs/library-authoring.md#also-supported-yaml).
+Libraries are always written in Capy's own `.capy` syntax. An earlier
+version accepted YAML with Go templates for output bodies; that format was
+removed, because it meant juggling three languages at every edit. See
+[`docs/library-authoring.md`](docs/library-authoring.md).
 
 ---
 
@@ -183,7 +187,7 @@ cargo build --release --manifest-path rust/Cargo.toml -p capy-cli
 | [docs/library-authoring.md](docs/library-authoring.md) | Writing your own `lib.capy` |
 | [docs/capy-libraries.md](docs/capy-libraries.md) | `.capy` syntax reference (vs. YAML) |
 | [docs/language-reference.md](docs/language-reference.md) | Surface grammar + lexer behavior |
-| [docs/inner-dsl.md](docs/inner-dsl.md) | The `run:` operations |
+| [docs/inner-dsl.md](docs/inner-dsl.md) | The inner-DSL operations |
 | [docs/types.md](docs/types.md) | `base` / `pattern` / `options` |
 | [docs/templates.md](docs/templates.md) | Template helpers |
 | [docs/cookbook.md](docs/cookbook.md) | Recipes for common patterns |

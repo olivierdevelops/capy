@@ -70,7 +70,7 @@ func RunMultiWithArgs(libraryPath, scriptPath string, userArgs []string) (string
 	// Now expand any inclusion directives the library declared. With
 	// no `preprocess` block in the library, Preprocess returns the
 	// source unchanged.
-	expanded, err := infra.Preprocess(string(src), filepath.Dir(scriptPath), lib.Preprocess)
+	expanded, err := infra.Preprocess(string(src), filepath.Dir(scriptPath), lib.Preprocess, host)
 	if err != nil {
 		return "", nil, err
 	}

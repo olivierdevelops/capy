@@ -2,9 +2,10 @@ package infra
 
 import (
 	"fmt"
-	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/olivierdevelops/capy/domain"
 )
 
 // Preprocess walks a source string line by line and expands any
@@ -18,8 +19,15 @@ import (
 // "zero predefined grammar" promise intact: even universal-looking
 // constructs like `@import` are opt-in per library.
 //
-// Path resolution: relative paths are resolved against `dir`.
-// Absolute paths are honored as-is.
+// Reads go through the supplied domain.Host, NOT the filesystem directly. That
+// matters for the sandbox: `capy.Library` defaults to domain.NoOpHost, so an
+// embedded caller (or the wasm playground) that never granted filesystem access
+// cannot be made to read arbitrary files by a library declaring `@import`.
+// Previously this used os.ReadFile unconditionally, which bypassed the same host
+// gate that the `read_file` inner-DSL primitive respects.
+//
+// Path resolution: relative paths are resolved against `dir`, then made absolute
+// so the host passes them through verbatim rather than re-prefixing its BaseDir.
 //
 // Cycle detection: imports are tracked by absolute path. If file A
 // imports B which imports A, the loader stops with a clear error.
@@ -27,14 +35,17 @@ import (
 // The directive itself must be at the START of a line (after
 // optional leading whitespace, which is preserved on the inlined
 // content for visual nesting).
-func Preprocess(source, dir string, directives []string) (string, error) {
+func Preprocess(source, dir string, directives []string, h domain.Host) (string, error) {
 	if len(directives) == 0 {
 		return source, nil
 	}
-	return preprocess(source, dir, directives, map[string]bool{})
+	if h == nil {
+		h = domain.NoOpHost{}
+	}
+	return preprocess(source, dir, directives, map[string]bool{}, h)
 }
 
-func preprocess(source, dir string, directives []string, visited map[string]bool) (string, error) {
+func preprocess(source, dir string, directives []string, visited map[string]bool, h domain.Host) (string, error) {
 	var out strings.Builder
 	lines := strings.Split(source, "\n")
 	for i, line := range lines {
@@ -51,12 +62,12 @@ func preprocess(source, dir string, directives []string, visited map[string]bool
 			if visited[absPath] {
 				return "", fmt.Errorf("line %d: import cycle: %s", i+1, absPath)
 			}
-			b, err := os.ReadFile(absPath)
+			b, err := h.ReadFile(absPath)
 			if err != nil {
 				return "", fmt.Errorf("line %d: %s %q: %v", i+1, d, path, err)
 			}
 			visited[absPath] = true
-			expanded, err := preprocess(string(b), filepath.Dir(absPath), directives, visited)
+			expanded, err := preprocess(b, filepath.Dir(absPath), directives, visited, h)
 			if err != nil {
 				return "", err
 			}
@@ -118,5 +129,11 @@ func resolvePath(path, dir string) string {
 	if filepath.IsAbs(path) {
 		return filepath.Clean(path)
 	}
-	return filepath.Clean(filepath.Join(dir, path))
+	joined := filepath.Clean(filepath.Join(dir, path))
+	// Absolute, so the host reads exactly this path instead of resolving it
+	// against its own BaseDir a second time.
+	if abs, err := filepath.Abs(joined); err == nil {
+		return abs
+	}
+	return joined
 }

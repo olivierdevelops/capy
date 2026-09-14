@@ -20,6 +20,7 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
+	"os"
 	"sync"
 
 	"github.com/tetratelabs/wazero"
@@ -36,13 +37,53 @@ var engineWasm []byte
 type Runtime struct {
 	rt       wazero.Runtime
 	compiled wazero.CompiledModule
+	cache    wazero.CompilationCache
 	mu       sync.Mutex
 }
 
 // NewRuntime compiles the embedded engine. Reuse one Runtime for the life of the
 // process.
+//
+// Compiling the module costs roughly half a second, which a long-lived process
+// pays once and never notices. A CLI pays it on every invocation, so short-lived
+// callers should use NewRuntimeWithCache instead.
 func NewRuntime(ctx context.Context) (*Runtime, error) {
-	rt := wazero.NewRuntime(ctx)
+	return newRuntime(ctx, wazero.NewRuntimeConfig())
+}
+
+// NewRuntimeWithCache is NewRuntime with wazero's on-disk compilation cache
+// enabled, so the compiled machine code is reused across processes. The first
+// run in a given cache dir pays the full compile; every later one loads the
+// cached artefact instead, which turns a ~500ms startup into a few milliseconds.
+//
+// This is what a CLI wants. `dir` is created if absent; passing "" falls back to
+// an uncached runtime rather than failing, since a missing cache is a
+// performance problem and not a correctness one.
+//
+// The cache is keyed on the wazero version and the module's content, so a
+// rebuilt engine or an upgraded wazero simply misses and recompiles. Stale
+// entries are inert, so the dir never needs manual invalidation.
+func NewRuntimeWithCache(ctx context.Context, dir string) (*Runtime, error) {
+	if dir == "" {
+		return NewRuntime(ctx)
+	}
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return NewRuntime(ctx)
+	}
+	cache, err := wazero.NewCompilationCacheWithDir(dir)
+	if err != nil {
+		return NewRuntime(ctx)
+	}
+	rt, err := newRuntime(ctx, wazero.NewRuntimeConfig().WithCompilationCache(cache))
+	if err != nil {
+		return nil, err
+	}
+	rt.cache = cache
+	return rt, nil
+}
+
+func newRuntime(ctx context.Context, cfg wazero.RuntimeConfig) (*Runtime, error) {
+	rt := wazero.NewRuntimeWithConfig(ctx, cfg)
 	compiled, err := rt.CompileModule(ctx, engineWasm)
 	if err != nil {
 		rt.Close(ctx)
@@ -51,8 +92,15 @@ func NewRuntime(ctx context.Context) (*Runtime, error) {
 	return &Runtime{rt: rt, compiled: compiled}, nil
 }
 
-// Close releases the runtime's resources.
-func (r *Runtime) Close(ctx context.Context) error { return r.rt.Close(ctx) }
+// Close releases the runtime's resources, including the compilation cache when
+// one was installed.
+func (r *Runtime) Close(ctx context.Context) error {
+	err := r.rt.Close(ctx)
+	if r.cache != nil {
+		r.cache.Close(ctx)
+	}
+	return err
+}
 
 // result is the JSON shape every engine entry point returns.
 type result struct {

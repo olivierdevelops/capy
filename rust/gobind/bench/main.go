@@ -8,7 +8,7 @@ import (
 	"os"
 	"time"
 
-	rustbind "github.com/olivierdevelops/capy/rustbind"
+	rustbind "github.com/olivierdevelops/capy/rust/gobind"
 )
 
 func main() {

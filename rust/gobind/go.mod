@@ -1,4 +1,4 @@
-module github.com/olivierdevelops/capy/rustbind
+module github.com/olivierdevelops/capy/rust/gobind
 
 go 1.22.0
 

@@ -5,11 +5,13 @@ target/
 # Locally installed CLI (cargo install --path cli --root .)
 /bin/
 
-# The embedded engine for the wazero binding is a BUILD ARTIFACT, not source.
-# Regenerate with:
-#   cargo build --release --target wasm32-unknown-unknown -p capy-wasm-abi
-#   cp target/wasm32-unknown-unknown/release/capy_wasm_abi.wasm gobind/capy_core.wasm
-gobind/capy_core.wasm
+# NOTE: gobind/capy_core.wasm is a build artefact, but it is COMMITTED on
+# purpose and must not be added here. The Go module system cannot run a build
+# step, so `go get github.com/olivierdevelops/capy/rust/gobind` can only work if
+# the engine the package //go:embeds is already in the tree. Ignoring it makes
+# the binding uninstallable by anyone who is not building the Rust workspace
+# locally. Regenerate it with gobind/build.sh, which also refuses to commit a
+# wasm that disagrees with the current sources.
 
 # Scratch binaries from the devtools comparison scripts.
 gobind/smokebin

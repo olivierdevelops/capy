@@ -111,3 +111,33 @@ See [embedding.md](embedding.md) for the full surface (in-memory
 
 Errors are `*domain.CapyError` values; use `domain.FormatWithSource(err, src)`
 to render them with a caret.
+
+
+## `capy ast`
+
+Print a script's parse tree.
+
+```sh
+capy ast <library> <script>          # indented tree, for reading
+capy ast <library> <script> --json   # machine-readable, for piping
+```
+
+```text
+$ capy ast samples/transpile-py/lib.capy samples/transpile-py/script.capy
+import 1:1-1:12
+  name = "json" 1:8
+say 4:1-4:15
+  msg = "\"starting\"" 4:5
+```
+
+Unlike `capy run`, this does not stop at the first mistake: parsing recovers, so
+a broken file still yields a tree plus the diagnostics explaining what went
+wrong. Diagnostics go to stderr in tree mode so stdout stays pipeable.
+
+| Exit | Meaning |
+|---|---|
+| 0 | Clean parse |
+| 1 | Diagnostics were produced, or the file could not be read |
+
+With `--json`, stdout carries one JSON document and nothing else — see
+[the schema](ast-json.md).

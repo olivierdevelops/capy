@@ -1,1 +1,1 @@
-1:47: no library function matches token "["
+1:48: expected `b`, `i`, `quote`, or `url`, found "/" in `bold`

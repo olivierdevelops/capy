@@ -96,6 +96,8 @@ nav:
     - Language reference (source side): language-reference.md
     - How Capy parses & extracts content: how-capy-parses.md
     - Templates: templates.md
+    - Diagnostics: diagnostics.md
+    - AST JSON schema: ast-json.md
     - Built-in function cookbook: function-cookbook.md
     - Types: types.md
     - Inner DSL (run blocks): inner-dsl.md

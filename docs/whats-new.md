@@ -4,6 +4,35 @@ title: What's new — engine primitives shipped in this release
 
 # What's new
 
+## 0.22.0 — diagnostics, recovery, AST output, precedence
+
+**Parse errors say what was expected.** Capy used to report only that nothing
+matched. It now reports the shape that got *furthest* and what it wanted there,
+unioning the alternatives when several shapes stop at the same token:
+
+```
+before:  no library function matches token "fn"
+after:   expected `)`, found end of statement in `fn`
+```
+
+**Parsing recovers.** A broken statement no longer stops the run: it is reported,
+skipped, and parsing continues, so every mistake in a file surfaces at once and
+an editor gets a usable tree from a buffer that is mid-edit. Output is refused
+when any region failed to parse — emitting a partial parse would silently drop
+whatever broke.
+
+**The parse tree is available.** `Library::parse` returns the tree plus
+diagnostics, and `capy ast [--json]` prints it. The JSON shape is documented and
+versioned in [the AST JSON schema](ast-json.md).
+
+**Infix operators.** `*` `/` `%` `+` `-`, the comparisons and `and` / `or`, with
+conventional precedence and left associativity — plus grouping parentheses where
+they do not collide with the prefix-call form.
+
+Nothing existing changes: all 117 sample libraries load, and the golden corpus is
+byte-identical apart from one error message that got strictly better.
+
+
 ## 0.21.0 — parser foundations
 
 **A left-recursive library no longer crashes the process.** A rule whose first

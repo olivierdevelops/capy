@@ -397,10 +397,31 @@ as trivia but are not attached to anything.
 Comments never reach the matcher, so retaining them changes nothing about what
 parses or what is rendered.
 
-> **The AST is not a supported API yet.** Spans exist, but the public entry point
-> (`Library::parse`) has not shipped. Until it does, reaching the tree means going
-> through `capy_core::orchestrator::features::make_parser::parse`, which is
-> internal and may change without notice.
+### Getting the tree
+
+```rust
+let result = lib.parse(source);
+
+// ⚠ `tree.stmts` alone does NOT mean the parse succeeded. A partial parse looks
+//   exactly like a complete one if you only read `stmts` — check diagnostics.
+if !result.diagnostics.is_empty() {
+    for d in &result.diagnostics { eprintln!("{}: {}", d.code, d.full_message()); }
+}
+
+for stmt in &result.tree.stmts {
+    // the statements that DID parse
+}
+for region in &result.tree.errors {
+    // the regions that did not, each pointing at its diagnostic by index
+}
+```
+
+`ParseResult { tree, diagnostics }` — the tree is always returned, because
+parsing recovers. `result.is_clean()` is the short form of "no diagnostics and
+no error regions".
+
+`Library::run` is unchanged: it still returns `Result<String, CapyError>` with
+the first error and no output, so nothing that embeds Capy today has to move.
 
 ## What it's not
 

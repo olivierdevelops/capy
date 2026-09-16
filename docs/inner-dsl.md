@@ -25,6 +25,25 @@ to describe what each match contributes to the final output.
 > additionally carries where the statement *ends*. See
 > [embedding](embedding.md#source-positions).
 
+## Operators
+
+Value expressions support infix `*` `/` `%` `+` `-`, the comparisons, and
+`and` / `or`, with conventional precedence and left associativity. See
+[the precedence table](language-reference.md#operator-precedence).
+
+```
+if count * 2 > limit
+    set context.over true
+end
+```
+
+`and` and `or` short-circuit: the right operand is evaluated only when it can
+change the answer.
+
+Integer arithmetic stays integer (`1 + 1` is `2`, not `2.0`); a float operand
+promotes the result, and `7 / 2` is `3.5` rather than truncating. `+` on two
+strings concatenates. Anything else is an error rather than a silent coercion.
+
 ## Tokens & expressions
 
 The inner DSL reuses the engine's lexer and value-expression parser. Values

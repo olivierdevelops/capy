@@ -95,18 +95,43 @@ When a function captures `<x:any>`, the parser consumes one of:
 | object literal | `{"k": "v", name: "Alice"}` (keys may be strings OR identifiers) |
 | comparison | `a == b`, `a < b`, `not flag` |
 
-Multi-token arithmetic expressions like `4 + 5` are NOT parsed as a single
-expression; they're parsed as two separate primitives with the operator as a
-literal token in the pattern. A library that wants `x = 4 + 5` defines:
+### Operator precedence
 
-```yaml
-assign_add:
-  args:
-    - { kind: capture, name: var, type: ident }
-    - { kind: literal, value: "=" }
-    - { kind: capture, name: a, type: any }
-    - { kind: literal, value: "+" }
-    - { kind: capture, name: b, type: any }
+Value expressions support infix operators with conventional precedence. All are
+**left-associative**, so `a - b - c` is `(a - b) - c`.
+
+| Binding | Operators |
+|---|---|
+| loosest | `or` |
+| | `and` |
+| | `==` `!=` `<` `>` `<=` `>=` |
+| | `+` `-` |
+| tightest | `*` `/` `%` |
+
+```
+a * b + c          →  (a * b) + c
+a + b * c          →  a + (b * c)
+a + 1 == b * 2     →  (a + 1) == (b * 2)
+a and b or c       →  (a and b) or c
+```
+
+`not` is a prefix operator and binds tighter than all of them.
+
+**Grouping.** `(` is primarily the *prefix-call* form — `(upper name)` calls a
+helper — so parentheses group only where that is unambiguous: when the contents
+parse as a complete expression that is not a bare identifier. `(a + b) * c`
+groups; `(upper name)` is still a call; `(foo)` is still a zero-argument call.
+
+Arithmetic is on the **values** the inner DSL and `${ … }` evaluate. A library
+that wants `x = 4 + 5` as *source syntax* still declares the shape, and may now
+capture the whole expression as one value rather than as three:
+
+```
+function assign
+    arg capture var ident
+    arg literal "="
+    arg capture value any
+end
 ```
 
 ## Object literals
@@ -143,6 +168,10 @@ error: <message>
     │ ^
 ```
 
-When you embed Capy as a library, errors are `*domain.CapyError` values
-with `Line`, `Col`, and `Msg` fields; use `domain.FormatWithSource(err,
-source)` to get the rendered form.
+When you embed Capy as a library, errors are `domain::errors::CapyError`
+values with `line`, `col`, `msg` and `hint` fields; use
+`domain::errors::format_with_source(&err, source)` to get the rendered form.
+
+A *recovering* parse (`Library::parse`) produces `Diagnostic` values instead,
+which add a severity, a stable code, a primary range and secondary labels — see
+[diagnostics](diagnostics.md).

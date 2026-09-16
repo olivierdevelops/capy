@@ -16,5 +16,5 @@ path = "src/main.rs"
 [dependencies]
 # `version` alongside `path`: cargo uses the path locally and the registry
 # version when published. Without it `cargo publish` rejects the crate.
-capy-core = { path = "..", version = "0.21.0" }
+capy-core = { path = "..", version = "0.22.0" }
 zip = { version = "2", default-features = false, features = ["deflate"] }

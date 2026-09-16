@@ -15,7 +15,7 @@ crate-type = ["cdylib"]
 path = "src/lib.rs"
 
 [dependencies]
-capy-core = { path = "..", version = "0.21.0" }
+capy-core = { path = "..", version = "0.22.0" }
 
 # NOTE: release profile settings live at the workspace root (Cargo ignores them
 # in member crates), so the size-optimised wasm build is configured there.

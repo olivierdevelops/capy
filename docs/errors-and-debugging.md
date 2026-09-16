@@ -209,3 +209,29 @@ location is wrong: file an issue with the minimal `lib.capy` +
 `script.capy` that reproduces it. The hint engine has grown
 incrementally — every new "this would have been better as a hint"
 becomes a one-line addition.
+
+
+## `left recursion — it can match itself without consuming a token`
+
+A library rule whose first element is a capture of a function that leads back to
+it. The matcher would descend forever, so the library is refused when it loads
+rather than at run time.
+
+```text
+function "expr": left recursion — it can match itself without consuming a token
+(cycle: expr -> expr)
+```
+
+The cycle in parentheses is the path the matcher would take. Fix it by consuming
+something first — see
+[Recursive captures](library-authoring.md#recursive-captures-right-recursive-not-left-recursive).
+
+Before this check existed, such a library passed `capy check` and then aborted
+the process with a stack overflow, which an embedding program could not catch.
+
+## `no library function matches` on deeply nested input
+
+A nonterminal descent stops at 64 levels. Source nested deeper than that is
+refused; the message currently falls back to the generic "no library function
+matches" rather than naming the limit. If you hit this with hand-written source,
+the grammar is usually the problem rather than the depth.

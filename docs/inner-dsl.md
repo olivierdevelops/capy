@@ -20,6 +20,11 @@ to describe what each match contributes to the final output.
 > statements now sit directly in the function body, interleaved with
 > `write` calls.
 
+> `${line}` and `${col}` are the statement's **start** position and are
+> unchanged. They are the same position as the AST node's `span.start`; the span
+> additionally carries where the statement *ends*. See
+> [embedding](embedding.md#source-positions).
+
 ## Tokens & expressions
 
 The inner DSL reuses the engine's lexer and value-expression parser. Values

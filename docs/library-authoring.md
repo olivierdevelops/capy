@@ -567,3 +567,51 @@ capy docs lib.capy > REFERENCE.md    # regenerate reference docs
 When the library stabilises, write a few sample scripts under
 `examples/` so behaviour stays pinned as you iterate.
 
+
+
+## Recursive captures: right-recursive, not left-recursive
+
+A capture whose type names another library function is a *nonterminal* — the
+matcher descends into that function. That descent must consume something, or it
+never bottoms out.
+
+A rule whose **first** element is a capture of a function that can lead back to
+it is rejected when the library loads:
+
+```
+function expr
+    arg capture lhs expr      # ← `expr` matches `expr` at argument 1
+    arg literal "+"
+    arg capture rhs term
+end
+```
+
+```text
+$ capy check lib.capy
+function "expr": left recursion — it can match itself without consuming a token
+(cycle: expr -> expr). Rewrite the rule so something is consumed first: put a
+literal before the capture, or make the recursion trail (right-recursive)
+instead of lead
+```
+
+Put a literal in front, so a token is consumed before the descent:
+
+```
+function expr
+    arg literal "("
+    arg capture inner expr
+    arg literal ")"
+    write `[${inner}]`
+end
+```
+
+Two things are worth knowing:
+
+- **A function that declares no `arg literal` gets its own name prepended as
+  one.** `function term / arg capture inner expr` compiles to the pattern
+  `term <inner>`, so it consumes a token and can never be the left-recursive
+  hop — which is why two libraries that look alike in source can differ here.
+  Run `capy docs <lib>` to see the compiled pattern.
+- **Nesting is bounded.** A nonterminal descent stops at 64 levels and reports an
+  error rather than exhausting the stack. That is far beyond hand-written source;
+  before the bound existed, deeply nested input aborted the process outright.

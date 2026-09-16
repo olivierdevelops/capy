@@ -130,6 +130,23 @@ Each capture is parsed once but exposed two ways:
 This is implemented in `make_evaluator.rs` (`render_template` uses `.text`)
 and `inner_evaluator.rs` (`resolve_path` evaluates `.expr`).
 
+## Source positions and trivia
+
+Every `FuncCall` and `CaptureValue` carries a `Span` (start and end line/column).
+Interior nodes produced by function-as-type captures are populated from their
+first and last token; they used to be stamped `line: 0, col: 0`, which made them
+unlocatable.
+
+Comments are retained as trivia on the **user-script path only**:
+`tokenize_with_trivia` emits `TokenKind::Comment`, and `make_parser::parse`
+strips those tokens out before any matching happens, filing each under the
+statement it leads. `tokenize` — the manifest and inner-DSL path — never sees
+them. That separation is what makes retention safe: no matcher encounters a token
+kind it was not written for.
+
+Nonterminal descent is bounded at 64 levels, and the library loader rejects a
+left-recursive capture graph outright.
+
 ## Error positions
 
 `domain::errors::CapyError { line, col, msg, hint, file }` is the structured

@@ -351,6 +351,57 @@ match output_format {
   and templates; it cannot execute arbitrary Rust from the source
   script. Embedding Capy in a server is safe from that angle.
 
+## Source positions
+
+Every node the parser produces carries a `Span`:
+
+```rust
+pub struct Span {
+    pub start_line: usize,
+    pub start_col: usize,
+    pub end_line: usize,
+    pub end_col: usize,   // EXCLUSIVE — one past the last byte
+}
+```
+
+`FuncCall.span` covers the whole statement, including a block body and its
+closer. `CaptureValue.span` covers exactly the tokens that produced that value,
+so a diagnostic can point at the argument a rule is about rather than the
+statement it sits in. `Span::is_unset()` is true only where nothing was consumed
+— an optional capture that bound its default, for example — and `Span::join`
+ignores an unset operand rather than dragging a range back to line 0.
+
+The existing `line` / `col` fields are unchanged and still drive the `${line}` /
+`${col}` render locals; they are the same position as `span.start`.
+
+> **Byte offsets are not present yet.** `Span` is `#[non_exhaustive]`, so they can
+> be added without breaking your code — but construct spans through `Span::new`
+> rather than a struct literal.
+
+### Comments
+
+A script's comments are retained and the ones immediately preceding a statement
+are attached to it:
+
+```rust
+for c in &stmt.leading_comments {
+    println!("comment at {}:{}", c.start_line, c.start_col);
+}
+```
+
+**A node's own `span` excludes its attached comments.** A formatter needs the
+node's range without them and the comments' ranges separately, and folding the
+two together loses one irrecoverably. Trailing and interior comments are retained
+as trivia but are not attached to anything.
+
+Comments never reach the matcher, so retaining them changes nothing about what
+parses or what is rendered.
+
+> **The AST is not a supported API yet.** Spans exist, but the public entry point
+> (`Library::parse`) has not shipped. Until it does, reaching the tree means going
+> through `capy_core::orchestrator::features::make_parser::parse`, which is
+> internal and may change without notice.
+
 ## What it's not
 
 - Not a Rust-side imperative API for building libraries. Libraries are

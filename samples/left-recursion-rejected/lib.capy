@@ -1,0 +1,19 @@
+# A library that is rejected on purpose.
+#
+# `expr` matches `expr` at argument 1, so the matcher would descend into itself
+# without ever consuming a token. Before the load-time guard existed this passed
+# `capy check` and then aborted the process with a stack overflow.
+#
+# The golden for this sample is the ERROR, not output.
+
+extension txt
+
+function expr
+    arg capture lhs expr
+    arg literal "+"
+    arg capture rhs term
+end
+
+function term
+    arg capture n any
+end

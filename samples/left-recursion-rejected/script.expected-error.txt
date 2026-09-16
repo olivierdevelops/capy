@@ -1,0 +1,1 @@
+function "expr": left recursion — it can match itself without consuming a token (cycle: expr -> expr). Rewrite the rule so something is consumed first: put a literal before the capture, or make the recursion trail (right-recursive) instead of lead

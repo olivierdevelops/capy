@@ -4,6 +4,29 @@ title: What's new — engine primitives shipped in this release
 
 # What's new
 
+## 0.21.0 — parser foundations
+
+**A left-recursive library no longer crashes the process.** A rule whose first
+element captured a function that led back to it passed `capy check` and then died
+with a stack overflow — which a program embedding Capy could not catch. It is now
+refused when the library loads, with the cycle named. Nonterminal descent is also
+bounded at 64 levels, so deeply nested *input* can no longer abort either.
+
+**Every AST node carries a source span.** `FuncCall` and `CaptureValue` gained a
+`Span` with start and end line/column. Nodes from function-as-type captures used
+to report `line: 0, col: 0`; they now report where they actually are, so tooling
+can point at the argument a problem is about rather than the whole statement.
+`${line}` / `${col}` are unchanged.
+
+**Comments are retained.** A script's comments survive lexing, and those
+immediately above a statement are attached to it. A node's own span excludes its
+comments, so a formatter can have both. Retention changes nothing about what
+parses or what is rendered.
+
+Nothing existing changes: all 117 sample libraries load, and the golden corpus is
+byte-identical.
+
+
 ## Inner DSL — list & map elements are readable by index
 
 A `[<expr>]` index may now appear in a **read** position, mirroring the

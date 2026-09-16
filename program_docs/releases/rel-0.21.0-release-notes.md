@@ -2,11 +2,11 @@
 document_id: REL-0.21.0
 title: Release 0.21.0 — Parser Foundations
 document_type: release
-status: draft
+status: completed
 
 created_date: 2026-09-16
 last_updated: 2026-09-16
-document_revision: 1
+document_revision: 2
 
 authors:
   - Olivier
@@ -64,7 +64,7 @@ next_review_date: 2027-03-16
 
 # Release 0.21.0 — Parser Foundations
 
-> **Status:** Draft
+> **Status:** Completed
 > **Created:** 2026-09-16
 > **Last Updated:** 2026-09-16
 > **Affected Versions:** 0.21.0
@@ -85,7 +85,7 @@ follow in PLAN-B through PLAN-E.
 | Version | 0.21.0 |
 | Previous version | 0.12.0 |
 | Tag | `v0.21.0` |
-| Commit | *pending — recorded at tagging* |
+| Commit | `cf5f2f1c5a7bd78567266fb41b1dfa412616cb5d` |
 | Version source | `rust/Cargo.toml` `[workspace.package] version` |
 
 ## Plan
@@ -201,4 +201,5 @@ Exhaustive struct literals and patterns over them must use the constructors.
 
 | Revision | Date | Author | Change |
 |---|---|---|---|
-| 1 | 2026-09-16 | Olivier | Initial release document; commit and tag pending |
+| 1 | 2026-09-16 | Olivier | Initial release document |
+| 2 | 2026-09-16 | Olivier | Finalized: commit hash `cf5f2f1` recorded, tag `v0.21.0` created and verified, post-release verification re-run against the tag |

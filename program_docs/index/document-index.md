@@ -25,7 +25,7 @@ Lookup by ID, type, status, component and owner, per `DOCUMENTATION.md` §17.
 | MAN-2026-0001 | Manual — Source Positions, Comments and Recursion Limits | manual | active | capy-core | Capy Engine | 2026-09-16 | [`manuals/man-2026-0001-spans-comments-recursion.md`](../manuals/man-2026-0001-spans-comments-recursion.md) |
 | SYS-2026-0001 | System — Lexer and Parser Pipeline as Implemented | system | active | capy-core | Capy Engine | 2026-09-16 | [`system/sys-2026-0001-parser-pipeline.md`](../system/sys-2026-0001-parser-pipeline.md) |
 | ARCH-2026-0001 | Architecture — AST Node Shape and the Trivia Boundary | architecture | active | capy-core | Capy Engine | 2026-09-16 | [`architecture/components/arch-2026-0001-ast-node-shape.md`](../architecture/components/arch-2026-0001-ast-node-shape.md) |
-| REL-0.21.0 | Release 0.21.0 — Parser Foundations | release | draft | capy-core, capy-cli | Release Management | 2026-09-16 | [`releases/rel-0.21.0-release-notes.md`](../releases/rel-0.21.0-release-notes.md) |
+| REL-0.21.0 | Release 0.21.0 — Parser Foundations | release | completed | capy-core, capy-cli | Release Management | 2026-09-16 | [`releases/rel-0.21.0-release-notes.md`](../releases/rel-0.21.0-release-notes.md) |
 
 ## By status
 

@@ -126,6 +126,20 @@ for c in cases:
             passed += 1
     # Every case must also return a usable docs + introspect payload; the
     # playground calls all three on every keystroke.
+    #
+    # EXCEPT when the LIBRARY itself is intentionally unloadable — a sample whose
+    # golden is a library-level error (samples/left-recursion-rejected, say).
+    # You cannot introspect a library that does not compile, and the playground
+    # shows the same load error in all three panes. Detected by the introspect
+    # error matching the run error, which only happens when the failure came from
+    # loading rather than from the script.
+    lib_unloadable = (
+        not run['ok']
+        and not r['introspect']['ok']
+        and norm(r['introspect']['error']).strip() == norm(run['error']).strip()
+    )
+    if lib_unloadable:
+        continue
     if not r['introspect']['ok']:
         fails.append(f"{c['id']}: introspect failed: {r['introspect']['error']}")
     if not r['docs']['ok']:

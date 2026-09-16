@@ -50,6 +50,28 @@ pub fn tokenize(source: &str) -> Result<Vec<Token>, CapyError> {
 
 /// Port of `tokenizeWith`.
 pub fn tokenize_with(source: &str, comment_markers: &[String]) -> Result<Vec<Token>, CapyError> {
+    tokenize_impl(source, comment_markers, false)
+}
+
+/// PLAN-2026-0001 R27 — like [`tokenize_with`], but retains comments as
+/// `TokenKind::Comment` tokens instead of discarding them.
+///
+/// Separate from `tokenize_with` on purpose: `tokenize` (the manifest and
+/// inner-DSL path) delegates to `tokenize_with`, and those parsers would choke
+/// on a token kind they have never seen. Only the user-script path opts in, and
+/// the outer parser strips these before matching.
+pub fn tokenize_with_trivia(
+    source: &str,
+    comment_markers: &[String],
+) -> Result<Vec<Token>, CapyError> {
+    tokenize_impl(source, comment_markers, true)
+}
+
+fn tokenize_impl(
+    source: &str,
+    comment_markers: &[String],
+    keep_comments: bool,
+) -> Result<Vec<Token>, CapyError> {
     let mut toks: Vec<Token> = Vec::new();
     let mut indents: Vec<usize> = vec![0];
     let mut bracket: i64 = 0;
@@ -84,6 +106,18 @@ pub fn tokenize_with(source: &str, comment_markers: &[String]) -> Result<Vec<Tok
             }
             let rest = line[i..].trim();
             if rest.is_empty() || has_comment_prefix(rest, comment_markers) {
+                // R27: a whole-line comment is retained as trivia before the
+                // line is skipped. It carries no INDENT/DEDENT, exactly as
+                // before — only the token is new.
+                if keep_comments && !rest.is_empty() {
+                    toks.push(Token {
+                        kind: TokenKind::Comment,
+                        text: rest.to_string(),
+                        line: li + 1,
+                        col: i + 1,
+                        width: rest.len(),
+                    });
+                }
                 continue;
             }
             // Indentation is tracked as raw column WIDTH, not fixed 4-space
@@ -132,7 +166,8 @@ pub fn tokenize_with(source: &str, comment_markers: &[String]) -> Result<Vec<Tok
             line = &line[i..];
         }
 
-        let (new_toks, open_delta) = tokenize_line(line, li + 1, comment_markers, start_col)?;
+        let (new_toks, open_delta) =
+            tokenize_line(keep_comments, line, li + 1, comment_markers, start_col)?;
         toks.extend(new_toks);
         bracket += open_delta;
         if bracket < 0 {
@@ -223,6 +258,7 @@ fn has_comment_prefix(s: &str, markers: &[String]) -> bool {
 
 /// Port of `tokenizeLine`. Returns the tokens plus the net bracket delta.
 fn tokenize_line(
+    keep_comments: bool,
     line: &str,
     line_no: usize,
     comment_markers: &[String],
@@ -254,6 +290,17 @@ fn tokenize_line(
             i += 1;
             col += 1;
         } else if has_comment_prefix(&line[i..], comment_markers) {
+            // R27: retain the trailing comment, then skip it as before.
+            if keep_comments {
+                let rest = line[i..].trim_end();
+                toks.push(Token {
+                    kind: TokenKind::Comment,
+                    text: rest.to_string(),
+                    line: line_no,
+                    col,
+                    width: rest.len(),
+                });
+            }
             i = b.len();
         } else if r == '"' || r == '\'' {
             let (s, n) = read_string(&line[i..], r as u8)

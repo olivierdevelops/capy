@@ -481,6 +481,101 @@ fn validate_cross_references(lib: &mut Library) -> Result<(), CapyError> {
             }
         }
     }
+
+    // PLAN-2026-0001 R0b: reject left recursion here, while the function-as-type
+    // edges have just been resolved and are all in hand.
+    reject_left_recursion(lib)?;
+    Ok(())
+}
+
+/// PLAN-2026-0001 R0/R0b — reject a left-recursive library at load time.
+///
+/// A function-as-type capture (`arg capture lhs expr`, where `expr` is another
+/// library function) makes the matcher descend into that function. When the
+/// descent happens before anything has been consumed, and the chain leads back
+/// to where it started, the matcher recurses forever: the process dies with
+/// `fatal runtime error: stack overflow` and **rc=134**, which an embedder
+/// cannot catch as `Err`. `capy check` used to report `ok` on such a library,
+/// so the author only found out at run time, in someone else's process.
+///
+/// A "left edge" `F -> G` exists when `F` can reach `G`'s match attempt without
+/// consuming a token: walk `F`'s elements from the front, following any that may
+/// match empty, and stop at the first element that must consume one.
+fn reject_left_recursion(lib: &Library) -> Result<(), CapyError> {
+    // Adjacency, built only from leading positions that consume nothing.
+    let mut edges: BTreeMap<&str, Vec<&str>> = BTreeMap::new();
+    for (name, fd) in &lib.functions {
+        let mut targets: Vec<&str> = Vec::new();
+        for el in &fd.elements {
+            if !el.is_capture {
+                break; // a literal consumes a token — nothing past it is "left"
+            }
+            if el.is_func {
+                targets.push(el.cap_type.as_str());
+            }
+            // Only a capture that MAY match empty leaves the position untouched
+            // for the element after it. Anything else consumes, so stop.
+            if !(el.repeat == "*" || el.optional) {
+                break;
+            }
+        }
+        edges.insert(name.as_str(), targets);
+    }
+
+    // Iterative DFS with an explicit stack: the whole point is not to recurse.
+    // White/grey/black colouring — grey means "on the current path", so meeting
+    // grey is the cycle.
+    #[derive(Clone, Copy, PartialEq)]
+    enum Mark {
+        White,
+        Grey,
+        Black,
+    }
+    let mut mark: BTreeMap<&str, Mark> = edges.keys().map(|k| (*k, Mark::White)).collect();
+
+    for root in edges.keys() {
+        if mark[root] != Mark::White {
+            continue;
+        }
+        // (node, index of the next edge to try) plus the current path.
+        let mut stack: Vec<(&str, usize)> = vec![(root, 0)];
+        let mut path: Vec<&str> = vec![root];
+        mark.insert(root, Mark::Grey);
+
+        while let Some((node, edge_i)) = stack.pop() {
+            let Some(next) = edges.get(node).and_then(|t| t.get(edge_i)) else {
+                mark.insert(node, Mark::Black);
+                path.pop();
+                continue;
+            };
+            stack.push((node, edge_i + 1));
+            match mark.get(next).copied() {
+                // Edge into a function that is not declared: the existing
+                // unknown-type check reports that; ignore it here.
+                None => {}
+                Some(Mark::Black) => {}
+                Some(Mark::Grey) => {
+                    // Cycle. Report it from where it closes, so the printed
+                    // chain reads in the order the matcher would descend.
+                    let start = path.iter().position(|n| n == next).unwrap_or(0);
+                    let mut cycle: Vec<&str> = path[start..].to_vec();
+                    cycle.push(next);
+                    return Err(CapyError::msg(format!(
+                        "function {}: left recursion — it can match itself without consuming a token (cycle: {}). \
+Rewrite the rule so something is consumed first: put a literal before the capture, or make the recursion trail \
+(right-recursive) instead of lead",
+                        gofmt::quote(next),
+                        cycle.join(" -> ")
+                    )));
+                }
+                Some(Mark::White) => {
+                    mark.insert(next, Mark::Grey);
+                    path.push(next);
+                    stack.push((next, 0));
+                }
+            }
+        }
+    }
     Ok(())
 }
 

@@ -152,7 +152,8 @@ impl Library {
                 lib_to_use.functions.insert(k, v);
             }
         }
-        let toks = make_lexer::tokenize_with(&cleaned, &lib_to_use.comments)?;
+        // R27 — the user-script path retains comments; the parser strips them.
+        let toks = make_lexer::tokenize_with_trivia(&cleaned, &lib_to_use.comments)?;
         let prog = make_parser::parse(toks, &cleaned, &lib_to_use)?;
         make_evaluator::run_multi(&prog, &lib_to_use, self.host.clone())
     }

@@ -92,7 +92,7 @@ pub fn run_multi_with_args(
             lib.functions.insert(name, f);
         }
     }
-    let toks = make_lexer::tokenize_with(&expanded, &lib.comments)?;
+    let toks = make_lexer::tokenize_with_trivia(&expanded, &lib.comments)?;
     let prog = make_parser::parse(toks, &expanded, &lib)?;
     make_evaluator::run_multi(&prog, &lib, host)
 }
@@ -123,7 +123,7 @@ pub fn run_strings(
 
     let result = (|| -> Result<String, CapyError> {
         let lib = make_library_loader::load_library(&lib_path, make_lexer::tokenize)?;
-        let toks = make_lexer::tokenize_with(script_src, &lib.comments)?;
+        let toks = make_lexer::tokenize_with_trivia(script_src, &lib.comments)?;
         let prog = make_parser::parse(toks, script_src, &lib)?;
         make_evaluator::run(&prog, &lib)
     })();

@@ -21,6 +21,11 @@ pub enum TokenKind {
     RBrace,
     LBrack,
     RBrack,
+    /// PLAN-2026-0001 R27 — a retained source comment. Emitted ONLY by
+    /// [`tokenize_with_trivia`](crate::orchestrator::features::make_lexer::tokenize_with_trivia),
+    /// and stripped from the stream by the parser before matching, so no
+    /// matcher ever sees one. `text` is the comment verbatim, marker included.
+    Comment,
     Newline,
     Indent,
     Dedent,

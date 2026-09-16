@@ -6,7 +6,7 @@
 
 use super::expr_to_text::expr_to_text;
 use super::value_parser::{parse_value, TokReader};
-use crate::domain::ast::{Block, CaptureValue, FuncCall};
+use crate::domain::ast::{Span, Block, CaptureValue, FuncCall};
 use crate::domain::errors::{suggest_closest, CapyError};
 use crate::domain::library::{CloseSegment, FuncDef, Library, PatternElement, TypeDef};
 use crate::domain::token::{Token, TokenKind};
@@ -16,6 +16,30 @@ use std::sync::Arc;
 
 /// Port of `MakeParser(...).Parse`.
 pub fn parse(toks: Vec<Token>, src: &str, lib: &Library) -> Result<Block, CapyError> {
+    // PLAN-2026-0001 R27 — pull comment trivia OUT of the stream before anything
+    // matches against it. The matcher is a token-index machine; letting a token
+    // kind it has never seen through would change what parses, which is the one
+    // thing this plan may not do (R12). Each retained comment is filed under the
+    // index of the next real token, which is the statement it leads.
+    let mut leading: BTreeMap<usize, Vec<Span>> = BTreeMap::new();
+    let toks: Vec<Token> = {
+        let mut clean: Vec<Token> = Vec::with_capacity(toks.len());
+        let mut pending: Vec<Span> = Vec::new();
+        for t in toks {
+            if t.kind == TokenKind::Comment {
+                let width = if t.width > 0 { t.width } else { t.text.len() };
+                pending.push(Span::new(t.line, t.col, t.line, t.col + width));
+                continue;
+            }
+            if !pending.is_empty() && t.col != 0 {
+                // Attach to the next SOURCE token; structural tokens (NEWLINE,
+                // INDENT, DEDENT) have col 0 and are not where a comment leads.
+                leading.entry(clean.len()).or_default().append(&mut pending);
+            }
+            clean.push(t);
+        }
+        clean
+    };
     let mut fns: Vec<Arc<FuncDef>> = lib.functions.values().cloned().map(Arc::new).collect();
     fns.sort_by(|a, b| {
         // Priority descending.
@@ -44,6 +68,8 @@ pub fn parse(toks: Vec<Token>, src: &str, lib: &Library) -> Result<Block, CapyEr
     let mut pp = OuterP {
         toks,
         pos: 0,
+        depth: 0,
+        leading,
         fns,
         by_name,
         types: lib.types.clone(),
@@ -77,9 +103,25 @@ fn split_source_lines(s: &str) -> Vec<String> {
     s.replace("\r\n", "\n").split('\n').map(|x| x.to_string()).collect()
 }
 
+/// PLAN-2026-0001 R0 — how deep a nonterminal descent may go before the parser
+/// gives up with an error instead of exhausting the native stack.
+///
+/// The load-time guard (`reject_left_recursion`) stops a library from recursing
+/// without consuming input, but it cannot stop *input* from being deeply nested:
+/// a perfectly valid right-recursive grammar fed 20 000 nested parentheses
+/// overflowed the stack and aborted with rc=134, which an embedder cannot catch.
+/// 64 is far beyond any hand-written source, and low enough to stay inside the 2 MiB
+/// stack a Rust test thread gets (the main thread gets 8 MiB, so a limit tuned to
+/// the main thread alone would still abort under `cargo test`).
+const MAX_PARSE_DEPTH: usize = 64;
+
 struct OuterP {
     toks: Vec<Token>,
     pos: usize,
+    /// Current nonterminal-descent depth; see [`MAX_PARSE_DEPTH`].
+    depth: usize,
+    /// R27 — comment spans, keyed by the index of the token they lead.
+    leading: BTreeMap<usize, Vec<Span>>,
     fns: Vec<Arc<FuncDef>>,
     by_name: BTreeMap<String, Arc<FuncDef>>,
     types: BTreeMap<String, TypeDef>,
@@ -199,6 +241,9 @@ impl OuterP {
     /// Port of `parseStmt`.
     fn parse_stmt(&mut self) -> Result<FuncCall, CapyError> {
         let start_tok = self.peek();
+        // PLAN-2026-0001 R2 — index of the statement's first token, so the span
+        // can be extended over the block body and closer once they are parsed.
+        let stmt_start = self.pos;
         let start_line = start_tok.line;
         let start_col = start_tok.col;
         // `block_err` remembers the FIRST error from a candidate that matched its
@@ -224,6 +269,12 @@ impl OuterP {
             // the `line` / `col` render locals.
             inst.line = start_line;
             inst.col = start_col;
+            // R27 — comments that led this statement. The statement's own span
+            // deliberately EXCLUDES them: a formatter needs the node's range
+            // without its comments, and the comments' ranges separately.
+            if let Some(c) = self.leading.get(&stmt_start) {
+                inst.leading_comments = c.clone();
+            }
 
             // Delimiter-mode block: opener is followed directly by `open` (no
             // newline). Named-closer block: opener is followed by NEWLINE then
@@ -373,6 +424,10 @@ impl OuterP {
                     }
                 }
             }
+            // R2 — the span now covers the WHOLE statement: opener, body and
+            // closer. try_match could only see as far as the opener's own
+            // elements, because the body had not been parsed yet.
+            inst.span = self.span_between(stmt_start, self.pos);
             return Ok(inst);
         }
 
@@ -550,9 +605,44 @@ impl OuterP {
         }
     }
 
+    /// PLAN-2026-0001 R1–R4 — the span covering `toks[from .. to)`.
+    ///
+    /// `Token` carries `line`, `col` and `width`; the end column is
+    /// `col + width`, exclusive. `width` is documented as "zero means unset,
+    /// fall back to `text.len()`", so that fallback is applied here rather than
+    /// at every call site. Structural tokens (NEWLINE, INDENT, DEDENT, EOF) have
+    /// `col == 0` and are skipped — they are not source the user wrote, and
+    /// including them would drag a span back to column 0.
+    fn span_between(&self, from: usize, to: usize) -> Span {
+        let mut first: Option<&Token> = None;
+        let mut last: Option<&Token> = None;
+        for t in self.toks.iter().take(to.min(self.toks.len())).skip(from) {
+            if t.col == 0 {
+                continue;
+            }
+            if first.is_none() {
+                first = Some(t);
+            }
+            last = Some(t);
+        }
+        match (first, last) {
+            (Some(f), Some(l)) => {
+                let width = if l.width > 0 { l.width } else { l.text.len() };
+                Span::new(f.line, f.col, l.line, l.col + width)
+            }
+            // Nothing consumed — an optional capture that bound its default, or
+            // a zero-width match. Leave it unset rather than inventing a range.
+            _ => Span::default(),
+        }
+    }
+
     /// Port of `tryMatch`.
     fn try_match(&mut self, f: &FuncDef) -> Result<FuncCall, CapyError> {
         let mut caps: BTreeMap<String, CaptureValue> = BTreeMap::new();
+        // PLAN-2026-0001 R2/R4 — where this shape's match begins. Previously the
+        // FuncCall built at the end of this function was stamped
+        // `line: 0, col: 0`, which is what made every nested node unlocatable.
+        let match_start = self.pos;
         for i in 0..f.elements.len() {
             let el = f.elements[i].clone();
             // Auto-skip an optional comma between consecutive captures.
@@ -578,7 +668,9 @@ impl OuterP {
             // possibly repeated (`type*` / `type+`) with an optional separator
             // literal — and store the matched sub-FuncCall(s).
             if el.is_func {
-                let val = self.capture_func_type(&el)?;
+                let cap_start = self.pos;
+                let mut val = self.capture_func_type(&el)?;
+                val.span = self.span_between(cap_start, self.pos);
                 caps.insert(el.name.clone(), val);
                 continue;
             }
@@ -599,17 +691,25 @@ impl OuterP {
                 break;
             }
             let stop = next_literals(&f.elements[i + 1..]);
-            let val = self.capture_value(&el.cap_type, &stop)?;
+            let cap_start = self.pos;
+            let mut val = self.capture_value(&el.cap_type, &stop)?;
+            val.span = self.span_between(cap_start, self.pos);
             caps.insert(el.name.clone(), val);
         }
+        let span = self.span_between(match_start, self.pos);
         Ok(FuncCall {
             func: f.name.clone(),
             captures: caps,
             body: None,
             closer: None,
             sections: BTreeMap::new(),
-            line: 0,
-            col: 0,
+            // R4: real positions, not the zeros this site used to stamp. R5: the
+            // `line`/`col` render locals keep their meaning — they are the
+            // span's start.
+            line: span.start_line,
+            col: span.start_col,
+            span,
+            leading_comments: Vec::new(),
         })
     }
 
@@ -628,6 +728,27 @@ impl OuterP {
     /// occurrences. A zero-progress guard prevents an infinite loop if a
     /// sub-function can match while consuming no tokens.
     fn capture_func_type(&mut self, el: &PatternElement) -> Result<CaptureValue, CapyError> {
+        // R0 — bound the descent. Without this, deeply nested input aborts the
+        // process rather than returning an error.
+        if self.depth >= MAX_PARSE_DEPTH {
+            let t = self.peek();
+            return Err(CapyError::new(
+                t.line,
+                t.col,
+                format!(
+                    "nesting too deep (limit {MAX_PARSE_DEPTH}) while matching {} — \
+the source nests further than the parser will follow",
+                    gofmt::quote(&el.cap_type)
+                ),
+            ));
+        }
+        self.depth += 1;
+        let out = self.capture_func_type_inner(el);
+        self.depth -= 1;
+        out
+    }
+
+    fn capture_func_type_inner(&mut self, el: &PatternElement) -> Result<CaptureValue, CapyError> {
         let target = match self.by_name.get(&el.cap_type).cloned() {
             None => {
                 return Err(CapyError::msg(format!(
@@ -919,7 +1040,7 @@ impl OuterP {
         // emits the literal text "x > 0".
         let x = parse_value(self, stop)?;
         let text = expr_to_text(&x);
-        Ok(CaptureValue { is_expr: true, expr: Some(x), text, sub: Vec::new() })
+        Ok(CaptureValue { is_expr: true, expr: Some(x), text, sub: Vec::new(), span: Span::default() })
     }
 
     /// Port of `captureGroup`.

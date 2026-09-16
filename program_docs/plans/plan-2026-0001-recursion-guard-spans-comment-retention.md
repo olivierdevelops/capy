@@ -2,11 +2,11 @@
 document_id: PLAN-2026-0001
 title: Implementation Plan — Recursion Guard, Source Spans and Comment Retention
 document_type: plan
-status: draft
+status: completed
 
 created_date: 2026-09-16
 last_updated: 2026-09-16
-document_revision: 4
+document_revision: 5
 
 authors:
   - Olivier
@@ -60,7 +60,7 @@ next_review_date: 2027-03-16
 
 # Implementation Plan — Recursion Guard, Source Spans and Comment Retention
 
-> **Status:** Draft
+> **Status:** Completed
 > **Created:** 2026-09-16
 > **Last Updated:** 2026-09-16
 > **Affected Versions:** 0.21.0
@@ -117,21 +117,21 @@ one mistakes the interim path for a supported API.
 
 | State | Count | Notes |
 |---|---:|---|
-| NOT STARTED | 4 | TASK-044…047 — commit, tag, post-release verification |
+| NOT STARTED | 0 | |
 | IN PROGRESS | 0 | |
 | BLOCKED | 0 | |
-| DONE | 41 | P1–P4 complete: guard, spans, comments, 18 documents, 6 doc pages, version bump |
+| DONE | 45 | all phases P1–P5 |
 | FAILED | 0 | |
-| DEFERRED | 2 | TASK-008, TASK-009 — byte offsets |
+| DEFERRED | 2 | TASK-008, TASK-009 — byte offsets, with a recorded reason |
 | FAILED | 0 | |
 | DEFERRED | 0 | |
 
-- **Current phase:** P5 — P1 through P4 complete. Remaining: commit, tag `v0.21.0`, post-release verification.
+- **Current phase:** **COMPLETE.** All five phases exited. 0.21.0 tagged at `cf5f2f1` and pushed.
 - **Gates at 2026-09-16:** 83 tests pass · 0 clippy findings · `capy check` 117/117 · goldens 116 pass / 0 fail · wasm 113 pass / 0 fail · `mkdocs --strict` OK · M-01 186–210 µs (baseline 187–219) · M-02 +1.38 % (allowance 5 %) · M-03 1 dep
 - **Next action:** obtain proposal approval and record ADR-0001. **D-02 and D-03 are already resolved** (2026-09-16) and both came back favourable — see the Decisions table
 - **Blockers:** none. ADR-0001 records the approval decision. **No technical blocker remains** — the two unknowns that could have grown P2 both resolved in the plan's favour
 - **Last updated:** 2026-09-16T00:00:00+08:00
-- **Release target:** 0.21.0
+- **Release target:** 0.21.0 — **released**
 
 ---
 
@@ -304,10 +304,10 @@ span excludes its attached comments (R27, review residual 1).
 | TASK-041 | P5 | Bump `[workspace.package] version` to 0.21.0 | — | `rust/Cargo.toml` | T-10 | TASK-039 | Capy Engine | **DONE** | workspace version 0.12.0 -> 0.21.0; five dependent pins followed |
 | TASK-042 | P5 | Author REL-0.21.0 release document | all | `program_docs/releases/` | §33 | TASK-041 | Release Mgmt | **DONE** | REL-0.21.0 written |
 | TASK-043 | P5 | Update all four indexes | — | `program_docs/index/*.md` | §17 | TASK-042 | Capy Engine | **DONE** | all four indexes updated; three created |
-| TASK-044 | P5 | Commit release state; record commit hash; create and verify tag `v0.21.0` | — | repository | §32 | TASK-042 | Capy Engine | NOT STARTED | |
-| TASK-045 | P5 | Confirm git rules honoured — staged by name, no `git add -A`, no force-push, no `--no-verify` | — | repository | manual | TASK-044 | Capy Engine | NOT STARTED | |
-| TASK-046 | P5 | Post-release verification: re-run DEMO-2026-0001 against the tag | all | — | `program_docs/demos/` | TASK-044 | Capy Engine | NOT STARTED | |
-| TASK-047 | P5 | Finalize REL-0.21.0 with commit hash, tag and verification status | — | `program_docs/releases/` | §32 | TASK-046 | Release Mgmt | NOT STARTED | |
+| TASK-044 | P5 | Commit release state; record commit hash; create and verify tag `v0.21.0` | — | repository | §32 | TASK-042 | Capy Engine | **DONE** | release state committed `cf5f2f1`; tag `v0.21.0` created and verified at that commit |
+| TASK-045 | P5 | Confirm git rules honoured — staged by name, no `git add -A`, no force-push, no `--no-verify` | — | repository | manual | TASK-044 | Capy Engine | **DONE** | staged by name throughout; no `git add -A`, no force-push, no `--no-verify` |
+| TASK-046 | P5 | Post-release verification: re-run DEMO-2026-0001 against the tag | all | — | `program_docs/demos/` | TASK-044 | Capy Engine | **DONE** | checked out the tag, rebuilt, re-ran U-01 — exit 1 as expected |
+| TASK-047 | P5 | Finalize REL-0.21.0 with commit hash, tag and verification status | — | `program_docs/releases/` | §32 | TASK-046 | Release Mgmt | **DONE** | REL-0.21.0 completed with the commit hash; version and document indexes updated |
 
 ---
 
@@ -553,3 +553,4 @@ start immediately or wait for consumer feedback on spans.
 | 2 | 2026-09-16 | Olivier | P1 discovery executed (read-only). D-02 and D-03 both RESOLVED and recorded with evidence; TASK-002 and TASK-003 `DONE`; the D-02 risk row retired. No technical blocker remains; P2 entry is gated only on proposal approval and ADR-0001 |
 | 3 | 2026-09-16 | Olivier | P2/P3 executed for R0, R0b and R1–R5. Recursion guard and depth bound implemented; spans populated including the former `line: 0, col: 0` site; 15 new tests; all regression gates and all three measurements green. Three deviations/findings recorded: byte offsets deferred, deep *input* also aborts so R0 needs both mechanisms, depth limit 64 not 256. R27 remains. |
 | 4 | 2026-09-16 | Olivier | P2 completed with R27 (comment retention via a separate lexer entry point, trivia stripped in the parser). P3 documents written (TEST-2026-0001…0004, RPT-2026-0001). P4 complete: 6 `docs/` pages, a new golden sample that moved the corpus 116→117, and SYS/ARCH/MAN/DEMO/ADR/REL plus all four indexes — 18 `program_docs` documents. Version bumped to 0.21.0 with five dependent pins. Section 31 decision recorded. 41 of 47 tasks DONE, 2 DEFERRED, 4 remaining (commit, tag, verify). |
+| 5 | 2026-09-16 | Olivier | P5 complete. Five commits, tag `v0.21.0` at `cf5f2f1`, pushed. Post-release verification re-run against the tag. One correction during tagging: the tag was briefly moved to the finalization commit, which contradicted both the hash recorded in REL-0.21.0 and section 32's sequence; restored to the release-state commit. Plan status `completed`. |

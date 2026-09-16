@@ -12,7 +12,7 @@ Lookup by ID, type, status, component and owner, per `DOCUMENTATION.md` §17.
 | ID | Title | Type | Status | Components | Owner | Last Updated | Path |
 |---|---|---|---|---|---|---|---|
 | REF-2026-0001 | Documentation, Traceability and Release Standard | reference | active | docs | Engineering Documentation Team | 2026-09-16 | [`DOCUMENTATION.md`](../../DOCUMENTATION.md) |
-| PLAN-2026-0001 | Implementation Plan — Recursion Guard, Source Spans and Comment Retention | plan | draft | capy-core, capy-cli, docs | Capy Engine | 2026-09-16 | [`plans/plan-2026-0001-recursion-guard-spans-comment-retention.md`](../plans/plan-2026-0001-recursion-guard-spans-comment-retention.md) |
+| PLAN-2026-0001 | Implementation Plan — Recursion Guard, Source Spans and Comment Retention | plan | completed | capy-core, capy-cli, docs | Capy Engine | 2026-09-16 | [`plans/plan-2026-0001-recursion-guard-spans-comment-retention.md`](../plans/plan-2026-0001-recursion-guard-spans-comment-retention.md) |
 | PROP-2026-0001 | Parser Foundations — Spans, Error Recovery, Structured AST Output and Expression Trees | proposal | draft (rev 4) | capy-core, capy-cli, capy-wasm-abi, docs | Capy Engine | 2026-09-16 | [`proposals/prop-2026-0001-parser-foundations.md`](../proposals/prop-2026-0001-parser-foundations.md) |
 
 | ADR-0001 | Approve PROP-2026-0001 and its Frozen Contracts | decision | approved | capy-core | Capy Engine | 2026-09-16 | [`decisions/adr-0001-approve-parser-foundations.md`](../decisions/adr-0001-approve-parser-foundations.md) |

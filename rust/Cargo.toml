@@ -5,7 +5,7 @@ members = ["cli", "devtools", "mcp", "playground", "wasm"]
 # the version numbers from drifting apart and gives each publishable crate the
 # license/repository fields crates.io requires.
 [workspace.package]
-version = "0.12.0"
+version = "0.21.0"
 edition = "2021"
 rust-version = "1.74"
 license = "MIT"

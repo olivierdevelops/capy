@@ -14,7 +14,7 @@ name = "capy-mcp"
 path = "src/main.rs"
 
 [dependencies]
-capy-core = { path = "..", version = "0.12.0" }
+capy-core = { path = "..", version = "0.21.0" }
 # The MCP transport needs JSON *parsing*; the engine crate only ever writes JSON,
 # so serde lives here rather than becoming an engine dependency.
 serde = { version = "1", features = ["derive"] }

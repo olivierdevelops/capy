@@ -6,7 +6,7 @@ status: active
 
 created_date: 2026-09-16
 last_updated: 2026-09-16
-document_revision: 1
+document_revision: 2
 
 authors:
   - Olivier
@@ -68,7 +68,7 @@ Baseline* table.
 ## Provenance
 
 These rules **codify practice that was already binding**, not new policy. Every
-one restates something already enforced by `CLAUDE.md`, by the verification gates
+one restates something already enforced by `AGENTS.md`, by the verification gates
 run on every change, or by a decision recorded in `ADR-0001`. Nothing here was
 invented for this index.
 
@@ -158,6 +158,7 @@ cost paid to make the rule holdable, not a departure from it.
 | Date | Change |
 |---|---|
 | 2026-09-16 | Index created; STD-2026-0001…0006 authored at revision 1, codifying existing practice |
+| 2026-09-16 | References retargeted from `CLAUDE.md` to `AGENTS.md`, which is now the authoritative instruction file. The rules are unchanged — only where a contributor reads them moved. Historical documents (proposals, plans, releases) keep their original citation, because they record what was validated at the time |
 
 ## Retroactive validation
 
@@ -172,3 +173,4 @@ changes were already held to.
 | Revision | Date | Author | Change |
 |---|---|---|---|
 | 1 | 2026-09-16 | Olivier | Initial index |
+| 2 | 2026-09-16 | Olivier | Retargeted rule provenance from `CLAUDE.md` to `AGENTS.md` |

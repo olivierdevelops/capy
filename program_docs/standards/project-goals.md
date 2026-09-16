@@ -58,7 +58,7 @@ next_review_date: 2027-03-16
 
 ## Summary
 
-Two goals. Both are already stated in `CLAUDE.md`; this records them as rules
+Two goals. Both are already stated in `AGENTS.md`; this records them as rules
 with IDs so a proposal can be validated against them.
 
 ---
@@ -124,4 +124,4 @@ token kind it was not written for.
 
 | Revision | Date | Author | Change |
 |---|---|---|---|
-| 1 | 2026-09-16 | Olivier | Initial standard, codifying rules already enforced in `CLAUDE.md` and in the verification gates |
+| 1 | 2026-09-16 | Olivier | Initial standard, codifying rules already enforced in `AGENTS.md` and in the verification gates |

@@ -129,4 +129,4 @@ depth case. **Enforcement.** Blocking. **Owner.** Capy Engine.
 
 | Revision | Date | Author | Change |
 |---|---|---|---|
-| 1 | 2026-09-16 | Olivier | Initial standard, codifying rules already enforced in `CLAUDE.md` and in the verification gates |
+| 1 | 2026-09-16 | Olivier | Initial standard, codifying rules already enforced in `AGENTS.md` and in the verification gates |

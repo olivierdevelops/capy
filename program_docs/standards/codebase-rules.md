@@ -58,7 +58,7 @@ next_review_date: 2027-03-16
 
 ## Summary
 
-Verbatim restatements of `CLAUDE.md`, given IDs. `CLAUDE.md` remains the copy a
+Verbatim restatements of `AGENTS.md`, given IDs. `AGENTS.md` remains the copy a
 contributor reads; this is the copy a proposal validates against.
 
 ---
@@ -72,7 +72,7 @@ contributor reads; this is the copy a proposal validates against.
 **Rationale.** The working tree routinely contains the user's own in-progress
 work; a blanket stage sweeps it into someone else's commit.
 
-**Example.** `AGENTS.md` and `CLAUDE.md` carried uncommitted user edits
+**Example.** `AGENTS.md` and `AGENTS.md` carried uncommitted user edits
 throughout the 0.21.0 and 0.22.0 work and were left untouched in every commit.
 
 **Validation.** Review of the staged set before each commit.
@@ -113,4 +113,4 @@ this `NOT APPLICABLE` — neither added a directive or capture type.
 
 | Revision | Date | Author | Change |
 |---|---|---|---|
-| 1 | 2026-09-16 | Olivier | Initial standard, codifying rules already enforced in `CLAUDE.md` and in the verification gates |
+| 1 | 2026-09-16 | Olivier | Initial standard, codifying rules already enforced in `AGENTS.md` and in the verification gates |

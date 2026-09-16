@@ -34,7 +34,7 @@ Lookup by ID, type, status, component and owner, per `DOCUMENTATION.md` §17.
 | TEST-2026-0008 | Test — Measured Results for 0.22.0 | test | completed | capy-core, capy-wasm-abi | Capy Engine | 2026-09-16 | [`testing/test-2026-0008-measured-results-0.22.0.md`](../testing/test-2026-0008-measured-results-0.22.0.md) |
 | RPT-2026-0002 | Validation of PLAN-2026-0002 | report | completed | capy-core, capy-cli | Capy Engine | 2026-09-16 | [`reports/rpt-2026-0002-plan-2026-0002-validation.md`](../reports/rpt-2026-0002-plan-2026-0002-validation.md) |
 | DEMO-2026-0002 | Release Verification Guide — 0.22.0 | demo | active | capy-core, capy-cli | Capy Engine | 2026-09-16 | [`demos/demo-2026-0002-release-verification-0.22.0.md`](../demos/demo-2026-0002-release-verification-0.22.0.md) |
-| REL-0.22.0 | Release 0.22.0 — Diagnostics, Recovery, AST Output and Precedence | release | draft | capy-core, capy-cli | Release Management | 2026-09-16 | [`releases/rel-0.22.0-release-notes.md`](../releases/rel-0.22.0-release-notes.md) |
+| REL-0.22.0 | Release 0.22.0 — Diagnostics, Recovery, AST Output and Precedence | release | completed | capy-core, capy-cli | Release Management | 2026-09-16 | [`releases/rel-0.22.0-release-notes.md`](../releases/rel-0.22.0-release-notes.md) |
 
 ## By status
 

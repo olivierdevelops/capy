@@ -2,11 +2,11 @@
 document_id: REL-0.22.0
 title: Release 0.22.0 — Diagnostics, Recovery, AST Output and Precedence
 document_type: release
-status: draft
+status: completed
 
 created_date: 2026-09-16
 last_updated: 2026-09-16
-document_revision: 1
+document_revision: 2
 
 authors:
   - Olivier
@@ -64,7 +64,7 @@ next_review_date: 2027-03-16
 
 # Release 0.22.0 — Diagnostics, Recovery, AST Output and Precedence
 
-> **Status:** Draft
+> **Status:** Completed
 > **Created:** 2026-09-16
 > **Last Updated:** 2026-09-16
 > **Affected Versions:** 0.22.0
@@ -84,7 +84,7 @@ are addressed.
 | Version | 0.22.0 |
 | Previous version | 0.21.0 |
 | Tag | `v0.22.0` |
-| Commit | *pending — recorded at tagging* |
+| Commit | `f72fa3d0849d48527454b492e2ed7a4a1db76e7b` |
 | Version source | `rust/Cargo.toml` `[workspace.package] version` |
 
 ## Plan
@@ -194,4 +194,5 @@ For Rust consumers:
 
 | Revision | Date | Author | Change |
 |---|---|---|---|
-| 1 | 2026-09-16 | Olivier | Initial release document; commit and tag pending |
+| 1 | 2026-09-16 | Olivier | Initial release document |
+| 2 | 2026-09-16 | Olivier | Finalized: commit `f72fa3d` recorded, tag `v0.22.0` created, post-release verification re-run against the tag |

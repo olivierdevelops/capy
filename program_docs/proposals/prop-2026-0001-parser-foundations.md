@@ -2,11 +2,11 @@
 document_id: PROP-2026-0001
 title: Parser Foundations — Spans, Error Recovery, Structured AST Output and Expression Trees
 document_type: proposal
-status: draft
+status: implemented
 
 created_date: 2026-09-16
 last_updated: 2026-09-16
-document_revision: 4
+document_revision: 5
 
 authors:
   - Olivier
@@ -40,7 +40,15 @@ scope: Defines five additive parser changes — a left-recursion guard, source s
 
 reason: A downstream consumer (Glang) cannot host a language on Capy today: a left-recursive library aborts the process, interior AST nodes carry no source position, a failed parse reports only "no function matched" and stops at the first error, the parse result is reachable only as rendered text, and infix arithmetic never becomes a tree.
 
-related_documents: []
+related_documents:
+  - ADR-0001
+  - ADR-0002
+  - PLAN-2026-0001
+  - PLAN-2026-0002
+  - RPT-2026-0001
+  - RPT-2026-0002
+  - REL-0.21.0
+  - REL-0.22.0
 
 supersedes: null
 superseded_by: null
@@ -60,7 +68,7 @@ next_review_date: 2027-03-16
 
 # Parser Foundations — Spans, Error Recovery, Structured AST Output and Expression Trees
 
-> **Status:** Draft
+> **Status:** Implemented
 > **Created:** 2026-09-16
 > **Last Updated:** 2026-09-16
 > **Affected Versions:** 0.21.0 and later
@@ -321,16 +329,30 @@ BEFORE (verified 2026-09-16)        AFTER (required)
 
 ## Project Validation
 
-| Rule | Applicability | Proposal Evidence | Initial Result | Exception or Follow-Up |
+| Rule | Applicability | Proposal Evidence | Result | Exception or Follow-Up |
 |---|---|---|---|---|
-| `CLAUDE.md` — "Keep engine changes additive — no existing library should break" | Applies | R5, R12, R24; golden corpus, `capy check` over 117 libraries, and UQ-06 Test J are acceptance gates | PASS | none |
-| `CLAUDE.md` — "Library-authoring keyword list — KEEP IT IN SYNC" | Applies | G-05 changes value-expression grammar, not directives or capture types; `docs/language-reference.md` and `docs/inner-dsl.md` are in the F-table | PARTIAL | plan must confirm no `docs/library-keywords.md` row changes |
-| `CLAUDE.md` — "Before committing: build, clippy, test, mkdocs --strict all green" | Applies | T-10 | PASS | none |
-| `CLAUDE.md` — "Git: commit only when asked; stage files by name" | Applies | Proposal authorizes no commits | NOT APPLICABLE | none |
-| Formal project-standards set (`ARCH`/`QUAL`/`PHIL`) | Unclear | No `program_docs/standards/` exists | NEEDS HUMAN REVIEW | owner to decide whether to author one before review |
-| Reliability — an engine must not abort its host process | Applies | P-07 reproduced (rc=134); R0/R0b make it a `CapyError` | PARTIAL | `FAIL` until R0 is planned; tracked as PLAN-A's first gate |
+| GOAL-001 — zero source-language grammar | Applies | R10 adds operators to **value expressions**, the engine's own fixed grammar; a built-in expression grammar for source languages is Non-Goal 5 | PASS | none |
+| GOAL-002 — engine changes are additive | Applies | R5, R12, R24; whole-corpus regression is the acceptance gate | PASS | none |
+| PHIL-001 — verify before recording | Applies | P-01…P-08 each carry file:line evidence read from the tree; P-07 was reproduced | PASS | none |
+| PHIL-002 — record deviations | Applies | Non-Goals 1–9 state what is declined and why; UQ-02's "cannot become a tree" is corrected rather than repeated | PASS | none |
+| CODE-001 — commit only when asked | Applies | The proposal authorizes no commits | NOT APPLICABLE | none |
+| CODE-002 — helper list in sync | Applies | No helper added or changed | NOT APPLICABLE | none |
+| CODE-003 — keyword list in sync | Applies | No directive or capture type added or changed; G-05 touches value expressions only | PASS | plans confirmed no `docs/library-keywords.md` row changed |
+| ARCH-001 — a public field never changes type | Applies | R22 puts error nodes in a parallel `Block.errors`; widening `stmts` is recorded as rejected in Alternatives | PASS | none |
+| ARCH-002 — one dependency | Applies | R8 requires `gojson`, not serde | PASS | none |
+| ARCH-003 — never abort the host | Applies | P-07 reproduced (rc=134); R0 and R0b make it a `CapyError` | PASS | this rule was **derived from** this proposal's finding |
+| QUAL-001 — whole-corpus regression | Applies | R12; 117 libraries and the full golden corpus | PASS | none |
+| QUAL-002 — measurable claims predeclared | Applies | M-01…M-04 with baselines frozen before implementation | PASS | none |
+| QUAL-003 — a test must be able to fail | Applies | T-27 exists because no golden can contain arithmetic | PASS | none |
+| GATE-001 / GATE-002 | Applies | T-10…T-13 | PASS | none |
 
-No rule assessed `FAIL`; nothing blocks promotion to human review. Agent validation is not approval.
+No rule assessed `FAIL`. Agent validation is not approval; the approval decision
+is `ADR-0001`.
+
+Two rules trace their origin to this proposal rather than the reverse:
+**ARCH-003** was written because P-07 showed an engine could abort its host, and
+**QUAL-003** because T-27 showed a whole class of defect the golden suite could
+not see.
 
 ---
 
@@ -753,8 +775,17 @@ belong in the plans, after discovery.
 
 | Role | Name | Decision | Date | Notes |
 |---|---|---|---|---|
-| Owner | Capy Engine | pending | — | — |
-| Consumer | Glang | pending | — | Open Questions 3, 7, 8 need their input |
+| Owner | Capy Engine | **approved** | 2026-09-16 | Recorded in `ADR-0001` |
+| Consumer | Glang | answered OQ-12 | 2026-09-16 | OQ-3, OQ-7, OQ-9 remain open — see below |
+
+**Implementation status: complete.** All five increments released:
+PLAN-2026-0001 → 0.21.0, PLAN-2026-0002 → 0.22.0 (consolidating PLAN-B…E per
+`ADR-0002`). Validation in RPT-2026-0001 and RPT-2026-0002.
+
+Three open questions survive the implementation and are **not** blockers for what
+shipped, but shape what is built on it: OQ-3 (JSON error shape — expensive to
+change once pinned), OQ-7 (`and`/`or` scope — answered in practice by shipping
+both), OQ-9 (wasm ABI exposure).
 
 Agent validation recorded under *Project Validation* is not approval.
 
@@ -778,3 +809,4 @@ Agent validation recorded under *Project Validation* is not approval.
 | 2 | 2026-09-16 | Olivier | Added error recovery from `capy_error.md` (UQ-06): left-recursion guard (P-07, verified crash), furthest-failure tracking, expectation vocabulary, resync and error nodes. Superseded R6 with `ParseResult`. Retitled; five plans instead of three. |
 | 3 | 2026-09-16 | Olivier | Review findings 1–4. Added T-27 (round-trip, structural equality) — T-12 provably cannot detect `expr_to_text` omission, since no golden contains arithmetic. Changed the error-node representation to a parallel `Block.errors`, keeping `Block.stmts: Vec<FuncCall>` — reviewer's option B, chosen over option A because a reserved `__error` name lets an un-updated walker silently misread an error as code. Added R26 (context frame, previously narrative-only) and R27 (comment retention, previously neither required nor deferred; verified that `TokenKind` has no `Comment` variant). |
 | 4 | 2026-09-16 | Olivier | Consumer answered OQ-12: comment attachment scoped **by artifact** — leading-only suffices for compiler/analyzer and LSP hover; a formatter needs trailing and interior. Recorded the two expansion triggers (Capy emitting a formatter; hosting a `vhco:`-style annotation system, whose trailing comments are semantically load-bearing). Residual 1: R27 now pins that a node's span **excludes** attached comments, with T-31 and a mandatory line in `docs/ast-json.md`. Residual 2: added R28 — `docs/embedding.md` must state that `stmts` alone does not mean the parse succeeded. |
+| 5 | 2026-09-16 | Olivier | Status `draft` → `implemented`. Project Standards Baseline revalidated against `STD-2026-0000` revision 1, replacing the `NEEDS HUMAN REVIEW` forced by the absence of a standards set; no result moved off `PASS`. Approval and consolidation decisions linked (`ADR-0001`, `ADR-0002`). |

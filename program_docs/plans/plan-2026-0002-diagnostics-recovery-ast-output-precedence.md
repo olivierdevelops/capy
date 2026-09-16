@@ -6,7 +6,7 @@ status: completed
 
 created_date: 2026-09-16
 last_updated: 2026-09-16
-document_revision: 2
+document_revision: 3
 
 authors:
   - Olivier
@@ -163,12 +163,16 @@ statement in the inner DSL (Non-Goal 4).
 
 | Rule | Plan Impact | Validation |
 |---|---|---|
-| `program_docs/standards/index.md` | Still does not exist | `NEEDS HUMAN REVIEW`, as in PLAN-2026-0001 |
-| `CLAUDE.md` — additive; no existing library breaks | Binding; **the highest risk in this plan** | T-11, T-12, T-27 |
-| `CLAUDE.md` — build, clippy, test, mkdocs green | P3 exit gate | T-10 |
-| `CLAUDE.md` — library keyword list in sync | R10 changes value-expression grammar, not directives | confirm no `docs/library-keywords.md` row changes |
-| `CLAUDE.md` — commit by name, no force-push | Binding on P5 | manual |
-| `DOCUMENTATION.md` §21.3 | M-01, M-02 re-measured against the same frozen baselines | TEST |
+| `program_docs/standards/index.md` revision 1 | Now exists (`STD-2026-0000`); revalidated against real rule IDs | see rows below |
+| GOAL-002 — engine changes are additive | Binding; **the highest risk in this plan** | T-11, T-12, T-27 |
+| ARCH-001 — a public field never changes type | R22: error nodes in a parallel `Block.errors` | T-30 |
+| GATE-001 — pre-commit gate | P3 exit gate | T-10 |
+| CODE-003 — keyword list in sync | R10 changes value-expression grammar, not directives | confirmed: no `docs/library-keywords.md` row changed |
+| CODE-001 — commit only when asked; stage by name | Binding on P5 | manual |
+| QUAL-002 — measurable claims predeclared | M-01, M-02 re-measured against the same frozen baselines | TEST-2026-0008 |
+| QUAL-001 — whole-corpus regression | 117 libraries, full golden corpus, wasm corpus | GATE-002 |
+| QUAL-003 — a test must be able to fail | T-27 exists because no golden can contain arithmetic | TEST-2026-0006 |
+| ARCH-002 — one dependency | R8: `gojson`, not serde | TEST-2026-0008 |
 | `DOCUMENTATION.md` §31 | Decision recorded per row at P4 | P4 exit gate |
 
 ## Measurable Claims
@@ -271,6 +275,172 @@ because arithmetic is a parse error today. That is what T-27 exists for.
 | TASK-023 | P4 | TEST / RPT / DEMO / MAN / SYS / ARCH documents | all | `program_docs/` | — | **DONE** |
 | TASK-024 | P5 | Version 0.22.0, REL, indexes, commit, tag, verify | — | — | — | **DONE** |
 
+## File and Artifact Checklist
+
+| ID | Category | Exact Path | CRUD | Planned Edit | Requirements / Tasks | Status | Verification |
+|---|---|---|---|---|---|---|---|
+| F-01 | production | `rust/src/domain/errors.rs` | UPDATE | `Severity`, `Label`, `ContextFrame`, `Diagnostic`, `codes`, `format_diagnostic` | R18, R26 / TASK-008, 009 | **DONE** | T-14…T-17 |
+| F-02 | production | `rust/src/domain/ast.rs` | UPDATE | `ErrorNode`, `Block.errors`, `Expr::Binary`, `BinaryExpr`, `#[non_exhaustive]` on `Block` | R10, R22 / TASK-010, 017 | **DONE** | T-21, T-07 |
+| F-03 | production | `rust/src/orchestrator/features/make_parser.rs` | UPDATE | `Expectation`, `Furthest`, `note_failure`, `furthest_error`, ctx stack, resync, cascade, `parse_recovering` | R14–R21 / TASK-004…007, 011, 012 | **DONE** | T-14…T-20 |
+| F-04 | production | `rust/src/orchestrator/features/value_parser.rs` | UPDATE | Precedence climbing; conditional grouping | R10, R11 / TASK-017 | **DONE** | T-07, T-27 |
+| F-05 | production | `rust/src/orchestrator/features/inner_evaluator.rs` | UPDATE | Evaluate `Expr::Binary`; `arith`; short-circuit `and`/`or` | R10 / TASK-017 | **DONE** | T-08 |
+| F-06 | production | `rust/src/orchestrator/features/expr_to_text.rs` | UPDATE | Round-trip with re-inserted parentheses | R12 / TASK-018 | **DONE** | **T-27** |
+| F-07 | production | `rust/src/orchestrator/features/translate_new_shape.rs` | UPDATE | `render_expr` handles the new node | R12 / TASK-018 | **DONE** | T-27 |
+| F-08 | production | `rust/src/orchestrator/features/make_evaluator.rs` | UPDATE | Refuse emission when `Block.errors` is non-empty | R23 / TASK-014 | **DONE** | T-22 |
+| F-09 | production | `rust/src/capy.rs` | UPDATE | `ParseResult`, `Library::parse` | R6 / TASK-013 | **DONE** | T-02 |
+| F-10 | production | `rust/src/domain/ast_json.rs` | CREATE | Serializer via `gojson` | R8, R9 / TASK-015 | **DONE** | T-05 |
+| F-11 | production | `rust/src/domain/mod.rs` | UPDATE | Register `ast_json` | R8 / TASK-015 | **DONE** | build |
+| F-12 | production | `rust/cli/src/cmd_ast.rs` | CREATE | `capy ast`, tree and JSON modes | R7 / TASK-016 | **DONE** | T-04, T-06 |
+| F-13 | production | `rust/cli/src/main.rs` | UPDATE | Dispatch and help | R7 / TASK-016 | **DONE** | T-06 |
+| F-14 | test | `rust/tests/diagnostics.rs` | CREATE | 14 tests | R14–R26 / TASK-019 | **DONE** | `cargo test` |
+| F-15 | test | `rust/tests/precedence.rs` | CREATE | 6 tests incl. T-27 | R10–R12 / TASK-019 | **DONE** | `cargo test` |
+| F-16 | test | `samples/bbcode-parser/mismatch.expected-error.txt` | UPDATE | Improved message, reviewed not regenerated | R12 / TASK-020 | **DONE** | golden suite |
+| F-17 | docs | `docs/diagnostics.md` | CREATE | Message selection, recovery, resync order, codes | R18, R19 / TASK-021 | **DONE** | mkdocs |
+| F-18 | docs | `docs/ast-json.md` | CREATE | Versioned schema | R9 / TASK-021 | **DONE** | mkdocs |
+| F-19 | docs | `mkdocs.yml` | UPDATE | Nav entries for both pages | R9 / TASK-021 | **DONE** | mkdocs strict |
+| F-20 | docs | `docs/embedding.md` | UPDATE | `Library::parse`, `ParseResult`, the R28 warning | R6, R28 / TASK-022 | **DONE** | mkdocs |
+| F-21 | docs | `docs/cli.md` | UPDATE | `capy ast`, exit codes | R7 / TASK-022 | **DONE** | mkdocs |
+| F-22 | docs | `docs/language-reference.md` | UPDATE | Precedence table replacing the false claim; Go leftover fixed | R10, R11 / TASK-022 | **DONE** | mkdocs |
+| F-23 | docs | `docs/inner-dsl.md` | UPDATE | Operators, short-circuit, numeric behaviour | R10 / TASK-022 | **DONE** | mkdocs |
+| F-24 | docs | `docs/whats-new.md` | UPDATE | 0.22.0 entry | — / TASK-022 | **DONE** | mkdocs |
+| F-25 | version | `rust/Cargo.toml` + 5 dependent manifests | UPDATE | 0.21.0 → 0.22.0 | — / TASK-024 | **DONE** | build |
+| F-26 | generated | `rust/Cargo.lock` | UPDATE | Version propagation | — / TASK-024 | **DONE** | build |
+| F-27 | release | `program_docs/` | CREATE | TEST-2026-0005…0008, RPT-2026-0002, DEMO-2026-0002, REL-0.22.0 | all / TASK-023, 024 | **DONE** | §33 |
+
+**Counts.** production CREATE 2, production UPDATE 11, test CREATE 2, test UPDATE 1,
+docs CREATE 2, docs UPDATE 6, version 1, generated 1, release 1. No DELETE.
+
+## Test and Validation Checklist
+
+| Test ID | Type | Requirement | Scenario | Exact Test File | Expected Result | Status |
+|---|---|---|---|---|---|---|
+| T-14 | unit | R14 | Furthest attempt reported | `rust/tests/diagnostics.rs` | names `` `)` ``, not the generic message | **PASS** |
+| T-15 | unit | R14, R15 | Expectations union at a tie | same | all three alternatives listed | **PASS** |
+| T-16 | unit | R16 | did-you-mean reuse | same | help line emitted | **PASS** |
+| T-17 | unit | R17, R18 | Two-span rendering | same | label on the opening delimiter | **PASS** |
+| T-28 | unit | R26 | Context frame | same | message contains ``in `fn` `` | **PASS** |
+| T-18 | integration | R20 | Three broken statements | same | exactly 3 statements, 2 diagnostics | **PASS** |
+| T-19 | integration | R19 | Cascade suppression | same | one construct, one diagnostic | **PASS** |
+| T-20 | integration | R21 | Delimiter fence | same | 30 following statements survive | **PASS** |
+| T-21 | integration | R22 | Error node; later statements intact | same | statement after the error parses | **PASS** |
+| T-22 | integration | R19, R23 | Cap; refusal to emit | same | ≤ 20 diagnostics; `run` errors | **PASS** |
+| T-25 | unit | R24 | `run` unchanged | same | first error, no output | **PASS** |
+| T-26 | property | R12 | Valid program is clean | same | no diagnostics, no error nodes | **PASS** |
+| T-30 | compatibility | R22 | Old walker over `stmts` | same | compiles; degraded but correct view | **PASS** |
+| T-07 | unit | R10 | Precedence and associativity | `rust/tests/precedence.rs` | `(a*b)+c`, `a+(b*c)`, left-assoc | **PASS** |
+| T-11 | unit | R11 | Comparison ordering | same | `(a+1)==(b*2)` | **PASS** |
+| T-08 | integration | R10 | Evaluation | CLI | 7, 9, 5, 2, 3.5, 2 | **PASS** |
+| **T-27** | property | R10, R12 | **Round-trip, structural equality** | `rust/tests/precedence.rs` | tree unchanged across render/reparse | **PASS** |
+| T-02 | integration | R6 | `Library::parse` from an external crate | scratch crate | both fields readable | **PASS** |
+| T-04 | unit | R7 | Tree renderer | CLI | nodes with spans | **PASS** |
+| T-05 | unit | R7–R9 | JSON well-formed, `schema_version` | CLI + `jq` | parses | **PASS** |
+| T-06 | E2E | R7 | Exit codes, stream discipline | CLI | 0/empty stderr; 1 on broken | **PASS** |
+| T-10a/b/c | build, lint | R12 | `GATE-001` | CI | all green | **PASS** |
+| T-12 | regression | R12 | `GATE-002` corpus | CI | 117/117; goldens 117/0 | **PASS** |
+| T-13 | regression | R13 | wasm corpus | CI | 114/0 | **PASS** |
+| M-01…M-03 | performance, resource | R13, R25 | Measurements | TEST-2026-0008 | within thresholds | **PASS** |
+| — | manual | — | **NOT APPLICABLE** — no UI or HTTP surface exists in this project | — | — | — |
+
+## Documentation and Demo Checklist
+
+| Artifact | Exact Path | Why It Changes | Required Addition | Status |
+|---|---|---|---|---|
+| Diagnostics reference | `docs/diagnostics.md` | New error behaviour users read | CREATE — message selection, recovery, resync order, codes | **DONE** |
+| AST JSON schema | `docs/ast-json.md` | New machine-readable surface | CREATE — versioned schema, span semantics | **DONE** |
+| Nav | `mkdocs.yml` | Two new pages | UPDATE | **DONE** |
+| Embedding guide | `docs/embedding.md` | New public API | UPDATE — `parse`, `ParseResult`, R28 warning | **DONE** |
+| CLI reference | `docs/cli.md` | New subcommand | UPDATE — `capy ast`, exit codes | **DONE** |
+| Language reference | `docs/language-reference.md` | Its arithmetic claim became false | UPDATE — precedence table | **DONE** |
+| Inner DSL | `docs/inner-dsl.md` | Operators usable in conditions | UPDATE | **DONE** |
+| What's new | `docs/whats-new.md` | User-visible change (CODE-002 pattern) | UPDATE | **DONE** |
+| Release verification guide | DEMO-2026-0002 | §29, mandatory | CREATE — four `U-NN`, all executed | **DONE** |
+| Manual | MAN-2026-0001 | Reader needs the new behaviour | UPDATE — revision 2 | **DONE** |
+| System documentation | SYS-2026-0001 | Pipeline and value parser changed | UPDATE — revision 2 | **DONE** |
+| Architecture | ARCH-2026-0001 | Error-node representation realised | UPDATE — revision 2 | **DONE** |
+
+## Section 31 Documentation-Impact Decision
+
+A blank row fails the release gate.
+
+| Artifact | Required result | Decision |
+|---|---|---|
+| Release verification guide / demo | every release | **UPDATED** — DEMO-2026-0002, all four updates executed and PASS |
+| Top-level `README.md` | significant user-visible capability, setup, workflow or headline change | **NOT APPLICABLE** — no install step or primary workflow changes. `capy ast` is a new subcommand, documented in `docs/cli.md`; the README does not enumerate subcommands |
+| `system/` | implemented behaviour or internal interfaces changed | **UPDATED** — SYS-2026-0001 revision 2 |
+| `architecture/` | boundaries, components or data flow changed | **UPDATED** — ARCH-2026-0001 revision 2 |
+| `api/` and CLI reference | commands, flags, schemas or errors changed | **UPDATED** — `docs/cli.md` (new `capy ast` + `--json`), `docs/ast-json.md` (schema), `docs/diagnostics.md` (codes) |
+| `manuals/` | a reader needs new knowledge | **UPDATED** — MAN-2026-0001 revision 2 |
+
+## Version, Release and Rollout Checklist
+
+| Item | Source / Target | Required Action | Status | Evidence |
+|---|---|---|---|---|
+| Version | `rust/Cargo.toml` `[workspace.package]` | 0.21.0 → 0.22.0 | **DONE** | `capy-core v0.22.0` |
+| Dependent pins | 5 member manifests | Follow the workspace version | **DONE** | workspace resolves |
+| Lockfile | `rust/Cargo.lock` | Regenerate | **DONE** | build |
+| Release notes | `program_docs/releases/rel-0.22.0-release-notes.md` | Author per §33 | **DONE** | REL-0.22.0 |
+| Release commit | repository | Commit; record hash | **DONE** | `f72fa3d` |
+| Git tag | repository | Create and verify `v0.22.0` | **DONE** | tag at `f72fa3d` |
+| Rollout | development only | No deployed environment; not published to crates.io | **DONE** | — |
+| Post-release verification | DEMO-2026-0002 | Re-run against the tag | **DONE** | U-01 verified at the tag |
+| Finalize release doc | `program_docs/releases/` | Hash, status | **DONE** | revision 2 |
+
+## Decisions, Findings, Deviations and Blockers
+
+| Timestamp | Type | Task / Requirement | Finding or Decision | Impact | Owner | Linked |
+|---|---|---|---|---|---|---|
+| 2026-09-16T00:00:00+08:00 | Finding | D-01 / TASK-001 | `gojson::marshal` handles nested `Obj` and `List` recursively | R8 met with no new dependency; ARCH-002 holds | Capy Engine | TEST-2026-0007 |
+| 2026-09-16T00:00:00+08:00 | Deviation | R10 / TASK-017 | Parenthesised grouping needed a narrower rule than R10 implied: `(` is the prefix-call form, so grouping applies only when the contents parse as a complete expression that is not a bare identifier | `(upper n)` stays a call; `(foo)` stays a zero-arg call; GOAL-002 preserved | Capy Engine | RPT-2026-0002 |
+| 2026-09-16T00:00:00+08:00 | Finding | R21 / TASK-011 | **Resync consumed whole files.** "Never resync inside an unclosed bracket" is correct only for brackets that eventually close; when one never does, depth stays above zero to EOF. Caught by T-20 with 0 statements surviving | A line break inside an unclosed delimiter is now taken as evidence it is missing | Capy Engine | TEST-2026-0005 |
+| 2026-09-16T00:00:00+08:00 | Decision | R12 / TASK-020 | One error golden updated deliberately rather than regenerated; the old message named the wrong construct | QUAL-001 satisfied; six other error goldens unchanged | Capy Engine | RPT-2026-0002 |
+| 2026-09-16T00:00:00+08:00 | Decision | plan scope | PLAN-B…E consolidated into one plan and one release | Recorded in *Objective, Scope and Proposal Baseline*; permitted by §4.5 | Capy Engine | ADR-0002 |
+
+## Rollout Strategy
+
+Single-environment (development), shipped as a tagged minor release. Consumers
+adopt by bumping their git dependency. Not published to crates.io.
+
+## Completion Criteria and Final Traceability
+
+| Requirement | Implementation | Files | Tests | Docs / Demo | Release | Status |
+|---|---|---|---|---|---|---|
+| R14–R17 | C-08…C-10 | F-01, F-03 | T-14…T-17 | `docs/diagnostics.md` | REL-0.22.0 Changed | **PASS** |
+| R18, R26 | C-11 | F-01 | T-17, T-28 | `docs/diagnostics.md`, MAN | REL-0.22.0 Added | **PASS** |
+| R19–R23 | C-12 | F-02, F-03, F-08 | T-18…T-22 | `docs/diagnostics.md`, DEMO U-02 | REL-0.22.0 Added | **PASS** |
+| R24 | C-12 | F-09 | T-25 | `docs/embedding.md` | REL-0.22.0 Upgrade Notes | **PASS** |
+| R6, R28 | C-03 | F-09, F-20 | T-02 | `docs/embedding.md` | REL-0.22.0 Added | **PASS** |
+| R7–R9 | C-04 | F-10…F-13, F-17, F-18 | T-04…T-06 | `docs/cli.md`, `docs/ast-json.md`, DEMO U-03 | REL-0.22.0 Added | **PASS** |
+| R10, R11 | C-06 | F-04…F-07 | T-07, T-08, T-11, **T-27** | `docs/language-reference.md`, DEMO U-04 | REL-0.22.0 Added | **PASS** |
+| R12 | C-05, C-06, C-12 | F-16 | T-12, T-26, T-27, T-30 | — | REL-0.22.0 | **PASS** |
+| R13, R25 | C-04, C-09 | — | M-01…M-03 | TEST-2026-0008 | REL-0.22.0 Measured | **PASS** |
+
+**Reverse check.** Every `F-NN` maps to a requirement and a task; every `T-NN`
+maps to a requirement or is marked `NOT APPLICABLE` with a reason; no requirement
+lacks an implementation or a validation method.
+
+## Post-Implementation Review
+
+Two findings are worth carrying forward.
+
+**A discovery answer that looks favourable can still be incomplete.** D-03 in the
+predecessor plan established that left recursion is statically decidable, which
+made the parse-time depth bound look like a backstop. It was not: deeply nested
+*input* against a perfectly valid library still aborted. The same shape recurred
+here — a resync rule that is correct for well-formed input was exactly wrong for
+the malformed input it exists to handle.
+
+**The compiler is a better reviewer than a checklist for exhaustive changes.**
+Adding `Expr::Binary` produced a compile error at every site that had to learn
+it, including `expr_to_text` — the one whose omission would have corrupted output
+silently. The checklist in the plan named three of those sites; the compiler
+named five.
+
+**On consolidating four plans into one:** correct here, and it should not become
+a habit. It worked because the four increments genuinely could not ship
+separately. Where increments *are* independently releasable, four ledgers give
+four honest status summaries, and this one had to carry four phases' worth of
+findings in a single Decisions table.
+
 ## Rollback Strategy
 
 Each step is independently revertible because the types layer rather than
@@ -302,3 +472,4 @@ answer; the rest are decided here and recorded in the Decisions table.
 |---|---|---|---|
 | 1 | 2026-09-16 | Olivier | Initial plan — PLAN-B…PLAN-E consolidated into one releasable increment, with the deviation from the proposal's plan map recorded |
 | 2 | 2026-09-16 | Olivier | All phases complete; 0.22.0 released. Two deviations recorded: grouping parentheses needed a narrower rule than R10 implied (`(` is the prefix-call form), and resync needed a bound beyond delimiter balance — an unclosed delimiter otherwise holds depth above zero to EOF and consumes the file. One error golden updated deliberately. |
+| 3 | 2026-09-16 | Olivier | Added the eight §12.4 sections this plan was written without (File and Artifact Checklist, Test and Validation Checklist, Documentation and Demo Checklist, §31 decision, Version/Release Checklist, Decisions table, Rollout Strategy, Completion Criteria, Post-Implementation Review). The work they describe was done; the plan simply did not record it in the required form. |

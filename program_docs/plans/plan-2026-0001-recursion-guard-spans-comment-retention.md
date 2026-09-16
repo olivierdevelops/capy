@@ -159,13 +159,14 @@ the plan's binding form.
 
 | Rule | Plan Impact | Validation |
 |---|---|---|
-| `program_docs/standards/index.md` | **Does not exist.** No `ARCH`/`QUAL`/`PHIL` rule IDs available | Recorded as `NEEDS HUMAN REVIEW` in the proposal; PROP OQ-10 asks whether to author a set first. This plan does not block on it |
-| `CLAUDE.md` — engine changes additive, no existing library breaks | Binding on every task | T-11, T-13, T-29 |
-| `CLAUDE.md` — build, clippy, test, `mkdocs build --strict` all green before committing | P3 exit gate | T-10 |
-| `CLAUDE.md` — commit only when asked; stage by name; never `git add -A`; never force-push `main`; never `--no-verify` | Binding on P5 | Manual check at TASK-045 |
-| `CLAUDE.md` — built-in helper list kept in sync | **NOT APPLICABLE** — this plan adds no helper | recorded, not blank |
-| `CLAUDE.md` — library keyword list kept in sync | **NOT APPLICABLE** — this plan adds no directive or capture type | recorded, not blank |
-| `DOCUMENTATION.md` §21.3 — measurable claims predeclared | M-01…M-03 baselines frozen in the proposal before implementation | TEST-2026-0004 |
+| `program_docs/standards/index.md` revision 1 | Now exists (`STD-2026-0000`); this plan is revalidated against real rule IDs | see rows below |
+| GOAL-002 — engine changes are additive | Binding on every task | T-11, T-13, T-29 |
+| ARCH-003 — never abort the host | **The reason this plan exists.** R0, R0b | T-23, T-24 |
+| GATE-001 — pre-commit gate | P3 exit gate | T-10 |
+| CODE-001 — commit only when asked; stage by name | Binding on P5 | Manual check at TASK-045 |
+| CODE-002 — helper list in sync | **NOT APPLICABLE** — this plan adds no helper | recorded, not blank |
+| CODE-003 — keyword list in sync | **NOT APPLICABLE** — this plan adds no directive or capture type | recorded, not blank |
+| QUAL-002 — measurable claims predeclared | M-01…M-03 baselines frozen before implementation | TEST-2026-0004 |
 | `DOCUMENTATION.md` §31 — documentation-impact decision must not be blank | Every row below carries `UPDATED` or `NOT APPLICABLE — <reason>` | P4 exit gate |
 
 ---

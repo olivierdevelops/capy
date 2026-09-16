@@ -33,7 +33,7 @@ as they are needed; the standard does not require them all up front.
 | `architecture/` | architecture | `ARCH` | yes |
 | `manuals/` | manual | `MAN` | yes |
 | `demos/` | demo | `DEMO` | yes |
-| `standards/` | standard | `STD` | **not yet** — see PROP-2026-0001 Open Question 10 |
+| `standards/` | standard | `STD` | yes — [index](standards/index.md), revision 1 |
 | `plans/` | plan | `PLAN` | yes |
 | `decisions/` | decision | `ADR` | yes |
 | `releases/` | release | `REL` | yes |
@@ -46,6 +46,7 @@ as they are needed; the standard does not require them all up front.
 - [Component index](index/component-index.md)
 - [Version index](index/version-index.md)
 - [Decision index](index/decision-index.md)
+- [Project standards](standards/index.md) — the policy proposals validate against
 
 ## Conventions
 

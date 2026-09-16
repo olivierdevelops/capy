@@ -1,3 +1,54 @@
+---
+document_id: IDX-2026-0003
+title: Version Index
+document_type: reference
+status: active
+
+created_date: 2026-09-16
+last_updated: 2026-09-16
+document_revision: 1
+
+authors:
+  - Olivier
+
+owner: Engineering Documentation Team
+reviewers:
+  - Capy Engine
+
+systems:
+  - Capy
+
+components:
+  - docs
+
+affected_versions: not-applicable
+
+applicable_environments:
+  - development
+
+audience:
+  - engineers
+  - release-managers
+
+scope: Lookup of releases by version, with their plan, validation and demo.
+
+reason: DOCUMENTATION.md section 17 requires generated indexes allowing lookup by type, component, version, date, owner and lifecycle status.
+
+related_documents:
+  - REF-2026-0001
+
+supersedes: null
+superseded_by: null
+
+tags:
+  - index
+  - governance
+
+confidentiality: internal
+review_cycle: 6-months
+next_review_date: 2027-03-16
+---
+
 # Version Index
 
 > **Status:** Active

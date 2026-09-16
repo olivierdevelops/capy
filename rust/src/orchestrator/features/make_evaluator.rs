@@ -57,6 +57,20 @@ pub fn run_multi(
     lib: &Library,
     host: Arc<dyn Host + Send + Sync>,
 ) -> Result<(String, BTreeMap<String, String>), CapyError> {
+    // PLAN-2026-0002 R23 — never emit output from a tree that has unparsed
+    // regions. Rendering a partial parse would produce target code that silently
+    // omits whatever failed, which is worse than producing nothing.
+    if !program.errors.is_empty() {
+        let first = &program.errors[0];
+        return Err(CapyError::new(
+            first.span.start_line,
+            first.span.start_col,
+            format!(
+                "refusing to emit: {} region(s) of the source could not be parsed",
+                program.errors.len()
+            ),
+        ));
+    }
     let ctx = deep_copy_map(&lib.context);
     let fns: BTreeMap<String, Arc<crate::domain::library::FuncDef>> =
         lib.functions.iter().map(|(k, v)| (k.clone(), Arc::new(v.clone()))).collect();

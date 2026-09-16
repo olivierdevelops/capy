@@ -441,6 +441,22 @@ impl InnerEvaluator {
                 let r = self.eval_render(&c.right, locals)?;
                 Ok(Val::Bool(cmp(&c.op, &l, &r)?))
             }
+            // PLAN-2026-0002 R10 — infix operations.
+            Expr::Binary(b) => {
+                // `and` / `or` short-circuit, so the right operand is evaluated
+                // only when it can change the answer.
+                if b.op == "and" || b.op == "or" {
+                    let l = self.eval_render(&b.left, locals)?.is_truthy();
+                    if (b.op == "and" && !l) || (b.op == "or" && l) {
+                        return Ok(Val::Bool(l));
+                    }
+                    let r = self.eval_render(&b.right, locals)?.is_truthy();
+                    return Ok(Val::Bool(r));
+                }
+                let l = self.eval_render(&b.left, locals)?;
+                let r = self.eval_render(&b.right, locals)?;
+                arith(&b.op, &l, &r)
+            }
             Expr::Call(n) => {
                 let name = n.name.join(".");
                 let mut arg_vals: Vec<Val> = Vec::with_capacity(n.args.len());
@@ -749,6 +765,22 @@ impl InnerEvaluator {
                 let l = self.eval(&c.left, caps, locals)?;
                 let r = self.eval(&c.right, caps, locals)?;
                 Ok(Val::Bool(cmp(&c.op, &l, &r)?))
+            }
+            // PLAN-2026-0002 R10 — infix operations.
+            Expr::Binary(b) => {
+                // `and` / `or` short-circuit, so the right operand is evaluated
+                // only when it can change the answer.
+                if b.op == "and" || b.op == "or" {
+                    let l = self.eval(&b.left, caps, locals)?.is_truthy();
+                    if (b.op == "and" && !l) || (b.op == "or" && l) {
+                        return Ok(Val::Bool(l));
+                    }
+                    let r = self.eval(&b.right, caps, locals)?.is_truthy();
+                    return Ok(Val::Bool(r));
+                }
+                let l = self.eval(&b.left, caps, locals)?;
+                let r = self.eval(&b.right, caps, locals)?;
+                arith(&b.op, &l, &r)
             }
             Expr::List(items) => {
                 let mut out: Vec<Val> = Vec::with_capacity(items.len());
@@ -1566,6 +1598,7 @@ fn expr_kind_name(x: &Expr) -> &'static str {
         Expr::Var(_) => "domain.VarRef",
         Expr::Call(_) => "domain.CallExpr",
         Expr::Compare(_) => "domain.CompareExpr",
+        Expr::Binary(_) => "domain.BinaryExpr",
         Expr::Not(_) => "domain.NotExpr",
         Expr::List(_) => "domain.ListLit",
         Expr::Obj(_) => "domain.ObjLit",
@@ -1636,6 +1669,63 @@ fn go_regex_error(pattern: &str, e: &regex::Error) -> String {
     format!("error parsing regexp: `{}`: {}", pattern, e)
 }
 
+
+/// PLAN-2026-0002 R10 — evaluate an arithmetic operation.
+///
+/// Integers stay integers so `1 + 1` renders `2`, not `2.0`; any float operand
+/// promotes the result. String `+` concatenates, which is what a transpiler's
+/// users reach for; every other combination is an error rather than a silent
+/// coercion.
+fn arith(op: &str, l: &Val, r: &Val) -> Result<Val, CapyError> {
+    if op == "+" {
+        if let (Val::Str(a), Val::Str(b)) = (l, r) {
+            return Ok(Val::Str(format!("{a}{b}")));
+        }
+    }
+    let (lf, rf, both_int) = match (l, r) {
+        (Val::Int(a), Val::Int(b)) => (*a as f64, *b as f64, true),
+        (Val::Int(a), Val::Float(b)) => (*a as f64, *b, false),
+        (Val::Float(a), Val::Int(b)) => (*a, *b as f64, false),
+        (Val::Float(a), Val::Float(b)) => (*a, *b, false),
+        _ => {
+            return Err(CapyError::msg(format!(
+                "cannot apply `{op}` to {} and {}",
+                type_name_of(l),
+                type_name_of(r)
+            )))
+        }
+    };
+    if (op == "/" || op == "%") && rf == 0.0 {
+        return Err(CapyError::msg(format!("division by zero in `{op}`")));
+    }
+    let out = match op {
+        "+" => lf + rf,
+        "-" => lf - rf,
+        "*" => lf * rf,
+        "/" => lf / rf,
+        "%" => lf % rf,
+        _ => return Err(CapyError::msg(format!("unknown operator `{op}`"))),
+    };
+    // Integer division stays integer only when it divides exactly, so `7 / 2`
+    // is 3.5 rather than silently truncating.
+    if both_int && out.fract() == 0.0 && out.is_finite() {
+        Ok(Val::Int(out as i64))
+    } else {
+        Ok(Val::Float(out))
+    }
+}
+
+fn type_name_of(v: &Val) -> &'static str {
+    match v {
+        Val::Null => "null",
+        Val::Str(_) => "string",
+        Val::Int(_) => "int",
+        Val::Float(_) => "float",
+        Val::Bool(_) => "bool",
+        Val::List(_) | Val::StrList(_) => "list",
+        Val::Obj(_) => "object",
+    }
+}
 
 #[cfg(test)]
 mod tests {
@@ -1839,3 +1929,4 @@ mod tests {
         }
     }
 }
+

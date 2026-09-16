@@ -1,6 +1,7 @@
 //! Port of the Go `domain` package — pure data model, no I/O.
 
 pub mod ast;
+pub mod ast_json;
 pub mod command;
 pub mod docs;
 pub mod errors;

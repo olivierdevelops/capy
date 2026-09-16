@@ -26,7 +26,8 @@
 //! template / config language; the renderer walks the parsed AST directly.
 
 use crate::domain::docs::render_library_docs as domain_render_docs;
-use crate::domain::errors::CapyError;
+use crate::domain::ast::{Block as DomainBlock, Span};
+use crate::domain::errors::{codes, CapyError, Diagnostic};
 use crate::domain::host::{Host, NoOpHost};
 use crate::domain::library::Library as DomainLibrary;
 use crate::infra::{define_extractor, preprocessor};
@@ -35,6 +36,27 @@ use crate::orchestrator::features::{
 };
 use std::collections::BTreeMap;
 use std::sync::Arc;
+
+/// PLAN-2026-0002 R6 — what [`Library::parse`] returns.
+///
+/// Separate from `Result` on purpose: a recovering parse produces a tree AND
+/// errors, and `Result` can carry only one of the two.
+#[non_exhaustive]
+#[derive(Debug, Clone, Default)]
+pub struct ParseResult {
+    /// Always present. May contain [`ErrorNode`](crate::domain::ast::ErrorNode)
+    /// entries in `errors` when recovery kicked in.
+    pub tree: DomainBlock,
+    /// Empty ⇒ clean parse.
+    pub diagnostics: Vec<Diagnostic>,
+}
+
+impl ParseResult {
+    /// True when nothing failed to parse.
+    pub fn is_clean(&self) -> bool {
+        self.diagnostics.is_empty() && self.tree.errors.is_empty()
+    }
+}
 
 /// A compiled, ready-to-run Capy library. Safe to reuse across many `run`
 /// calls.
@@ -107,6 +129,40 @@ impl Library {
     /// use a thread-safe cell (`Mutex`/`RwLock`, not `RefCell`).
     pub fn set_host(&mut self, h: Option<Arc<dyn Host + Send + Sync>>) {
         self.host = h.unwrap_or_else(|| Arc::new(NoOpHost));
+    }
+
+    /// PLAN-2026-0002 R6 — parse a script into a tree plus diagnostics.
+    ///
+    /// The tree is ALWAYS returned. An empty `diagnostics` means a clean parse;
+    /// otherwise `tree.errors` holds the regions that could not be parsed while
+    /// the statements around them are intact.
+    ///
+    /// ```text
+    /// let r = lib.parse(src);
+    /// if !r.diagnostics.is_empty() { /* report */ }
+    /// for st in &r.tree.stmts { /* the statements that DID parse */ }
+    /// ```
+    ///
+    /// **`tree.stmts` alone does not mean the parse succeeded.** Check
+    /// `diagnostics` (or `tree.errors`) before trusting the tree — a partial
+    /// parse looks exactly like a complete one if you only read `stmts`.
+    pub fn parse(&self, script_src: &str) -> ParseResult {
+        let toks = match make_lexer::tokenize_with_trivia(script_src, &self.lib.comments) {
+            Ok(t) => t,
+            Err(e) => {
+                return ParseResult {
+                    tree: DomainBlock::default(),
+                    diagnostics: vec![Diagnostic::error(
+                        codes::NO_MATCH,
+                        Span::new(e.line, e.col, e.line, e.col + 1),
+                        e.msg,
+                    )],
+                }
+            }
+        };
+        let (tree, diagnostics) =
+            make_parser::parse_recovering(toks, script_src, &self.lib);
+        ParseResult { tree, diagnostics }
     }
 
     /// Port of `Run`.

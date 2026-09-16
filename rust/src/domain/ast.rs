@@ -6,7 +6,23 @@
 
 use std::collections::BTreeMap;
 
+/// PLAN-2026-0002 R22 — a region of source that could not be parsed.
+///
+/// Recovery keeps going after a failed statement so the user sees every mistake
+/// in one run, and an editor gets a usable tree from a buffer that is mid-edit.
+/// The skipped tokens are kept verbatim so tooling can still highlight them.
+#[non_exhaustive]
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct ErrorNode {
+    pub span: Span,
+    /// The tokens that were skipped, verbatim.
+    pub tokens: Vec<crate::domain::token::Token>,
+    /// Index into the `ParseResult`'s diagnostics list.
+    pub diagnostic_index: usize,
+}
+
 /// A user-script program is a `Block` of `FuncCall`s.
+#[non_exhaustive]
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct Block {
     pub stmts: Vec<FuncCall>,
@@ -17,6 +33,16 @@ pub struct Block {
     /// rendered output.
     pub is_verbatim: bool,
     pub verbatim_text: String,
+    /// PLAN-2026-0002 R22 — regions that failed to parse.
+    ///
+    /// Deliberately a PARALLEL field: `stmts` keeps its type `Vec<FuncCall>`, so
+    /// every existing walker still compiles and still sees a correct — if
+    /// incomplete — list of statements. Widening `stmts` to an enum would have
+    /// broken every consumer, and `#[non_exhaustive]` does not protect against a
+    /// field changing type. Ordering against `stmts` is recoverable from spans.
+    ///
+    /// Empty means the parse was clean.
+    pub errors: Vec<ErrorNode>,
 }
 
 /// PLAN-2026-0001 R1 — the source range a node came from.
@@ -157,9 +183,21 @@ pub enum Expr {
     Var(Vec<PathStep>),
     Call(CallExpr),
     Compare(Box<CompareExpr>),
+    /// PLAN-2026-0002 R10 — an infix operation. `op` is one of
+    /// `* / % + - and or`; comparisons keep using [`Expr::Compare`] so the
+    /// existing evaluator path is untouched.
+    Binary(Box<BinaryExpr>),
     Not(Box<Expr>),
     List(Vec<Expr>),
     Obj(ObjLit),
+}
+
+/// PLAN-2026-0002 R10 — an infix operation with its two operands.
+#[derive(Debug, Clone, PartialEq)]
+pub struct BinaryExpr {
+    pub op: String,
+    pub left: Expr,
+    pub right: Expr,
 }
 
 #[derive(Debug, Clone, PartialEq)]

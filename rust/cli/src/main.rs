@@ -4,6 +4,7 @@
 //!
 //! ```text
 //! capy run <library> <script>          transpile a script
+//! capy ast <library> <script>           print the parse tree (--json)
 //! capy check <library>                 validate a library
 //! capy docs <library>                  print auto-generated reference docs
 //! capy lib list|which|new|path         manage installed libraries (CAPY_LIBS)
@@ -22,6 +23,7 @@
 //! ```
 
 mod cmd_build;
+mod cmd_ast;
 mod cmd_check;
 mod cmd_docs;
 mod cmd_fmt;
@@ -86,6 +88,7 @@ fn dispatch(args: &[String]) -> Result<i32, String> {
         "watch" => return cmd_watch::cmd_watch(&args[1..]).map(|_| 0),
         // `fmt --check` exits 1 when a file would be reformatted.
         "fmt" => return cmd_fmt::cmd_fmt(&args[1..]),
+        "ast" => return cmd_ast::cmd_ast(&args[1..]),
         "build" => return cmd_build::cmd_build(&args[1..]).map(|_| 0),
         "version" | "--version" | "-v" => {
             println!("capy {}", VERSION);
@@ -201,6 +204,7 @@ pub fn print_usage() {
 
 Usage:
   capy run <library> <script>            transpile a script
+  capy ast <library> <script> [--json]   print the parse tree
   capy check <library>                   validate a library
   capy docs <library>                    print auto-generated reference docs
   capy lib list                          list installed libraries (CAPY_LIBS)

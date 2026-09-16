@@ -29,23 +29,64 @@ pub fn parse_value<R: TokReader + ?Sized>(
     r: &mut R,
     stop: &[String],
 ) -> Result<Expr, CapyError> {
-    let left = parse_unary(r, stop)?;
-    let t = r.peek();
-    if t.kind == TokenKind::Punct {
-        match t.text.as_str() {
-            "==" | "!=" | "<" | ">" | "<=" | ">=" => {
-                if !contains(stop, &t.text) {
-                    r.advance();
-                    let right = parse_unary(r, stop)?;
-                    return Ok(Expr::Compare(Box::new(CompareExpr {
-                        op: t.text.clone(),
-                        left,
-                        right,
-                    })));
-                }
-            }
-            _ => {}
+    parse_binary(r, stop, 0)
+}
+
+/// PLAN-2026-0002 R10/R11 — precedence climbing.
+///
+/// Binding power, loosest first. All operators are LEFT-associative, so
+/// `a - b - c` is `(a - b) - c` and not `a - (b - c)`.
+///
+/// ```text
+///   1  or
+///   2  and
+///   3  ==  !=  <  >  <=  >=        ← was a single non-associative step
+///   4  +  -
+///   5  *  /  %
+/// ```
+///
+/// Comparison keeps producing [`Expr::Compare`] rather than a binary node, so
+/// every existing evaluator and round-trip path for comparisons is untouched;
+/// only its PRECEDENCE changes, which is what R11 asks for.
+fn binding_power(t: &crate::domain::token::Token) -> Option<(u8, &'static str)> {
+    let text = t.text.as_str();
+    match t.kind {
+        TokenKind::Ident => match text {
+            "or" => Some((1, "or")),
+            "and" => Some((2, "and")),
+            _ => None,
+        },
+        TokenKind::Punct => match text {
+            "==" | "!=" | "<" | ">" | "<=" | ">=" => Some((3, "cmp")),
+            "+" | "-" => Some((4, "arith")),
+            "*" | "/" | "%" => Some((5, "arith")),
+            _ => None,
+        },
+        _ => None,
+    }
+}
+
+fn parse_binary<R: TokReader + ?Sized>(
+    r: &mut R,
+    stop: &[String],
+    min_bp: u8,
+) -> Result<Expr, CapyError> {
+    let mut left = parse_unary(r, stop)?;
+    loop {
+        let t = r.peek();
+        let Some((bp, kind)) = binding_power(&t) else { break };
+        if bp < min_bp || contains(stop, &t.text) {
+            break;
         }
+        let op = t.text.clone();
+        r.advance();
+        // Left-associative: the right operand binds tighter than this level.
+        let right = parse_binary(r, stop, bp + 1)?;
+        left = if kind == "cmp" {
+            Expr::Compare(Box::new(CompareExpr { op, left, right }))
+        } else {
+            Expr::Binary(Box::new(crate::domain::ast::BinaryExpr { op, left, right }))
+        };
     }
     Ok(left)
 }
@@ -139,6 +180,26 @@ pub fn parse_primary<R: TokReader + ?Sized>(
             Ok(Expr::Var(steps))
         }
         TokenKind::LParen => {
+            // PLAN-2026-0002 R10 — `(` is the prefix-CALL form in this grammar
+            // (`(upper n)`), so grouping has to be added without stealing it.
+            //
+            // Try to read a full expression; treat it as grouping only when it
+            // consumes everything up to `)` AND is not a bare identifier. That
+            // leaves `(upper n)` a call (the expression stops at `n`, before
+            // `)`), and leaves `(foo)` a zero-arg call (a bare identifier), so
+            // nothing that parses today changes. `(a + b)` and `(1 + 2)` — both
+            // parse errors before this change — become grouping.
+            let saved = r.save();
+            r.advance();
+            skip_newlines(r);
+            if let Ok(inner) = parse_binary(r, stop, 0) {
+                let is_bare_var = matches!(inner, Expr::Var(_));
+                if !is_bare_var && r.peek().kind == TokenKind::RParen {
+                    r.advance();
+                    return Ok(inner);
+                }
+            }
+            r.restore(saved);
             r.advance();
             skip_newlines(r);
             let name_tok = r.peek();

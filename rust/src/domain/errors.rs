@@ -237,3 +237,185 @@ mod tests {
         assert_eq!(edit_distance("kitten", "sitting"), 3);
     }
 }
+
+// ── PLAN-2026-0002 — diagnostics (R18, R26) ─────────────────────────────────
+
+use crate::domain::ast::Span;
+
+/// How serious a diagnostic is.
+#[non_exhaustive]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Severity {
+    Error,
+    Warning,
+}
+
+/// A secondary annotation on a diagnostic — the part that turns one caret into
+/// the two-span form:
+///
+/// ```text
+///  1 | fn add(x: int, y: int {
+///    |       -              ^ expected `)` here      ← primary
+///    |       |
+///    |       unclosed `(` opened here                ← label
+/// ```
+#[non_exhaustive]
+#[derive(Debug, Clone, PartialEq)]
+pub struct Label {
+    pub span: Span,
+    pub text: String,
+}
+
+impl Label {
+    pub fn new(span: Span, text: impl Into<String>) -> Label {
+        Label { span, text: text.into() }
+    }
+}
+
+/// Where the matcher was when it gave up. Without this, "expected `)`" cannot
+/// say *which* `)` — the reported shape may not even be the one the author
+/// meant, which is the known weakness of furthest-failure reporting.
+#[non_exhaustive]
+#[derive(Debug, Clone, PartialEq)]
+pub struct ContextFrame {
+    /// The library function being matched.
+    pub shape: String,
+    /// 0-based index of the argument under consideration.
+    pub arg_index: usize,
+    /// The argument's name, when it has one.
+    pub arg_name: String,
+}
+
+impl ContextFrame {
+    pub fn new(shape: impl Into<String>, arg_index: usize, arg_name: impl Into<String>) -> ContextFrame {
+        ContextFrame { shape: shape.into(), arg_index, arg_name: arg_name.into() }
+    }
+
+    /// Rendered as the trailing clause of a diagnostic message.
+    pub fn describe(&self) -> String {
+        if self.arg_name.is_empty() {
+            format!("in `{}`", self.shape)
+        } else {
+            format!("in argument `{}` of `{}`", self.arg_name, self.shape)
+        }
+    }
+}
+
+/// A parse diagnostic.
+///
+/// `CapyError` remains the engine's error type and `Library::run` still returns
+/// one; `Diagnostic` is what a recovering parse collects, and carries the things
+/// `CapyError` has no room for: a severity, a stable machine-readable code, a
+/// primary *range* rather than a point, secondary labels, and the matcher
+/// context.
+#[non_exhaustive]
+#[derive(Debug, Clone, PartialEq)]
+pub struct Diagnostic {
+    pub severity: Severity,
+    /// Stable and machine-readable, e.g. `E0001`. Consumers may match on it, so
+    /// a code's meaning does not change once published.
+    pub code: &'static str,
+    pub primary: Span,
+    pub labels: Vec<Label>,
+    pub msg: String,
+    pub help: Option<String>,
+    pub context: Vec<ContextFrame>,
+}
+
+/// Diagnostic codes. Stable once published; add, never repurpose.
+pub mod codes {
+    /// No library function matches the statement.
+    pub const NO_MATCH: &str = "E0001";
+    /// A delimiter was opened and never closed.
+    pub const UNCLOSED_DELIM: &str = "E0002";
+    /// Source nests deeper than the parser will follow.
+    pub const NESTING_TOO_DEEP: &str = "E0003";
+}
+
+impl Diagnostic {
+    pub fn error(code: &'static str, primary: Span, msg: impl Into<String>) -> Diagnostic {
+        Diagnostic {
+            severity: Severity::Error,
+            code,
+            primary,
+            labels: Vec::new(),
+            msg: msg.into(),
+            help: None,
+            context: Vec::new(),
+        }
+    }
+
+    pub fn with_label(mut self, label: Label) -> Diagnostic {
+        self.labels.push(label);
+        self
+    }
+
+    pub fn with_help(mut self, help: impl Into<String>) -> Diagnostic {
+        self.help = Some(help.into());
+        self
+    }
+
+    pub fn with_context(mut self, context: Vec<ContextFrame>) -> Diagnostic {
+        self.context = context;
+        self
+    }
+
+    /// Lossy conversion to the engine's error type, for `Library::run`, which
+    /// keeps its signature. The code and labels are folded into the text so
+    /// nothing is silently dropped from what the user sees.
+    pub fn to_capy_error(&self) -> CapyError {
+        let mut e = CapyError::new(self.primary.start_line, self.primary.start_col, self.full_message());
+        if let Some(h) = &self.help {
+            e.hint = h.clone();
+        }
+        e
+    }
+
+    /// The message with its context clause appended, if any.
+    pub fn full_message(&self) -> String {
+        match self.context.last() {
+            Some(f) => format!("{} {}", self.msg, f.describe()),
+            None => self.msg.clone(),
+        }
+    }
+}
+
+/// Render a diagnostic with its source, primary caret and secondary labels.
+///
+/// Extends what [`format_with_source`] draws for a `CapyError`; a diagnostic
+/// with no labels renders the same shape, so existing output does not change.
+pub fn format_diagnostic(d: &Diagnostic, source: &str, file: &str) -> String {
+    let mut b = String::new();
+    let sev = match d.severity {
+        Severity::Error => "error",
+        Severity::Warning => "warning",
+    };
+    b.push_str(&format!("{}[{}]: {}\n", sev, d.code, d.full_message()));
+    if d.primary.start_line > 0 {
+        let where_ = if file.is_empty() { String::new() } else { format!("{file}:") };
+        b.push_str(&format!(
+            "  --> {}{}:{}\n",
+            where_, d.primary.start_line, d.primary.start_col
+        ));
+    }
+    let lines: Vec<&str> = source.split('\n').collect();
+    let mut draw = |span: Span, marker: char, text: &str| {
+        if span.start_line == 0 || span.start_line > lines.len() {
+            return;
+        }
+        let line = lines[span.start_line - 1];
+        let width = span.end_col.saturating_sub(span.start_col).max(1);
+        let pad = " ".repeat(span.start_col.saturating_sub(1));
+        let carets: String = std::iter::repeat(marker).take(width).collect();
+        b.push_str(&format!("  {} │ {}\n", span.start_line, line));
+        b.push_str(&format!("    │ {}{} {}\n", pad, carets, text));
+    };
+    draw(d.primary, '^', "");
+    for l in &d.labels {
+        draw(l.span, '-', &l.text);
+    }
+    if let Some(h) = &d.help {
+        b.push_str(&format!("  help: {h}\n"));
+    }
+    b.trim_end_matches('\n').to_string()
+}

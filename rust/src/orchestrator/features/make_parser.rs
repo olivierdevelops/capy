@@ -6,16 +6,49 @@
 
 use super::expr_to_text::expr_to_text;
 use super::value_parser::{parse_value, TokReader};
-use crate::domain::ast::{Span, Block, CaptureValue, FuncCall};
-use crate::domain::errors::{suggest_closest, CapyError};
+use crate::domain::ast::{ErrorNode, Span, Block, CaptureValue, FuncCall};
+use crate::domain::errors::{codes, suggest_closest, CapyError, ContextFrame, Diagnostic};
 use crate::domain::library::{CloseSegment, FuncDef, Library, PatternElement, TypeDef};
 use crate::domain::token::{Token, TokenKind};
 use crate::gofmt;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
 
 /// Port of `MakeParser(...).Parse`.
+/// PLAN-2026-0002 R20/R22 — parse, recovering from statement failures.
+///
+/// Returns the tree AND every diagnostic. The tree is always present; broken
+/// regions appear in `Block.errors` while the statements around them are intact,
+/// which is what lets an editor keep working on a buffer that is mid-edit.
+pub fn parse_recovering(
+    toks: Vec<Token>,
+    src: &str,
+    lib: &Library,
+) -> (Block, Vec<Diagnostic>) {
+    match parse_impl(toks, src, lib, true) {
+        Ok((b, d)) => (b, d),
+        // A failure with recovery ON is a parse that could not even start.
+        Err(e) => (
+            Block::default(),
+            vec![Diagnostic::error(
+                codes::NO_MATCH,
+                Span::new(e.line, e.col, e.line, e.col + 1),
+                e.msg,
+            )],
+        ),
+    }
+}
+
 pub fn parse(toks: Vec<Token>, src: &str, lib: &Library) -> Result<Block, CapyError> {
+    parse_impl(toks, src, lib, false).map(|(b, _)| b)
+}
+
+fn parse_impl(
+    toks: Vec<Token>,
+    src: &str,
+    lib: &Library,
+    recover: bool,
+) -> Result<(Block, Vec<Diagnostic>), CapyError> {
     // PLAN-2026-0001 R27 — pull comment trivia OUT of the stream before anything
     // matches against it. The matcher is a token-index machine; letting a token
     // kind it has never seen through would change what parses, which is the one
@@ -70,13 +103,19 @@ pub fn parse(toks: Vec<Token>, src: &str, lib: &Library) -> Result<Block, CapyEr
         pos: 0,
         depth: 0,
         leading,
+        furthest: Furthest::default(),
+        ctx_stack: Vec::new(),
+        diagnostics: Vec::new(),
+        last_reported: None,
+        recover,
         fns,
         by_name,
         types: lib.types.clone(),
         src_lines: split_source_lines(src),
         seq_depth: 0,
     };
-    pp.parse_program(false, "")
+    let block = pp.parse_program(false, "")?;
+    Ok((block, pp.diagnostics))
 }
 
 /// Port of `startsWithLiteral`.
@@ -103,6 +142,58 @@ fn split_source_lines(s: &str) -> Vec<String> {
     s.replace("\r\n", "\n").split('\n').map(|x| x.to_string()).collect()
 }
 
+/// PLAN-2026-0002 R15 — what the matcher wanted at the token it gave up on.
+///
+/// The library enumerates every legal statement shape, so at any token the set
+/// of things that could come next is computable directly — a general parser
+/// generator has to reconstruct it from item sets.
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+pub enum Expectation {
+    /// An exact token, e.g. `)`.
+    Literal(String),
+    /// A token of a kind, e.g. an identifier.
+    Kind(String),
+    /// A nonterminal — a capture whose type names another library function.
+    Nonterminal(String),
+    /// One of a declared type's `options`.
+    OneOf(Vec<String>),
+    /// A closing delimiter, carrying where the opener was.
+    CloseDelim { close: String, open_line: usize, open_col: usize },
+    /// A block's closing keyword.
+    BlockEnd(String),
+}
+
+impl Expectation {
+    fn describe(&self) -> String {
+        match self {
+            Expectation::Literal(l) => format!("`{l}`"),
+            Expectation::Kind(k) => format!("a {k}"),
+            Expectation::Nonterminal(n) => format!("a `{n}`"),
+            Expectation::OneOf(opts) => {
+                format!("one of: {}", opts.join(", "))
+            }
+            Expectation::CloseDelim { close, .. } => format!("`{close}`"),
+            Expectation::BlockEnd(e) => format!("`{e}` to close the block"),
+        }
+    }
+}
+
+/// PLAN-2026-0002 R14 — the furthest-progressing match attempt.
+///
+/// Every shape is tried; on total failure the old code reported the statement's
+/// first token, which told the user only what they already knew. This remembers
+/// which attempt got furthest and what it wanted there. Deliberately NOT restored
+/// on backtrack — that is the whole point.
+#[derive(Debug, Default, Clone)]
+struct Furthest {
+    /// Token index reached. 0 means nothing recorded yet.
+    index: usize,
+    /// Union of what every attempt that tied at `index` wanted.
+    expected: BTreeSet<Expectation>,
+    /// Where the matcher was; see `ContextFrame`.
+    context: Vec<ContextFrame>,
+}
+
 /// PLAN-2026-0001 R0 — how deep a nonterminal descent may go before the parser
 /// gives up with an error instead of exhausting the native stack.
 ///
@@ -122,6 +213,17 @@ struct OuterP {
     depth: usize,
     /// R27 — comment spans, keyed by the index of the token they lead.
     leading: BTreeMap<usize, Vec<Span>>,
+    /// R14 — furthest-failure record; survives backtracking.
+    furthest: Furthest,
+    /// R26 — the shape/argument the matcher is currently inside.
+    ctx_stack: Vec<ContextFrame>,
+    /// R20 — diagnostics collected while recovering. Empty ⇒ clean parse.
+    diagnostics: Vec<Diagnostic>,
+    /// R19 — token index of the last reported diagnostic, for the spacing rule.
+    last_reported: Option<usize>,
+    /// R20 — recovery is opt-in, so `Library::run` keeps its first-error
+    /// behaviour (R24) while `Library::parse` collects everything.
+    recover: bool,
     fns: Vec<Arc<FuncDef>>,
     by_name: BTreeMap<String, Arc<FuncDef>>,
     types: BTreeMap<String, TypeDef>,
@@ -173,6 +275,7 @@ impl OuterP {
     /// Port of `parseProgram`.
     fn parse_program(&mut self, in_block: bool, closer_name: &str) -> Result<Block, CapyError> {
         let mut stmts: Vec<FuncCall> = Vec::new();
+        let mut errors: Vec<ErrorNode> = Vec::new();
         // `stray_indents` counts INDENT tokens that appeared mid-body without a
         // block-opener directive in front of them — i.e. the user nested content
         // deeper than the block's anchor purely for visual styling. Each stray
@@ -218,9 +321,39 @@ impl OuterP {
             if in_block && self.at_closer(closer_name) {
                 break;
             }
-            stmts.push(self.parse_stmt()?);
+            // R20 — with recovery on, a failed statement becomes a diagnostic
+            // plus an error node and parsing continues. Without it the error
+            // propagates exactly as before, so `Library::run` is unchanged (R24).
+            let before = self.pos;
+            match self.parse_stmt() {
+                Ok(st) => stmts.push(st),
+                Err(e) if self.recover => {
+                    let report = self.should_report(before);
+                    // Reset the furthest record per statement, or a later, worse
+                    // guess would stick to every subsequent failure.
+                    self.furthest = Furthest::default();
+                    let end = self.resync();
+                    if end == before {
+                        // Nothing consumed — refuse to spin.
+                        self.pos = before + 1;
+                    }
+                    if report {
+                        let span = self.span_between(before, self.pos.max(before + 1));
+                        let d = Diagnostic::error(codes::NO_MATCH, span, e.msg.clone());
+                        self.diagnostics.push(d);
+                        self.last_reported = Some(before);
+                        errors.push(ErrorNode {
+                            span,
+                            tokens: self.toks[before..self.pos.min(self.toks.len())].to_vec(),
+                            diagnostic_index: self.diagnostics.len() - 1,
+                            ..Default::default()
+                        });
+                    }
+                }
+                Err(e) => return Err(e),
+            }
         }
-        Ok(Block { stmts, ..Default::default() })
+        Ok(Block { stmts, errors, ..Default::default() })
     }
 
     /// Port of `atCloser`.
@@ -389,6 +522,7 @@ impl OuterP {
                                 stmts: Vec::new(),
                                 is_verbatim: true,
                                 verbatim_text: text,
+                                ..Default::default()
                             }));
                             inst.closer = closer.map(Box::new);
                         }
@@ -437,8 +571,16 @@ impl OuterP {
         if let Some(e) = block_err {
             return Err(e);
         }
-        // Build a "did you mean…?" hint: the closest literal-starting function
-        // name to the unrecognized token.
+        // PLAN-2026-0002 R14 — if some shape got PAST the first token, report
+        // where it stopped and what it wanted, instead of the statement's first
+        // token. That is the difference between "no function matched" and
+        // "expected `)` to close the parameter list".
+        if self.furthest.index > stmt_start && !self.furthest.expected.is_empty() {
+            return Err(self.furthest_error());
+        }
+
+        // Nothing got anywhere: the first token itself is unrecognised. Build a
+        // "did you mean…?" hint from the closest literal-starting function name.
         let mut err = CapyError::new(
             start_line,
             start_col,
@@ -605,6 +747,161 @@ impl OuterP {
         }
     }
 
+    /// PLAN-2026-0002 R19 — suppression window and cap.
+    ///
+    /// Configurable rather than contractual: these are tuning decisions, and the
+    /// proposal deliberately left the values open.
+    const SUPPRESS_WITHIN: usize = 3;
+    const MAX_DIAGNOSTICS: usize = 20;
+
+    /// R19 — should this failure be reported, or is it cascade noise from the one
+    /// just reported?
+    fn should_report(&self, at: usize) -> bool {
+        if self.diagnostics.len() >= Self::MAX_DIAGNOSTICS {
+            return false;
+        }
+        match self.last_reported {
+            Some(prev) => at.saturating_sub(prev) > Self::SUPPRESS_WITHIN,
+            None => true,
+        }
+    }
+
+    /// R21 — skip to a point where parsing can sensibly resume.
+    ///
+    /// Priority order matters, and rule 1 is the one that stops a single missing
+    /// `)` from swallowing the rest of the file:
+    ///   1. delimiter balance — never resync while inside an unclosed bracket
+    ///   2. statement boundary — a NEWLINE at depth 0, or a token that begins
+    ///      some known shape (the shape table makes that set exact)
+    ///   3. block boundary — DEDENT
+    ///   4. EOF
+    fn resync(&mut self) -> usize {
+        let start = self.pos;
+        let mut depth: i64 = 0;
+        // Newlines crossed while still unbalanced. A delimiter that is never
+        // closed would otherwise hold `depth` above zero to EOF and the scan
+        // would swallow the whole file — the precise failure rule 1 exists to
+        // prevent. After a line break we therefore stop trusting the balance and
+        // accept a statement-start token instead.
+        let mut unbalanced_newlines = 0usize;
+        while self.pos < self.toks.len() {
+            let t = &self.toks[self.pos];
+            match t.kind {
+                TokenKind::Eof => break,
+                TokenKind::LParen | TokenKind::LBrack | TokenKind::LBrace => depth += 1,
+                TokenKind::RParen | TokenKind::RBrack | TokenKind::RBrace => {
+                    depth -= 1;
+                    // Closing back past where we started is itself a resync point.
+                    if depth < 0 {
+                        self.pos += 1;
+                        break;
+                    }
+                }
+                TokenKind::Newline => {
+                    if depth <= 0 {
+                        self.pos += 1;
+                        break;
+                    }
+                    unbalanced_newlines += 1;
+                }
+                TokenKind::Dedent if depth <= 0 => break,
+                TokenKind::Ident if self.pos > start => {
+                    // Rule 2, second clause: the set of tokens that can BEGIN a
+                    // statement is known exactly from the shape table, so this is
+                    // precise rather than heuristic.
+                    //
+                    // Accepted at depth 0, or once a line break has happened
+                    // inside an unclosed delimiter — at that point the delimiter
+                    // is far more likely to be missing than to be spanning lines
+                    // deliberately, and the alternative is losing the file.
+                    if (depth <= 0 || unbalanced_newlines > 0) && self.starts_a_shape(&t.text) {
+                        return self.pos;
+                    }
+                }
+                _ => {}
+            }
+            self.pos += 1;
+        }
+        self.pos
+    }
+
+    /// Does `text` begin some declared shape?
+    fn starts_a_shape(&self, text: &str) -> bool {
+        self.fns.iter().any(|f| {
+            f.elements.first().map(|e| !e.is_capture && e.literal == text).unwrap_or(false)
+        })
+    }
+
+    /// PLAN-2026-0002 R14 — turn the furthest record into an error.
+    ///
+    /// Expectations are unioned, so when several shapes died at the same token
+    /// the reader sees every alternative rather than whichever was tried last.
+    fn furthest_error(&self) -> CapyError {
+        let tok = match self.toks.get(self.furthest.index).or_else(|| self.toks.last()) {
+            Some(t) => t.clone(),
+            None => return CapyError::msg("no library function matches"),
+        };
+        let wanted: Vec<String> =
+            self.furthest.expected.iter().map(|e| e.describe()).collect();
+        let list = match wanted.len() {
+            1 => wanted[0].clone(),
+            2 => format!("{} or {}", wanted[0], wanted[1]),
+            _ => format!("{}, or {}", wanted[..wanted.len() - 1].join(", "), wanted[wanted.len() - 1]),
+        };
+        let found = if tok.kind == TokenKind::Newline || tok.kind == TokenKind::Eof {
+            "end of statement".to_string()
+        } else {
+            gofmt::quote(&tok.text)
+        };
+        let mut d = Diagnostic::error(
+            codes::NO_MATCH,
+            Span::new(tok.line, tok.col, tok.line, tok.col + tok.width.max(1)),
+            format!("expected {list}, found {found}"),
+        )
+        .with_context(self.furthest.context.clone());
+
+        // R17 — if what was wanted is a closing delimiter, label where it opened.
+        for e in &self.furthest.expected {
+            if let Expectation::CloseDelim { close, open_line, open_col } = e {
+                if *open_line > 0 {
+                    d = d.with_label(crate::domain::errors::Label::new(
+                        Span::new(*open_line, *open_col, *open_line, open_col + 1),
+                        format!("unclosed `{}` opened here", opening_of(close)),
+                    ));
+                }
+            }
+            // R16 — reuse the existing did-you-mean machinery for `options`.
+            if let Expectation::OneOf(opts) = e {
+                if let Some(best) = suggest_closest(&tok.text, opts, 2) {
+                    d = d.with_help(format!("did you mean {}?", gofmt::quote(&best)));
+                }
+            }
+        }
+        d.to_capy_error()
+    }
+
+    /// PLAN-2026-0002 R14 — record a rejection, applying the replace/union/discard
+    /// rule. Further replaces; equal-distance unions (which is what produces
+    /// "expected an expression, `(`, or an identifier"); nearer is discarded.
+    fn note_failure(&mut self, expected: Expectation) {
+        let at = self.pos;
+        match at.cmp(&self.furthest.index) {
+            std::cmp::Ordering::Greater => {
+                self.furthest.index = at;
+                self.furthest.expected.clear();
+                self.furthest.expected.insert(expected);
+                self.furthest.context = self.ctx_stack.clone();
+            }
+            std::cmp::Ordering::Equal => {
+                self.furthest.expected.insert(expected);
+                if self.furthest.context.is_empty() {
+                    self.furthest.context = self.ctx_stack.clone();
+                }
+            }
+            std::cmp::Ordering::Less => {}
+        }
+    }
+
     /// PLAN-2026-0001 R1–R4 — the span covering `toks[from .. to)`.
     ///
     /// `Token` carries `line`, `col` and `width`; the end column is
@@ -638,12 +935,25 @@ impl OuterP {
 
     /// Port of `tryMatch`.
     fn try_match(&mut self, f: &FuncDef) -> Result<FuncCall, CapyError> {
-        let mut caps: BTreeMap<String, CaptureValue> = BTreeMap::new();
         // PLAN-2026-0001 R2/R4 — where this shape's match begins. Previously the
         // FuncCall built at the end of this function was stamped
         // `line: 0, col: 0`, which is what made every nested node unlocatable.
         let match_start = self.pos;
+        // R26 — everything rejected below happens "in <shape>", and for a capture
+        // "in argument <name> of <shape>".
+        self.ctx_stack.push(ContextFrame::new(&f.name, 0, ""));
+        let out = self.try_match_inner(f, match_start);
+        self.ctx_stack.pop();
+        out
+    }
+
+    fn try_match_inner(&mut self, f: &FuncDef, match_start: usize) -> Result<FuncCall, CapyError> {
+        let mut caps: BTreeMap<String, CaptureValue> = BTreeMap::new();
         for i in 0..f.elements.len() {
+            if let Some(top) = self.ctx_stack.last_mut() {
+                top.arg_index = i;
+                top.arg_name = f.elements[i].name.clone();
+            }
             let el = f.elements[i].clone();
             // Auto-skip an optional comma between consecutive captures.
             if i > 0
@@ -656,6 +966,9 @@ impl OuterP {
             }
             if !el.is_capture {
                 if !self.match_literal(&el.literal) {
+                    // R14/R15 — record what this shape wanted here before
+                    // backtracking discards the attempt.
+                    self.note_failure(Expectation::Literal(el.literal.clone()));
                     return Err(CapyError::msg(format!(
                         "expected {}",
                         gofmt::quote(&el.literal)
@@ -764,6 +1077,7 @@ the source nests further than the parser will follow",
         if el.repeat.is_empty() {
             match self.match_one(&target) {
                 None => {
+                    self.note_failure(Expectation::Nonterminal(el.cap_type.clone()));
                     return Err(CapyError::msg(format!("expected {}", el.cap_type)));
                 }
                 Some(fc) => {
@@ -802,6 +1116,7 @@ the source nests further than the parser will follow",
             }
         }
         if el.repeat == "+" && subs.is_empty() {
+            self.note_failure(Expectation::Nonterminal(el.cap_type.clone()));
             return Err(CapyError::msg(format!("expected at least one {}", el.cap_type)));
         }
         Ok(CaptureValue { sub: subs, ..Default::default() })
@@ -1574,5 +1889,15 @@ fn token_source_form(t: &Token) -> String {
         TokenKind::Str => format!("\"{}\"", t.text),
         TokenKind::Template => format!("`{}`", t.text),
         _ => t.text.clone(),
+    }
+}
+
+/// The opening delimiter that pairs with `close`, for the label text.
+fn opening_of(close: &str) -> &str {
+    match close {
+        ")" => "(",
+        "]" => "[",
+        "}" => "{",
+        other => other,
     }
 }

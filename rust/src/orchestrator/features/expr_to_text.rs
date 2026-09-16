@@ -25,6 +25,23 @@ pub fn expr_to_text(x: &Expr) -> String {
         Expr::Compare(c) => {
             format!("{} {} {}", expr_to_text(&c.left), c.op, expr_to_text(&c.right))
         }
+        // PLAN-2026-0002 R10/R12 — round-trip an infix operation.
+        //
+        // Parentheses are re-inserted wherever a child binds LOOSER than its
+        // parent, because the original parentheses are not in the AST. Without
+        // this, `(a + b) * c` would render as `a + b * c` — silently the wrong
+        // expression, and silently the wrong emitted code. T-27 is the gate.
+        Expr::Binary(b) => {
+            let p = prec_of(&b.op);
+            format!(
+                "{} {} {}",
+                wrap_if_looser(&b.left, p),
+                b.op,
+                // Right operand of a left-associative operator needs parens at
+                // EQUAL precedence too: `a - (b - c)` is not `a - b - c`.
+                wrap_if_looser_or_equal(&b.right, p)
+            )
+        }
         Expr::Not(x) => format!("not {}", expr_to_text(x)),
         Expr::List(items) => {
             let parts: Vec<String> = items.iter().map(expr_to_text).collect();
@@ -70,4 +87,39 @@ pub fn var_ref_to_text(steps: &[PathStep], render_expr: &dyn Fn(&Expr) -> String
         }
     }
     b
+}
+
+/// PLAN-2026-0002 — binding power, mirroring `value_parser::binding_power`.
+/// Kept in step with it by `round_trip_preserves_structure` (T-27).
+fn prec_of(op: &str) -> u8 {
+    match op {
+        "or" => 1,
+        "and" => 2,
+        "==" | "!=" | "<" | ">" | "<=" | ">=" => 3,
+        "+" | "-" => 4,
+        "*" | "/" | "%" => 5,
+        _ => 0,
+    }
+}
+
+fn prec_of_expr(x: &Expr) -> Option<u8> {
+    match x {
+        Expr::Binary(b) => Some(prec_of(&b.op)),
+        Expr::Compare(c) => Some(prec_of(&c.op)),
+        _ => None,
+    }
+}
+
+fn wrap_if_looser(x: &Expr, parent: u8) -> String {
+    match prec_of_expr(x) {
+        Some(p) if p < parent => format!("({})", expr_to_text(x)),
+        _ => expr_to_text(x),
+    }
+}
+
+fn wrap_if_looser_or_equal(x: &Expr, parent: u8) -> String {
+    match prec_of_expr(x) {
+        Some(p) if p <= parent => format!("({})", expr_to_text(x)),
+        _ => expr_to_text(x),
+    }
 }

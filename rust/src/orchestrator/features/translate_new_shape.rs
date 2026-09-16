@@ -206,6 +206,10 @@ fn render_path(p: &Path) -> String {
 /// an unrecognised node yields "" rather than `%v`.
 pub fn render_expr(e: &Expr) -> String {
     match e {
+        // PLAN-2026-0002 R10 — infix operations round-trip through the same
+        // precedence-aware renderer the outer path uses, so a captured
+        // expression is reconstructed with its structure intact.
+        Expr::Binary(_) => super::expr_to_text::expr_to_text(e),
         Expr::Str(v) => gofmt::quote(v),
         Expr::Number(n) => {
             if n.is_int {

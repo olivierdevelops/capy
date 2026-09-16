@@ -6,7 +6,7 @@ status: active
 
 created_date: 2026-09-16
 last_updated: 2026-09-16
-document_revision: 1
+document_revision: 2
 
 authors:
   - Olivier
@@ -22,7 +22,7 @@ components:
   - capy-core
 
 affected_versions:
-  from: "0.21.0"
+  from: "0.22.0"
   to: null
 
 applicable_environments:
@@ -58,7 +58,7 @@ next_review_date: 2027-03-16
 > **Status:** Active
 > **Created:** 2026-09-16
 > **Last Updated:** 2026-09-16
-> **Affected Versions:** 0.21.0
+> **Affected Versions:** 0.22.0
 > **Owner:** Capy Engine
 > **Affected Components:** capy-core
 
@@ -176,17 +176,57 @@ before the limit existed, deeply nested input aborted the process. The message
 you get today is the generic "no library function matches"; naming the limit is
 future work.
 
-## 4. Limitations at 0.21.0
+## 4. Reading errors (0.22.0)
+
+When a statement does not match, Capy reports the shape that got **furthest**
+into it and what that shape wanted next — not merely that nothing matched.
+
+```text
+error: expected `)`, found end of statement in `fn`
+```
+
+The trailing clause is the context frame: which shape, and which of its
+arguments. When several shapes stop at the same token you see all of them:
+`expected \`p\`, \`q\`, or \`r\``.
+
+## 5. Recovery (0.22.0)
+
+`Library::parse` does not stop at the first mistake. Every broken region is
+reported and skipped, and the statements around it still parse.
+
+```rust
+let r = lib.parse(src);
+r.tree.stmts     // what parsed
+r.tree.errors    // what did not
+r.diagnostics    // why
+r.is_clean()     // neither of the last two
+```
+
+`capy run` still refuses to emit anything when a region failed — a partial parse
+would produce target code missing whatever broke.
+
+## 6. Arithmetic (0.22.0)
+
+Infix `*` `/` `%` `+` `-`, comparisons and `and` / `or`, with conventional
+precedence, left-associative. Integers stay integers; `7 / 2` is `3.5`. `and`
+and `or` short-circuit.
+
+Grouping parentheses work where they do not collide with the prefix-call form
+`(upper n)` — which means `(a + b) * c` groups, and `(foo)` is still a call.
+
+## 7. Limitations at 0.22.0
 
 | Limitation | Consequence |
 |---|---|
 | No byte offsets on `Span` | You cannot slice the original source by offset; use line/column |
-| AST is not a public API yet | `Library::parse` has not shipped; the interim path is internal and may change |
-| Depth-limit wording | Reports "no library function matches" rather than the real reason |
+| Depth-limit wording | Reports "no library function matches" rather than naming the limit |
 | Leading comments only | Trailing and interior are retained but unattached |
+| Grouping is conditional | `(foo)` is a zero-argument call, not a grouped identifier |
+| Cascade constants untuned | Suppression and cap use defaults, not corpus-derived values |
 
 ## Change History
 
 | Revision | Date | Author | Change |
 |---|---|---|---|
 | 1 | 2026-09-16 | Olivier | Initial manual chapter |
+| 2 | 2026-09-16 | Olivier | Added reading errors, recovery and arithmetic for 0.22.0; the AST is now a public API |

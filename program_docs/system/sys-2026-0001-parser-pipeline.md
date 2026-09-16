@@ -6,7 +6,7 @@ status: active
 
 created_date: 2026-09-16
 last_updated: 2026-09-16
-document_revision: 1
+document_revision: 2
 
 authors:
   - Olivier
@@ -22,7 +22,7 @@ components:
   - capy-core
 
 affected_versions:
-  from: "0.21.0"
+  from: "0.22.0"
   to: null
 
 applicable_environments:
@@ -57,7 +57,7 @@ next_review_date: 2027-03-16
 > **Status:** Active
 > **Created:** 2026-09-16
 > **Last Updated:** 2026-09-16
-> **Affected Versions:** 0.21.0
+> **Affected Versions:** 0.22.0
 > **Owner:** Capy Engine
 > **Affected Components:** capy-core
 
@@ -123,6 +123,38 @@ Two independent mechanisms, both required:
 A function that declares no `arg literal` has its own name prepended as one, so
 it always consumes a token and can never be a left-recursive hop.
 
+## Diagnostics and recovery (0.22.0)
+
+```text
+make_parser::parse             → Result<Block, CapyError>     first error, no tree
+make_parser::parse_recovering  → (Block, Vec<Diagnostic>)     tree + every error
+```
+
+`Library::run` uses the first; `Library::parse` uses the second, which is how
+`run` keeps its signature and behaviour while `parse` collects everything.
+
+Failure reporting is **furthest-first**: a `Furthest { index, expected, context }`
+record threads through the matcher and is deliberately NOT restored on backtrack.
+Strictly further replaces, equal-distance unions, nearer is discarded.
+
+Recovery, per failed statement: emit a diagnostic, push an `ErrorNode`, resync,
+continue. Resync checks delimiter balance first, then statement boundary (using
+the exact set of shape-starting literals), then dedent, then EOF — with a bound,
+because a delimiter that is never closed would otherwise hold the depth above
+zero to EOF and consume the file.
+
+`make_evaluator::run_multi` refuses to emit when `Block.errors` is non-empty.
+
+## Value expressions (0.22.0)
+
+`value_parser` is a precedence-climbing parser. Comparison still produces
+`Expr::Compare` so the existing evaluator path is untouched; only its precedence
+changed. Arithmetic and boolean operators produce `Expr::Binary`.
+
+`(` remains the prefix-call form; grouping applies only when the contents parse
+as a complete expression that is not a bare identifier, which leaves `(upper n)`
+and `(foo)` exactly as they were.
+
 ## Known limitations
 
 - No byte offsets on `Span`.
@@ -135,3 +167,4 @@ it always consumes a token and can never be a left-recursive hop.
 | Revision | Date | Author | Change |
 |---|---|---|---|
 | 1 | 2026-09-16 | Olivier | Initial document |
+| 2 | 2026-09-16 | Olivier | Added the 0.22.0 diagnostics, recovery and value-expression sections |

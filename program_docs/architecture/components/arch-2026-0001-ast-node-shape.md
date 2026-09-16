@@ -6,7 +6,7 @@ status: active
 
 created_date: 2026-09-16
 last_updated: 2026-09-16
-document_revision: 1
+document_revision: 2
 
 authors:
   - Olivier
@@ -22,7 +22,7 @@ components:
   - capy-core
 
 affected_versions:
-  from: "0.21.0"
+  from: "0.22.0"
   to: null
 
 applicable_environments:
@@ -57,7 +57,7 @@ next_review_date: 2027-03-16
 > **Status:** Active
 > **Created:** 2026-09-16
 > **Last Updated:** 2026-09-16
-> **Affected Versions:** 0.21.0
+> **Affected Versions:** 0.22.0
 > **Owner:** Capy Engine
 > **Affected Components:** capy-core
 
@@ -79,10 +79,24 @@ Block
        ├─ body / closer / sections
 ```
 
-`Block.stmts` keeps its type deliberately. PLAN-C adds recovery, and the error
-representation chosen there is a **parallel `Block.errors`** rather than widening
-`stmts` to an enum — changing an existing public field's type breaks every walker,
-and `#[non_exhaustive]` does not protect against it.
+`Block.stmts` keeps its type deliberately. Recovery (0.22.0) puts error regions
+in a **parallel `Block.errors`** rather than widening `stmts` to an enum —
+changing an existing public field's type breaks every walker, and
+`#[non_exhaustive]` does not protect against it.
+
+```text
+Block
+ ├─ stmts:  Vec<FuncCall>     ← what parsed
+ └─ errors: Vec<ErrorNode>    ← what did not   (0.22.0)
+                ├─ span
+                ├─ tokens            verbatim, for highlighting
+                └─ diagnostic_index  → ParseResult.diagnostics[i]
+```
+
+An un-updated walker reads `stmts` and simply does not see the errors: a
+degraded but **correct** view. The rejected alternative — an error as a
+`FuncCall` with a reserved name — would have let such a walker compile, run, and
+silently treat an error as real code.
 
 ## The trivia boundary
 
@@ -123,3 +137,4 @@ taught to skip them.
 | Revision | Date | Author | Change |
 |---|---|---|---|
 | 1 | 2026-09-16 | Olivier | Initial document |
+| 2 | 2026-09-16 | Olivier | Recorded the realised error-node representation at 0.22.0 |

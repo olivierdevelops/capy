@@ -9,6 +9,7 @@ Lookup by software version, per `DOCUMENTATION.md` §17.
 
 | Version | Tag | Release Document | Plan | Validation | Demo | Status |
 |---|---|---|---|---|---|---|
+| 0.22.0 | `v0.22.0` | REL-0.22.0 | PLAN-2026-0002 | RPT-2026-0002 | DEMO-2026-0002 | draft — commit and tag pending |
 | 0.21.0 | `v0.21.0` | REL-0.21.0 | PLAN-2026-0001 | RPT-2026-0001 | DEMO-2026-0001 | released — commit `cf5f2f1` |
 | 0.12.0 | `v0.12.0` | — | — | — | — | predates this documentation standard |
 
@@ -16,10 +17,7 @@ Lookup by software version, per `DOCUMENTATION.md` §17.
 
 | Version | Plan | Scope |
 |---|---|---|
-| unassigned | PLAN-B | Diagnostics — furthest-failure, expectation vocabulary, context frame |
-| unassigned | PLAN-C | Error recovery — resync, error nodes, `ParseResult` |
-| unassigned | PLAN-D | Structured output — `Library::parse`, `capy ast`, JSON schema |
-| unassigned | PLAN-E | Operator precedence |
+| — | — | **PROP-2026-0001 is complete.** All five increments released across 0.21.0 and 0.22.0. |
 
 ## Change History
 

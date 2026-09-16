@@ -27,6 +27,15 @@ Lookup by ID, type, status, component and owner, per `DOCUMENTATION.md` §17.
 | ARCH-2026-0001 | Architecture — AST Node Shape and the Trivia Boundary | architecture | active | capy-core | Capy Engine | 2026-09-16 | [`architecture/components/arch-2026-0001-ast-node-shape.md`](../architecture/components/arch-2026-0001-ast-node-shape.md) |
 | REL-0.21.0 | Release 0.21.0 — Parser Foundations | release | completed | capy-core, capy-cli | Release Management | 2026-09-16 | [`releases/rel-0.21.0-release-notes.md`](../releases/rel-0.21.0-release-notes.md) |
 
+| PLAN-2026-0002 | Implementation Plan — Diagnostics, Error Recovery, AST Output and Operator Precedence | plan | completed | capy-core, capy-cli, docs | Capy Engine | 2026-09-16 | [`plans/plan-2026-0002-diagnostics-recovery-ast-output-precedence.md`](../plans/plan-2026-0002-diagnostics-recovery-ast-output-precedence.md) |
+| TEST-2026-0005 | Test — Diagnostics and Error Recovery | test | completed | capy-core | Capy Engine | 2026-09-16 | [`testing/test-2026-0005-diagnostics-and-recovery.md`](../testing/test-2026-0005-diagnostics-and-recovery.md) |
+| TEST-2026-0006 | Test — Operator Precedence and Expression Round-Trip | test | completed | capy-core | Capy Engine | 2026-09-16 | [`testing/test-2026-0006-precedence-and-round-trip.md`](../testing/test-2026-0006-precedence-and-round-trip.md) |
+| TEST-2026-0007 | Test — AST Output Surface | test | completed | capy-core, capy-cli | Capy Engine | 2026-09-16 | [`testing/test-2026-0007-ast-output.md`](../testing/test-2026-0007-ast-output.md) |
+| TEST-2026-0008 | Test — Measured Results for 0.22.0 | test | completed | capy-core, capy-wasm-abi | Capy Engine | 2026-09-16 | [`testing/test-2026-0008-measured-results-0.22.0.md`](../testing/test-2026-0008-measured-results-0.22.0.md) |
+| RPT-2026-0002 | Validation of PLAN-2026-0002 | report | completed | capy-core, capy-cli | Capy Engine | 2026-09-16 | [`reports/rpt-2026-0002-plan-2026-0002-validation.md`](../reports/rpt-2026-0002-plan-2026-0002-validation.md) |
+| DEMO-2026-0002 | Release Verification Guide — 0.22.0 | demo | active | capy-core, capy-cli | Capy Engine | 2026-09-16 | [`demos/demo-2026-0002-release-verification-0.22.0.md`](../demos/demo-2026-0002-release-verification-0.22.0.md) |
+| REL-0.22.0 | Release 0.22.0 — Diagnostics, Recovery, AST Output and Precedence | release | draft | capy-core, capy-cli | Release Management | 2026-09-16 | [`releases/rel-0.22.0-release-notes.md`](../releases/rel-0.22.0-release-notes.md) |
+
 ## By status
 
 | Status | Documents |
@@ -50,11 +59,11 @@ Lookup by ID, type, status, component and owner, per `DOCUMENTATION.md` §17.
 | Prefix | Next |
 |---|---|
 | `PROP` | PROP-2026-0002 |
-| `PLAN` | PLAN-2026-0002 |
-| `TEST` | TEST-2026-0005 |
-| `DEMO` | DEMO-2026-0002 |
+| `PLAN` | PLAN-2026-0003 |
+| `TEST` | TEST-2026-0009 |
+| `DEMO` | DEMO-2026-0003 |
 | `MAN` | MAN-2026-0002 |
 | `SYS` | SYS-2026-0002 |
 | `ARCH` | ARCH-2026-0002 |
 | `ADR` | ADR-0002 |
-| `RPT` | RPT-2026-0002 |
+| `RPT` | RPT-2026-0003 |

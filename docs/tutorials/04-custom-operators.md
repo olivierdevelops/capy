@@ -146,9 +146,14 @@ Object literals accept either quoted strings OR bare identifiers as keys
 ## Try it
 
 - Add a `pipe` operator: `x |> f` that emits `f(x)` in Python.
-- Build a tiny expression language with `+`, `-`, `*`, `/` as
-  multi-token patterns. (Capy doesn't have operator precedence — patterns
-  are flat — so this requires careful library design.)
+- Build a tiny expression language with `+`, `-`, `*`, `/`. Since 0.22.0 you
+  usually should **not** do this with multi-token patterns: a single
+  `arg capture value any` takes the whole expression and the engine builds the
+  tree, with conventional precedence and left associativity. See
+  [operator precedence](../language-reference.md#operator-precedence) and
+  [`samples/operator-precedence/`](https://github.com/olivierdevelops/capy/tree/main/samples/operator-precedence).
+  Flat multi-token patterns are still the right tool for operators the engine
+  does not know, like the `|>` above.
 - Add a `where` clause to a `find` block: `find x in xs where x > 0
   { ... }`.
 

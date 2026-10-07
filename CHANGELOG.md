@@ -8,6 +8,33 @@ may break between minor versions**.
 
 ## [Unreleased]
 
+## [0.23.0] — 2026-10-07
+
+Ordered choice for grammars (`PROP-2026-0004`).
+
+### Added
+
+- **Ordered alternation in a capture type.** `arg capture v call | name | num`
+  names several library functions; the matcher tries them left to right and the
+  first match wins. Composes with repetition (`mut_param | plain_param* sep ","`)
+  and with recursion, so a declared grammar nests to the engine's depth bound.
+- `ArgInfo.alts` (public introspection) — alternatives 2…n; `type_` keeps meaning
+  alternative 1. `capy docs` prints the whole choice in the Type column.
+- Two samples: `samples/expression-grammar/` and `samples/mixed-parameters/`.
+
+### Changed
+
+- The left-recursion guard walks **every** alternative, so a cycle reachable only
+  through a later alternative is refused at load.
+
+### Documentation
+
+- Parser-surface documentation and samples from `PROP-2026-0002` ship in this
+  release: `docs/language-frontend.md`, `docs/tutorials/05-reading-diagnostics.md`,
+  `samples/language-frontend/`, `samples/operator-precedence/`,
+  `samples/parse-recovery/`, the shared `ast_text` renderer used by `capy ast`
+  and the golden runner, and the `<base>.expected-ast.txt` golden kind.
+
 ## [0.20.0] — 2026-05-24
 
 Dev-loop tools that complete the "libraries as CLIs" story:

@@ -1,0 +1,36 @@
+def_fn 1:1-1:27
+  name = "open_door" 1:5
+  ps:
+    mut_param 1:15-1:26
+      pname = "d" 1:19
+      ptype = "Door" 1:22
+def_fn 2:1-2:18
+  name = "poke" 2:5
+  ps:
+    plain_param 2:10-2:17
+      pname = "d" 2:10
+      ptype = "Door" 2:13
+def_fn 3:1-3:35
+  name = "update" 3:5
+  ps:
+    mut_param 3:12-3:26
+      pname = "c" 3:16
+      ptype = "Counter" 3:19
+    plain_param 3:28-3:34
+      pname = "n" 3:28
+      ptype = "int" 3:31
+def_fn 4:1-4:46
+  name = "swap" 4:5
+  ps:
+    plain_param 4:10-4:16
+      pname = "n" 4:10
+      ptype = "int" 4:13
+    mut_param 4:18-4:32
+      pname = "c" 4:22
+      ptype = "Counter" 4:25
+    mut_param 4:34-4:45
+      pname = "d" 4:38
+      ptype = "Door" 4:41
+def_fn 5:1-5:10
+  name = "now" 5:5
+  ps = "" 0:0

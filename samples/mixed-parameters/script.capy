@@ -1,0 +1,5 @@
+def open_door(mut d: Door)
+def poke(d: Door)
+def update(mut c: Counter, n: int)
+def swap(n: int, mut c: Counter, mut d: Door)
+def now()

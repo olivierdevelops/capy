@@ -1,0 +1,4 @@
+task "write the proposal" due "2026-09-16"
+done "read the release notes"
+task "ship the samples" due "2026-09-30"
+list

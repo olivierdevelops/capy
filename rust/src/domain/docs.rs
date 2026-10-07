@@ -139,7 +139,14 @@ fn render_func(b: &mut String, fnv: &FuncDef) {
             } else {
                 a.description.as_str()
             };
-            b.push_str(&format!("| `{}` | `{}` | {} |\n", a.name, a.type_, desc));
+            // PROP-2026-0004 R9 — print the whole ordered choice, not just the
+            // first alternative, so the docs table stays truthful.
+            let ty = std::iter::once(a.type_.as_str())
+                .chain(a.alts.iter().map(String::as_str))
+                .collect::<Vec<_>>()
+                // `\|` so the pipes stay inside the Markdown table cell.
+                .join(" \\| ");
+            b.push_str(&format!("| `{}` | `{}` | {} |\n", a.name, ty, desc));
         }
         b.push('\n');
     }

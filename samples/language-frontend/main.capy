@@ -1,0 +1,16 @@
+fn gcd(a: int, b: int) {
+    while b != 0 {
+        let t = b
+        let b = a % b
+        let a = t
+    }
+    return a
+}
+
+fn classify(n: int, limit: int) {
+    let score = n * 2 + 1
+    if score > limit and n != 0 {
+        return 1
+    }
+    return 0
+}

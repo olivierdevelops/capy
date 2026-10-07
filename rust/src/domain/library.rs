@@ -146,6 +146,9 @@ pub struct ArgEntry {
     pub sep: String,
     /// Inserted between the rendered sub-results on output.
     pub join: String,
+    /// PROP-2026-0004 — alternatives 2…n of an ordered choice (`type_` is
+    /// alternative 1). Empty for a single-type capture.
+    pub alts: Vec<String>,
 }
 
 /// Marks a function as a block opener. Two modes:
@@ -230,6 +233,17 @@ pub struct PatternElement {
     /// Marks that `cap_type` names a library function (resolved at load time)
     /// rather than a built-in/declared type.
     pub is_func: bool,
+    /// PROP-2026-0004 — alternatives 2…n of an ordered choice; `cap_type` is
+    /// alternative 1. Every name is a library function. Empty when the capture
+    /// has a single type.
+    pub alts: Vec<String>,
+}
+
+impl PatternElement {
+    /// Alternative names in match order: `cap_type` first, then `alts`.
+    pub fn alternatives(&self) -> impl Iterator<Item = &str> {
+        std::iter::once(self.cap_type.as_str()).chain(self.alts.iter().map(String::as_str))
+    }
 }
 
 /// A library-defined argument type. Three optional fields applied in order at

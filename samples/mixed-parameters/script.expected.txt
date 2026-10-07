@@ -1,0 +1,5 @@
+open_door(&d: Door)
+poke(d: Door)
+update(&c: Counter, n: int)
+swap(n: int, &c: Counter, &d: Door)
+now()

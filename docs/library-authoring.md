@@ -4,6 +4,12 @@ A Capy library is the entire grammar of one source language, plus the
 recipe for generating output from it. This doc is the reference
 walkthrough.
 
+Building the front end of an actual programming language rather than a
+configuration DSL? The same reference applies, but start at
+[host your language's frontend](language-frontend.md) for the shape — nested
+scopes, named nonterminals for parameter lists, expression captures, and how to
+get the tree back out.
+
 Libraries are written in **`.capy`** — Capy's native syntax. Multi-line
 `write` blocks read natively, same indentation and string rules as the
 source files the library will parse. Every example below is `.capy`.
@@ -568,6 +574,118 @@ When the library stabilises, write a few sample scripts under
 `examples/` so behaviour stays pinned as you iterate.
 
 
+
+## Ordered choice
+
+*Added in 0.23.0.* A capture's type may name **several library functions**
+separated by `|`. The matcher tries them left to right and the **first one that
+matches wins** (PEG-style ordered choice). It is the fourth grammar combinator:
+
+```text
+  sequence    arg literal / arg capture, in order
+  repetition  param*   sep ","   join ", "
+  recursion   a capture whose type is a function
+  choice      arg capture v call | name | num      <- this section
+```
+
+Without choice a rule has exactly one shape, so a recursive grammar tops out at
+one level. With it, "an argument is a nested call **or** a name **or** a number"
+is one line:
+
+```
+function operand
+    bare
+    arg capture v call | name | num
+    write `${v}`
+end
+```
+
+Run the [`expression-grammar`](https://github.com/olivierdevelops/capy/tree/main/samples/expression-grammar)
+sample:
+
+```text
+$ capy run samples/expression-grammar/lib.capy samples/expression-grammar/script.capy
+return add(3, mul(4, 5));
+return f(g(h(i(j(1)))), k(2, x));
+return now();
+```
+
+### Rules
+
+| Rule | Detail |
+|---|---|
+| Alternatives are **functions** | A built-in or declared type is refused at load. Wrap a flat alternative in a `bare` function with one capture — see below |
+| Order is the semantics | The first alternative that matches wins; later ones are not tried |
+| Repetition applies to the whole choice | the `*` / `+` suffix goes after the **last** name: `arg capture ps mut_param \| plain_param* sep ","` repeats the whole choice |
+| A failed alternative is rewound | Input it consumed before failing is handed back to the next alternative |
+| `capy ast --json` tells you which matched | `sub[].func` is the alternative's function name; no schema field was added |
+| `capy docs` prints the union | the Type column shows `call \| name \| num` |
+
+### A flat alternative is a `bare` function
+
+`bare` is the key to a pure-capture nonterminal — a function with no leading
+keyword. It is how a flat alternative is written:
+
+```
+function name
+    bare
+    arg capture id ident
+    write `${id}`
+end
+
+function num
+    bare
+    arg capture n int
+    write `${n}`
+end
+```
+
+### Order matters when an earlier alternative is permissive
+
+`int` accepts a bare identifier at parse time, so `num` would match the `x` in
+`k(2, x)` if it were listed before `name`. List the **narrower** alternative
+first. Reordering `call | name | num` to `call | num | name` changes which
+alternative `x` becomes — and that is observable in `sub[].func`.
+
+### Mixing marked and unmarked parameters
+
+The same combinator fixes a parameter list where only some parameters carry a
+marker. Put the marked shape first:
+
+```
+arg capture ps mut_param | plain_param* sep "," join ", "
+```
+
+```text
+def f(mut c: Counter, n: int)   ->   f(&c: Counter, n: int)
+```
+
+See [`samples/mixed-parameters/`](https://github.com/olivierdevelops/capy/tree/main/samples/mixed-parameters).
+
+### Left recursion through any alternative is refused
+
+A cycle that exists through **any** alternative is left recursion, not only
+through the first:
+
+```text
+$ capy check lib.capy
+function "expr": left recursion — it can match itself without consuming a token (cycle: expr -> expr). Rewrite the rule so something is consumed first: put a literal before the capture, or make the recursion trail (right-recursive) instead of lead
+```
+
+### When it fails
+
+If no alternative matches, the diagnostic lists **all** of them:
+
+```text
+error: expected a `call`, a `name`, or a `num`, found "+" in argument `v` of `operand`
+  1 │ return add(3, +)
+    │               ^
+```
+
+Nesting is bounded at 64 captures — about 31 call levels in the sample.
+Beyond the bound the parse is refused with an ordinary error, never a crash;
+the bound's own message is consumed by capture-local backtracking and surfaces as
+the generic `expected` error.
 
 ## Recursive captures: right-recursive, not left-recursive
 

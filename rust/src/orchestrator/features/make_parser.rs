@@ -1062,23 +1062,34 @@ the source nests further than the parser will follow",
     }
 
     fn capture_func_type_inner(&mut self, el: &PatternElement) -> Result<CaptureValue, CapyError> {
-        let target = match self.by_name.get(&el.cap_type).cloned() {
-            None => {
-                return Err(CapyError::msg(format!(
-                    "internal: function-typed capture {} references unknown function {}",
-                    gofmt::quote(&el.name),
-                    gofmt::quote(&el.cap_type)
-                )))
+        // PROP-2026-0004 — `cap_type` is alternative 1 and `el.alts` the rest, so
+        // an ordinary single-type capture has exactly one target and behaves as
+        // it always did.
+        let mut targets: Vec<Arc<FuncDef>> = Vec::new();
+        for n in el.alternatives() {
+            match self.by_name.get(n).cloned() {
+                None => {
+                    return Err(CapyError::msg(format!(
+                        "internal: function-typed capture {} references unknown function {}",
+                        gofmt::quote(&el.name),
+                        gofmt::quote(n)
+                    )))
+                }
+                Some(t) => targets.push(t),
             }
-            Some(t) => t,
-        };
+        }
+        let names = el.alternatives().collect::<Vec<_>>().join(" | ");
 
         // Exactly-one (no repetition): a single mandatory match.
         if el.repeat.is_empty() {
-            match self.match_one(&target) {
+            match self.match_alt(&targets) {
                 None => {
-                    self.note_failure(Expectation::Nonterminal(el.cap_type.clone()));
-                    return Err(CapyError::msg(format!("expected {}", el.cap_type)));
+                    // Note every alternative; the furthest-failure union is what
+                    // the diagnostic prints (R6).
+                    for t in &targets {
+                        self.note_failure(Expectation::Nonterminal(t.name.clone()));
+                    }
+                    return Err(CapyError::msg(format!("expected {names}")));
                 }
                 Some(fc) => {
                     return Ok(CaptureValue { sub: vec![fc], ..Default::default() });
@@ -1097,7 +1108,7 @@ the source nests further than the parser will follow",
                     self.restore(sep);
                     break;
                 }
-                match self.match_one(&target) {
+                match self.match_alt(&targets) {
                     None => {
                         // Separator consumed but no following item — roll back the
                         // separator so it isn't lost.
@@ -1110,16 +1121,31 @@ the source nests further than the parser will follow",
                     }
                 }
             }
-            match self.match_one(&target) {
+            match self.match_alt(&targets) {
                 None => break,
                 Some(fc) => subs.push(fc),
             }
         }
         if el.repeat == "+" && subs.is_empty() {
-            self.note_failure(Expectation::Nonterminal(el.cap_type.clone()));
-            return Err(CapyError::msg(format!("expected at least one {}", el.cap_type)));
+            for t in &targets {
+                self.note_failure(Expectation::Nonterminal(t.name.clone()));
+            }
+            return Err(CapyError::msg(format!("expected at least one {names}")));
         }
         Ok(CaptureValue { sub: subs, ..Default::default() })
+    }
+
+    /// PROP-2026-0004 R2 — ordered choice: try each alternative in declaration
+    /// order and return the first that matches. Rewind is local to this capture
+    /// position (`match_one` restores the token cursor on failure), so a failed
+    /// alternative never leaks consumed input into the next one.
+    ///
+    /// Deliberately notes no expectation itself: a repetition that simply ends
+    /// is not a failure, and R7 requires existing diagnostics stay byte-identical.
+    /// The mandatory call sites note **every** alternative, which the
+    /// furthest-failure record unions for the diagnostic (R6).
+    fn match_alt(&mut self, targets: &[Arc<FuncDef>]) -> Option<FuncCall> {
+        targets.iter().find_map(|t| self.match_one(t))
     }
 
     /// The `matchOne` closure from `captureFuncType`.

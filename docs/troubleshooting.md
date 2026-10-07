@@ -30,6 +30,21 @@ The error happens before any script runs — it's in the `.capy` library itself.
 
 The library loads, but a script line doesn't match any function.
 
+**Start here: `capy ast` shows every failure, not just the first.**
+
+```sh
+capy ast lib.capy script.capy
+```
+
+`capy run` stops at the first bad line and emits nothing. `capy ast` recovers —
+it returns the statements that did parse plus one diagnostic per region that did
+not, so you fix the whole file in one pass instead of one line per run. The
+error regions are printed as `<error> LINE:COL-LINE:COL`, and the diagnostics go
+to stderr so stdout stays pipeable. See [diagnostics.md](diagnostics.md) and the
+runnable [`samples/parse-recovery/`](https://github.com/olivierdevelops/capy/tree/main/samples/parse-recovery).
+
+Then work through the usual causes:
+
 1. **No function matched this line.** The first token doesn't begin any
    function's pattern. Confirm the literal spelling and that the function is in
    the loaded library (`capy check` lists them).

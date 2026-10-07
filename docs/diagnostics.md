@@ -55,11 +55,29 @@ say *which* `)`, and the shape that got furthest is not always the one you meant
 Stable and machine-readable. A code's meaning does not change once published;
 new situations get new codes.
 
-| Code | Meaning |
+| Code | Meaning | Emitted in 0.22.0? |
+|---|---|---|
+| `E0001` | No library function matches the statement | yes |
+| `E0002` | A delimiter was opened and never closed | **reserved** — not yet emitted |
+| `E0003` | Source nests deeper than the parser will follow | **reserved** — not yet emitted |
+
+Reserved codes are published so that their meaning is fixed before anything
+produces them. Until then both situations arrive as `E0001`, so do not treat the
+absence of `E0002` / `E0003` as evidence that the condition did not occur.
+
+### Not yet
+
+Honest limits of the 0.22.0 diagnostic surface, so you do not go looking for
+something that is not there:
+
+| Limit | What it means for you |
 |---|---|
-| `E0001` | No library function matches the statement |
-| `E0002` | A delimiter was opened and never closed |
-| `E0003` | Source nests deeper than the parser will follow |
+| `Span` carries line and column, **not byte offsets** | An editor integration converts line/col itself; there is no direct slice index into the source. |
+| The nesting-depth error reports the generic message | `E0003` is reserved but unemitted — see above. |
+| The cascade constants are defaults | They were chosen by judgement, not tuned against a large real-world corpus. If suppression looks wrong for your grammar, that is worth reporting. |
+| The **wasm ABI exposes neither the AST nor diagnostics** | The browser [playground](playground.md) cannot show any of this. Diagnostics are a CLI and embedding feature. |
+
+Each is tracked on the [roadmap](roadmap.md).
 
 ## Error recovery
 

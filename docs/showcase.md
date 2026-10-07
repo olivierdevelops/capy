@@ -17,7 +17,7 @@ directory if you want to clone and run them yourself.
 
 ---
 
-## ✨ New-feature showcase — 22 examples in the playground
+## ✨ New-feature showcase — 29 examples in the playground
 
 The round-1, round-2 and round-6 language features each ship with a
 focused, runnable example. They're grouped under the **✨ Features**
@@ -28,6 +28,8 @@ output.
 
 | Example | Feature it shows off |
 |---|---|
+| [`language-frontend`](https://github.com/olivierdevelops/capy/tree/main/samples/language-frontend) | **host a language** — `fn` with a typed parameter list, `let` / `if` / `while` / `return`, nested brace scopes, expressions with precedence; lowered to Python. See [the guide](language-frontend.md) |
+| [`operator-precedence`](https://github.com/olivierdevelops/capy/tree/main/samples/operator-precedence) | **infix precedence** — one `any` capture takes a whole expression; `* / %` over `+ -`, comparison looser, `and` over `or`, `not` tightest, all left-associative |
 | [`html-xml-parser`](https://github.com/olivierdevelops/capy/tree/main/samples/html-xml-parser) | **parse HTML / XML** — one generic `element` function matches any `<tag>…</tag>` via a capture-bound `block_close_seq` + `attribute*` nonterminal; mismatched nesting is a hard error |
 | [`template-sugar`](https://github.com/olivierdevelops/capy/tree/main/samples/template-sugar) | `template … end` instead of multi-line backtick `write` literals |
 | [`optional-args`](https://github.com/olivierdevelops/capy/tree/main/samples/optional-args) | trailing capture with a `default` — one function, many call shapes |
@@ -899,6 +901,113 @@ ships with browsable, regenerable documentation.
 
 ---
 
+## 🧱 Host a language — a real front end
+
+Not a config DSL: functions with typed parameter lists, `let` / `if` /
+`while` / `return`, nested brace scopes, and expressions with real
+precedence. About 70 lines of grammar declaration, no lexer and no
+parser generator. From
+[`samples/language-frontend/`](https://github.com/olivierdevelops/capy/tree/main/samples/language-frontend).
+
+=== "Source"
+
+    ```
+    fn gcd(a: int, b: int) {
+        while b != 0 {
+            let t = b
+            let b = a % b
+            let a = t
+        }
+        return a
+    }
+
+    fn classify(n: int, limit: int) {
+        let score = n * 2 + 1
+        if score > limit and n != 0 {
+            return 1
+        }
+        return 0
+    }
+    ```
+
+=== "The tree (`capy ast`)"
+
+    ```
+    fn 1:1-1:23
+      name = "gcd" 1:4
+      params:
+        param 1:8-1:14
+          pname = "a" 1:8
+          ptype = "int" 1:11
+        param 1:16-1:22
+          pname = "b" 1:16
+          ptype = "int" 1:19
+      while 2:5-2:17
+        cond = "b != 0" 2:11
+        let 3:9-3:18
+          name = "t" 3:13
+          value = "b" 3:17
+        let 4:9-4:22
+          name = "b" 4:13
+          value = "a % b" 4:17
+      return 7:5-7:13
+        value = "a" 7:12
+    ```
+
+    Scopes nest, the parameter list is a **sub-tree** rather than a
+    string, and every node carries a span down to the capture.
+
+=== "Lowered to Python (`capy run`)"
+
+    ```python
+    def gcd(a: int, b: int):
+        while b != 0:
+            t = b
+            b = a % b
+            a = t
+        return a
+
+    def classify(n: int, limit: int):
+        score = n * 2 + 1
+        if score > limit and n != 0:
+            return 1
+        return 0
+    ```
+
+    The lowering is optional — a consumer that only wants the tree
+    never calls `capy run`.
+
+=== "Errors your users can read"
+
+    Drop one `)` from a function header:
+
+    ```
+    error: expected `)`, found "{" in `fn`
+      1 │ fn add(x: int, y: int {
+        │                       ^
+    ```
+
+    And `capy ast` keeps going — the *next* function and a later
+    `while` block parse normally, so one bad header doesn't cost you
+    the rest of the file:
+
+    ```
+    fn 5:1-5:24
+      name = "area" 5:4
+      ...
+    while 10:1-10:17
+      ...
+    <error> 1:1-1:24  12 token(s) skipped
+    error[E0001] 1:1: expected `)`, found "{" in `fn`
+    ```
+
+Capy is the front end — tokens → tree → diagnostics. Type checking,
+analysis and codegen stay yours.
+
+[Full guide → `language-frontend.md`](language-frontend.md)
+
+---
+
 ## 🩺 Errors that tell you how to fix them
 
 Every Capy error names what went wrong, hints at how to fix it,
@@ -967,7 +1076,51 @@ values.
     The hint includes the regex so authors can see what's wrong
     without opening the library.
 
-[Full guide → `errors-and-debugging.md`](errors-and-debugging.md)
+=== "Parsing that keeps going"
+
+    `capy run` stops at the first error, because half-parsed source
+    would make half-correct output. `capy ast` recovers instead —
+    same file, every error, plus the tree of what *did* parse.
+
+    Source (`samples/parse-recovery/broken.capy`), two mistakes in five lines:
+
+    ```
+    task "write the proposal" due "2026-09-16"
+    task "missing its due date"
+    done "read the release notes"
+    tsak "a typo in the keyword"
+    list
+    ```
+
+    `capy run` — one error, no output:
+
+    ```
+    error: expected `due`, found end of statement in `task`
+      2 │ task "missing its due date"
+    ```
+
+    `capy ast` — three statements, two error regions:
+
+    ```
+    task 1:1-1:43
+      name = "\"write the proposal\"" 1:6
+      when = "2026-09-16" 1:31
+    done 3:1-3:30
+      name = "\"read the release notes\"" 3:6
+    list 5:1-5:5
+    <error> 2:1-2:28  3 token(s) skipped
+    <error> 4:1-4:29  3 token(s) skipped
+    error[E0001] 2:1: expected `due`, found end of statement in `task`
+    error[E0001] 4:1: no library function matches token "tsak"
+    ```
+
+    Note the message shape: it names the construct that got furthest
+    (`task`) and what it wanted next (`due`), rather than just "no
+    function matched". Add `--json` for the machine-readable form.
+
+[Full guide → `errors-and-debugging.md`](errors-and-debugging.md) ·
+[Diagnostics → `diagnostics.md`](diagnostics.md) ·
+[Walkthrough → Tutorial 5](tutorials/05-reading-diagnostics.md)
 
 ---
 

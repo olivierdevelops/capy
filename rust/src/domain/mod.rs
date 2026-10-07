@@ -2,6 +2,7 @@
 
 pub mod ast;
 pub mod ast_json;
+pub mod ast_text;
 pub mod command;
 pub mod docs;
 pub mod errors;

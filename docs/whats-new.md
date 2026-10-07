@@ -4,6 +4,37 @@ title: What's new — engine primitives shipped in this release
 
 # What's new
 
+## 0.23.0 — ordered choice for grammars
+
+**A capture can now choose.** Capy had sequence, repetition and recursion but no
+choice, so a declared grammar could not say "an argument is a nested call *or* a
+name *or* a number" and stopped nesting after one level. One capture type may now
+name several library functions, tried left to right, first match wins:
+
+```
+arg capture v call | name | num
+```
+
+```text
+before:  return add(3, mul(4, 5))   ->  error: expected `)`, found "("
+after:   return add(3, mul(4, 5))   ->  return add(3, mul(4, 5));
+```
+
+The same combinator lets a parameter list mix marked and unmarked parameters
+(`def f(mut c: Counter, n: int)`), which was rejected before. When nothing
+matches, the diagnostic lists every alternative, `capy docs` prints the whole
+choice, and `capy ast --json` names the alternative that matched in `sub[].func`.
+
+Left recursion through **any** alternative is refused at load, with the existing
+cycle trace. Alternatives are library functions; wrap a flat type in a `bare`
+function. See [ordered choice](library-authoring.md#ordered-choice) and the two
+new samples,
+[`expression-grammar`](https://github.com/olivierdevelops/capy/tree/main/samples/expression-grammar)
+and
+[`mixed-parameters`](https://github.com/olivierdevelops/capy/tree/main/samples/mixed-parameters).
+
+Nothing existing changes: every pre-existing golden is byte-identical.
+
 ## 0.22.0 — diagnostics, recovery, AST output, precedence
 
 **Parse errors say what was expected.** Capy used to report only that nothing
@@ -31,6 +62,29 @@ they do not collide with the prefix-call form.
 
 Nothing existing changes: all 117 sample libraries load, and the golden corpus is
 byte-identical apart from one error message that got strictly better.
+
+**Docs & samples.** Two runnable, golden-checked samples now cover this release:
+[`samples/operator-precedence/`](https://github.com/olivierdevelops/capy/tree/main/samples/operator-precedence)
+and
+[`samples/parse-recovery/`](https://github.com/olivierdevelops/capy/tree/main/samples/parse-recovery),
+the latter carrying a new optional golden kind — `<base>.expected-ast.txt`,
+which pins what `capy ast` recovers from a broken file. New walkthrough:
+[Tutorial 5 · Reading diagnostics](tutorials/05-reading-diagnostics.md).
+Taken together these make Capy usable as a **language front end**, which now
+has its own page — [Host your language's frontend](language-frontend.md) — and a
+runnable sample,
+[`samples/language-frontend/`](https://github.com/olivierdevelops/capy/tree/main/samples/language-frontend):
+a small imperative language with typed parameter lists, nested scopes and
+recovery, lowered to Python.
+
+`capy ast` and the precedence ladder are now in the cheat sheet, the feature
+list, the LLM brief and the editor-tooling guide;
+[errors & debugging](errors-and-debugging.md) and
+[troubleshooting](troubleshooting.md) explain when to reach for `ast` instead of
+`run`; and the known limits of the surface — no byte offsets, `E0002`/`E0003`
+reserved but unemitted, nothing over the wasm ABI — are stated in
+[diagnostics](diagnostics.md), [ast-json](ast-json.md) and on the
+[roadmap](roadmap.md).
 
 
 ## 0.21.0 — parser foundations

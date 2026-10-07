@@ -27,6 +27,68 @@ Four parts:
 3. **`<line> │ <source>`** — the offending line, verbatim.
 4. **`    │      ^`** — a caret pointing at the column.
 
+## One error, or all of them?
+
+`capy run` and `capy ast` disagree about a broken file **on purpose**, and
+knowing which one to reach for saves most of the debugging.
+
+```text
+                     broken script
+                          │
+        ┌─────────────────┴──────────────────┐
+        ▼                                    ▼
+    capy run                             capy ast
+        │                                    │
+  stops at the FIRST error            RECOVERS past each one
+  emits NO output                     returns the whole tree
+  exit 1                              + one diagnostic per bad region
+        │                                    │
+  "is my output correct?"             "what is wrong with my file?"
+```
+
+`run` is a transpiler: a half-parsed file would produce half-correct target
+code, so it refuses rather than guess. `ast` is a diagnostic tool: it skips the
+tokens it cannot use, resumes at the next statement, and reports everything.
+
+Same file, both commands — from
+[`samples/parse-recovery/`](https://github.com/olivierdevelops/capy/tree/main/samples/parse-recovery),
+whose output is golden-checked in CI:
+
+```text
+$ capy run samples/parse-recovery/lib.capy samples/parse-recovery/broken.capy
+error: expected `due`, found end of statement in `task`
+  2 │ task "missing its due date"
+
+$ capy ast samples/parse-recovery/lib.capy samples/parse-recovery/broken.capy
+task 1:1-1:43
+  name = "\"write the proposal\"" 1:6
+  when = "2026-09-16" 1:31
+done 3:1-3:30
+  name = "\"read the release notes\"" 3:6
+list 5:1-5:5
+<error> 2:1-2:28  3 token(s) skipped
+<error> 4:1-4:29  3 token(s) skipped
+error[E0001] 2:1: expected `due`, found end of statement in `task`
+error[E0001] 4:1: no library function matches token "tsak"
+```
+
+Three statements parsed, two regions did not. Fixing only what `run` told you
+about would have sent you straight back for line 4.
+
+**Where to go next**
+
+- [Diagnostics](diagnostics.md) — severities, the stable `E…` codes, secondary
+  labels, and how the cascade is kept from flooding you with follow-on noise.
+- [AST JSON schema](ast-json.md) — `capy ast --json` for editors, agents and
+  anything that wants the tree rather than the text.
+- [Tutorial 5 · Reading diagnostics](tutorials/05-reading-diagnostics.md) — the
+  same loop, walked through end to end.
+- Embedding Capy? `Library::parse` returns the same `ParseResult` the CLI
+  prints. See [embedding](embedding.md).
+
+Diagnostics go to **stderr** in tree mode, so `capy ast … | jq` and
+`capy ast … > tree.txt` both keep working.
+
 ## Three common errors, walked through
 
 ### 1. Unknown function (typo in DSL keyword)
@@ -226,6 +288,12 @@ The cycle in parentheses is the path the matcher would take. Fix it by consuming
 something first — see
 [Recursive captures](library-authoring.md#recursive-captures-right-recursive-not-left-recursive).
 
+The check covers [ordered choice](library-authoring.md#ordered-choice) too: a
+cycle that exists through **any** alternative of `arg capture e a | b | c` is
+refused, not only through the first one. Related load error for the same syntax:
+`capture "v" alternation names "int", which is not a library function` — every
+alternative must be a function, so wrap a built-in type in a `bare` function.
+
 Before this check existed, such a library passed `capy check` and then aborted
 the process with a stack overflow, which an embedding program could not catch.
 
@@ -235,3 +303,9 @@ A nonterminal descent stops at 64 levels. Source nested deeper than that is
 refused; the message currently falls back to the generic "no library function
 matches" rather than naming the limit. If you hit this with hand-written source,
 the grammar is usually the problem rather than the depth.
+
+A dedicated code, [`E0003`](diagnostics.md#diagnostic-codes), is **reserved**
+for this situation but is not emitted yet — through `capy ast` the depth limit
+still arrives as `E0001`, the same code as a genuine unknown function. Naming
+the limit is a known limitation of 0.22.0 and is on the
+[roadmap](roadmap.md).

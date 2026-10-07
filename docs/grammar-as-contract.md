@@ -9,6 +9,10 @@ verified contract** between the people writing source files and the
 systems consuming generated output. This page walks through the
 workflow it unlocks.
 
+For the stronger version of this — the contract *being* a language, with a
+spanned parse tree and diagnostics for its users — see
+[host your language's frontend](language-frontend.md).
+
 ## The pattern
 
 ```

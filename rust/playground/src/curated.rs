@@ -6,6 +6,11 @@
 //! the dropdown. An empty `script_file` means `samples/<id>/script.capy`; an empty
 //! `library_file` means `lib.capy` (with a `lib.yaml` fallback).
 
+/// Deliberately ABSENT: `samples/parse-recovery/`. It demonstrates `capy ast`
+/// and diagnostics, and the wasm ABI the playground runs on exposes neither
+/// (`REL-0.22.0` Known Limitation 5), so it would look broken in the browser.
+/// See PROP-2026-0002 R19.
+///
 /// One curated entry. Field order mirrors the Go anonymous struct.
 pub struct Curated {
     pub id: &'static str,
@@ -51,6 +56,24 @@ pub const CURATED: &[Curated] = &[
         title: "✨ Param lists (sep + join)",
         description: "A function-signature DSL → typed declaration. The parameter list uses a function-typed repetition with BOTH separators: `param* sep \",\" join \", \"` — `sep` is the INPUT separator consumed while parsing, `join` is the OUTPUT separator inserted between rendered params. Independent, so comma-input renders as comma-space output.",
         hint: "Add a parameter to a `func` line; try a zero-arg `func now() -> int`.",
+        script_file: "",
+        library_file: "",
+    },
+    Curated {
+        id: "language-frontend",
+        category: "Features",
+        title: "\u{2728} Host a language (real front end)",
+        description: "Not a config DSL: `fn` with a typed parameter list, `let` / `if` / `while` / `return`, nested brace scopes, and expressions with real precedence \u{2014} about 70 lines of grammar declaration, lowered here to Python. The parameter list is a named nonterminal (`param* sep \",\" join \", \"`), so it parses as a sub-tree rather than a flat token run. Run `capy ast` on it from the CLI to see the spanned tree.",
+        hint: "Add a parameter, nest another `if` inside the `while`, or add an `else` function to the library.",
+        script_file: "main.capy",
+        library_file: "",
+    },
+    Curated {
+        id: "operator-precedence",
+        category: "Features",
+        title: "\u{2728} Operator precedence (one `any` capture)",
+        description: "One `arg capture value any` takes a WHOLE infix expression and the engine builds the tree \u{2014} `*` `/` `%` tighter than `+` `-`, comparison looser than both, `and` tighter than `or`, `not` tightest, everything left-associative. Each line prints twice: the source text you wrote, then the value it evaluates to. `1 + 2 * 3` is 7; `(1 + 2) * 3` is 9.",
+        hint: "Change an expression and watch the second column; try `10 - 2 - 3` versus `10 - (2 - 3)`.",
         script_file: "",
         library_file: "",
     },

@@ -38,6 +38,7 @@ links; this page is a quick reference for "is X supported?".
 | `block.open` + `block.close` | Mode-B block opener (explicit delimiter pair). |
 | `block_close_seq` | Mode-E block opener — multi-token sequence closer (matched-pair HTML/XML). |
 | `arg capture x FUNC` / `FUNC*` / `FUNC+` | Function-as-type capture (named nonterminal), optionally repeated with `sep`. |
+| `arg capture x A \| B \| C` | Ordered choice between library functions — first match wins; `capy docs` prints the union (0.23.0). |
 | `priority` | Higher wins on ambiguous matches; default 0. |
 
 ### Auto-name-prepend rule
@@ -109,6 +110,8 @@ Common patterns shipped with samples: `Email`, `Slug`, `EnvName`,
 | Indentation | 4 spaces or 1 tab per level. Mixed/odd indent is a parse error. |
 | Multi-line literals | `{...}`, `[...]`, `(...)` allow newlines inside; value parsers skip them. |
 | Object literal keys | Quoted strings OR bare identifiers (`{name: "x", "id": 1}`). |
+| Infix operators | `* / %`, `+ -`, comparisons, `and` / `or`, prefix `not` — conventional precedence, left-associative. A single `any` capture takes a whole expression. See [operator precedence](language-reference.md#operator-precedence). |
+| Grouping parentheses | `(a + b) * c` groups. `(upper name)` is still a prefix call and `(foo)` still a zero-argument call — grouping applies only where unambiguous. |
 
 ## Inner DSL (function body)
 
@@ -262,6 +265,7 @@ OUTPUT):
 | `arg capture xs SomeFunc+` | one or more |
 | `arg capture xs SomeFunc+ sep ","` | one or more, comma-separated input |
 | `arg capture xs SomeFunc* sep "," join ", "` | comma in, `", "` out |
+| `arg capture x A \| B \| C` | ordered choice: try `A`, then `B`, then `C`; first match wins (0.23.0) |
 
 A pure-capture nonterminal (no `arg literal`) must be declared `bare`
 to opt out of the auto-prepended name keyword. See
@@ -273,6 +277,7 @@ to opt out of the auto-prepended name keyword. See
 |------------|--------|
 | `capy run <lib.capy> <script.capy>` | Transpile a script. Output to stdout unless `--out` or library `output_file`. |
 | `capy check <lib.capy>` | Validate a library; report functions and types. Exit 0 if valid. |
+| `capy ast <lib.capy> <script.capy> [--json]` | Print the parse tree. Unlike `run`, parsing recovers: a broken file still yields a tree plus a diagnostic per bad region. Exit 1 when diagnostics were produced. See [diagnostics](diagnostics.md) and the [JSON schema](ast-json.md). |
 | `capy docs <lib.capy>` | Render a Markdown reference doc from the library's `description` annotations. |
 | `capy build <lib.capy> [-o <out>]` | Compile a library into a standalone single-purpose CLI binary. See [compiling-libraries](compiling-libraries.md). |
 | `capy lib new <name>` | Scaffold a new library. |

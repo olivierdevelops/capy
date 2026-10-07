@@ -93,3 +93,25 @@ JSON-RPC stdio so an AI agent can use Capy as a tool:
   or a hover-card source).
 - `capy check <lib>` — machine-checkable validation for editor diagnostics / CI.
 - `capy fmt` — formatting, scriptable with `--check` and `--stdout`.
+- **`capy ast <lib> <script> --json` — the tooling backbone.** One JSON document
+  on stdout: the parse tree with a span on every node, plus `diagnostics[]` with
+  a stable code, a message and a primary range each. Parsing **recovers**, so a
+  file being typed in an editor still yields a usable tree *and* the list of
+  what is currently broken — which is exactly what a language server needs
+  between keystrokes.
+
+```sh
+capy ast lib.capy script.capy --json \
+  | jq -r '.diagnostics[] | "\(.primary.start_line):\(.primary.start_col) \(.code) \(.message)"'
+```
+
+```text
+2:1 E0001 expected `due`, found end of statement in `task`
+4:1 E0001 no library function matches token "tsak"
+```
+
+Each `tree.errors[]` entry carries a `diagnostic_index` back into
+`diagnostics[]`, so you can highlight a region and attach its message in one
+pass. Exit 0 = clean, 1 = diagnostics produced. Full contract:
+[AST JSON schema](ast-json.md). Spans carry line and column, not byte offsets —
+convert on your side.

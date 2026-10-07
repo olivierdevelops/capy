@@ -172,6 +172,10 @@ pub struct RawArg {
     pub repeat: String,
     pub sep: String,
     pub join: String,
+    /// PROP-2026-0004 — ordered alternation. `type_` holds alternative 1; `alts`
+    /// holds alternatives 2…n (library function names), tried in order. Empty
+    /// for an ordinary single-type capture.
+    pub alts: Vec<String>,
 }
 
 #[derive(Debug, Clone, Default)]

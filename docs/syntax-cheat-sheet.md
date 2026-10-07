@@ -52,6 +52,7 @@ end
 |-----------|---------|
 | `arg literal "x"` | Match an exact token in source. |
 | `arg capture NAME TYPE [default "…"]` | Bind a value of `TYPE` to `NAME`. |
+| `arg capture NAME A \| B \| C` | **Ordered choice** (0.23.0): try library functions `A`, `B`, `C` left to right; first match wins. |
 | `arg capture NAME TYPE optional` / `required` / `bare` | Capture modifiers (optional value, required, bare/unquoted). |
 | `priority N` | Higher wins when multiple functions could match (default 0). |
 | `` write `…` `` / `template … end` | Emit output. Backtick strings are multi-line; `${expr}` interpolates. `template … end` is block sugar for the same thing. |
@@ -132,6 +133,24 @@ Command-only (side-effecting): `write_file` · `exec` · `exec_capture` ·
 
 ---
 
+## Operator precedence
+
+Infix operators inside `${ … }` and the inner DSL, loosest to tightest. All
+**left-associative** — `a - b - c` is `(a - b) - c`.
+
+```text
+  or
+  and
+  ==  !=  <  >  <=  >=
+  +  -
+  *  /  %
+  not            <- prefix, binds tighter than all of them
+```
+
+`(a + b) * c` groups. `(upper name)` is still a call, and `(foo)` is still a
+zero-argument call — parentheses group only where that is unambiguous. Full
+rules: [language-reference.md](language-reference.md#operator-precedence).
+
 ## Built-in template helpers
 
 Callable inside `${…}` interpolation. The authoritative list lives in
@@ -160,6 +179,7 @@ in sync (see `AGENTS.md`).
 | `capy run <lib> <script> [args]` | Transpile a script. Flags: `--out`, `--out-dir`, `--zip`, `--debug`. |
 | `capy <lib> <command> [args]` | Run a library-defined command. |
 | `capy check <lib>` | Validate a library; list functions/types. |
+| `capy ast <lib> <script> [--json]` | Print the parse tree. Recovers, so a broken file still reports **every** error. |
 | `capy docs <lib>` | Render auto-generated reference. |
 | `capy watch <lib> [args]` | Re-run on file change. |
 | `capy fmt <files…>` | Format `.capy` files (`--check`, `--diff`, `--stdout`). |

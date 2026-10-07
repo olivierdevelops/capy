@@ -349,6 +349,23 @@ fn validate_cross_references(lib: &mut Library) -> Result<(), CapyError> {
             if a.kind != "capture" {
                 continue;
             }
+            // PROP-2026-0004 / ADR-0003 OQ-08 — every alternative of an ordered
+            // choice must be a library function. A flat alternative is written
+            // as a `bare` one-capture function.
+            if !a.alts.is_empty() {
+                for n in std::iter::once(&a.type_).chain(a.alts.iter()) {
+                    if !func_names.contains(n) {
+                        let mut ce = CapyError::structured(format!(
+                            "function {}: capture {} alternation names {}, which is not a library function",
+                            gofmt::quote(&fd.name),
+                            gofmt::quote(&a.name),
+                            gofmt::quote(n)
+                        ));
+                        ce.hint = "every alternative in `A | B` must be a function; wrap a built-in or declared type in a `bare` function with one capture".to_string();
+                        return Err(ce);
+                    }
+                }
+            }
             // A capture's type may name another LIBRARY FUNCTION
             // (function-as-type / named nonterminal). That's valid even though
             // it's neither a built-in nor a declared `type`.
@@ -511,7 +528,9 @@ fn reject_left_recursion(lib: &Library) -> Result<(), CapyError> {
                 break; // a literal consumes a token — nothing past it is "left"
             }
             if el.is_func {
-                targets.push(el.cap_type.as_str());
+                // PROP-2026-0004 R5 — a cycle through ANY alternative is left
+                // recursion, so every alternative is an edge.
+                targets.extend(el.alternatives());
             }
             // Only a capture that MAY match empty leaves the position untouched
             // for the element after it. Anything else consumes, so stop.
@@ -781,6 +800,7 @@ fn compile_args(raws: &[RawArg], fname: &str) -> Result<Vec<ArgEntry>, CapyError
                     repeat: r.repeat.clone(),
                     sep: r.sep.clone(),
                     join: r.join.clone(),
+                    alts: r.alts.clone(),
                     ..Default::default()
                 });
             }
@@ -813,6 +833,7 @@ fn compile_elements(args: &[ArgEntry]) -> Vec<PatternElement> {
                 repeat: a.repeat.clone(),
                 sep: a.sep.clone(),
                 join: a.join.clone(),
+                alts: a.alts.clone(),
                 ..Default::default()
             });
         }

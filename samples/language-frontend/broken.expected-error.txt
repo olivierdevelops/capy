@@ -1,0 +1,1 @@
+1:23: expected `)`, found "{" in `fn`

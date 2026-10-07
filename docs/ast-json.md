@@ -19,7 +19,14 @@ The root carries `schema_version`, currently **1**.
 - Fields may be **added** without a bump. Ignore keys you do not recognise.
 - Removing a field, or changing what one means, bumps the version.
 - Diagnostic **codes** (`E0001`, …) are part of the contract too: a code's
-  meaning does not change once published.
+  meaning does not change once published. Some codes are published but not yet
+  emitted — see [the code table](diagnostics.md#diagnostic-codes).
+
+**Where you can get this.** `capy ast --json` from the CLI, and `Library::parse`
+when [embedding](embedding.md). The **wasm ABI exposes neither the AST nor
+diagnostics**, so the browser [playground](playground.md) cannot produce this
+document and neither can anything else built on the wasm build. Spans carry line
+and column, not byte offsets.
 
 ## Root
 
@@ -63,7 +70,7 @@ the regions that did not in the other. Interleaving is recoverable from spans.
 | Field | Type | Meaning |
 |---|---|---|
 | `text` | string | The captured source text |
-| `is_expr` | bool | Whether it carries a parsed expression |
+| `is_expr` | bool | Whether it carries a parsed expression. The expression **tree itself is not serialized** — you get `text`. In Rust, `CaptureValue.expr` has the tree; see [host your language's frontend](language-frontend.md). |
 | `span` | span or null | Exactly the tokens this value came from |
 | `sub` | array of node | Sub-matches, when the capture's type names a function |
 

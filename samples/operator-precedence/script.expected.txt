@@ -1,0 +1,26 @@
+
+ARITHMETIC — `*` `/` `%` bind tighter than `+` `-`
+let a = 1 + 2 * 3
+      a == 7
+let b = (1 + 2) * 3
+      b == 9
+let c = 10 - 2 - 3
+      c == 5
+let d = 7 % 4 + 1
+      d == 4
+let e = 100 / 5 / 2
+      e == 10
+
+COMPARISON — binds looser than arithmetic
+let f = 1 + 1 == 2 * 1
+      f == true
+let g = 3 < 2 + 2
+      g == true
+
+BOOLEAN — `and` binds tighter than `or`, and `not` tighter than both
+let h = 1 == 1 and 2 == 3
+      h == false
+let i = 1 == 1 and 2 == 3 or 4 == 4
+      i == true
+let j = not 1 == 2
+      j == false

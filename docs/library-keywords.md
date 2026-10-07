@@ -97,6 +97,7 @@ arg capture cond any              # capture an expression as `cond`
 arg capture name ident            # capture a single identifier
 arg capture attrs attribute*      # repeat a function-typed capture (0+)
 arg capture params param+ sep "," join ", "   # 1+, comma in, ", " out
+arg capture v call | name | num               # ordered choice: first match wins
 arg capture label string default "Submit"     # optional, trailing
 ```
 
@@ -105,6 +106,7 @@ The optional modifiers (all independent):
 | Modifier | Role |
 |----------|------|
 | `TYPE` | the capture type — a [built-in](#built-in-capture-types) or another **function/type name** (a *nonterminal*). |
+| `A \| B \| C` | **ordered choice** (0.23.0): several library **functions** tried left to right, first match wins. Every alternative must be a function — wrap a flat type in a `bare` one-capture function. A `*` / `+` suffix goes after the last name and applies to the whole choice. See [ordered choice](library-authoring.md#ordered-choice). |
 | `*` / `+` suffix | repetition: `*` = zero-or-more, `+` = one-or-more (function-typed captures only). |
 | `sep "X"` | **input** separator consumed between repetitions while parsing. |
 | `join "Y"` | **output** separator inserted between rendered sub-results. |

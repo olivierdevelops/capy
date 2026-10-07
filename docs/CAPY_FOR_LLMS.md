@@ -239,6 +239,13 @@ list parents on an integer. A missing key / out-of-range index is `nil`
 - Identifier paths resolve in order: locals (loop vars), captures, context.
 - Lists `[1, 2, 3]`, objects `{"k": "v", name: "Alice"}` (keys can be unquoted idents).
 - Comparison: `==`, `!=`, `<`, `<=`, `>`, `>=`. Unary `not expr`.
+- Infix arithmetic and logic with conventional precedence, all left-associative.
+  Loosest to tightest: `or` < `and` < comparison < `+ -` < `* / %`; prefix `not`
+  binds tightest of all. So `1 + 2 * 3` is `7` and `not 1 == 2` is `(not 1) == 2`.
+  A single `arg capture x any` takes a whole expression. See
+  [operator precedence](language-reference.md#operator-precedence).
+- Grouping parentheses apply only where unambiguous: `(a + b) * c` groups, but
+  `(upper name)` is a prefix call and `(foo)` is a zero-argument call.
 - `(regex_match value pattern)` returns a boolean — useful in `if` conditions.
 
 ### Captures inside the body
@@ -438,6 +445,8 @@ if x:
 ```sh
 capy run <lib.capy> <script.capy>     # transpile
 capy check <lib.capy>                 # validate library
+capy ast <lib.capy> <script.capy>     # parse tree; recovers, reports EVERY error
+capy ast <lib.capy> <script.capy> --json   # same, machine-readable on stdout
 capy docs <lib.capy>                  # auto-generate reference docs
 capy init [<dir>]                     # scaffold
 capy version
@@ -449,6 +458,14 @@ capy help [<command>]
 Run `capy check lib.capy` after every edit. If it loads cleanly, run
 `capy run lib.capy script.capy` against a minimal script. Errors are
 caret-pointed at line:col.
+
+If the script does not parse, run `capy ast lib.capy script.capy` instead of
+guessing. `run` stops at the first error and emits nothing; `ast` recovers past
+each failure and reports all of them at once, with the tree of what did parse.
+Exit 0 means clean, 1 means diagnostics were produced. With `--json`, stdout is
+one JSON document — `diagnostics[]` carries `code`, `message` and `primary`
+(line/col), which is the repair loop: emit → `capy ast --json` → fix every
+reported region → re-emit.
 
 ---
 

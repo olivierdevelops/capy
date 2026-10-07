@@ -1,0 +1,44 @@
+# parse-recovery — what the parser does with a file that has mistakes in it.
+#
+# A tiny task DSL, chosen so every failure mode is one line long:
+#
+#   task "NAME" due "DATE"   -> a task line, both arguments required
+#   done "NAME"              -> a completed task
+#   list                     -> a zero-argument statement
+#
+# `script.capy` is clean and renders. `broken.capy` has two bad lines among
+# three good ones, which is the whole point:
+#
+#   capy run  lib.capy broken.capy   -> refuses, reports the FIRST error, no output
+#   capy ast  lib.capy broken.capy   -> returns a tree: 3 statements, 2 error regions
+#
+# Both behaviours are golden-checked here — `broken.expected-error.txt` holds
+# what `run` refuses with, `broken.expected-ast.txt` holds what `ast` recovers.
+# See docs/diagnostics.md and docs/ast-json.md.
+extension todo
+
+type Date
+    pattern "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+end
+
+function task
+    arg literal "task"
+    arg capture name string
+    arg literal "due"
+    arg capture when Date
+    write `[ ] ${decoded name} (due ${decoded when})
+`
+end
+
+function done
+    arg literal "done"
+    arg capture name string
+    write `[x] ${decoded name}
+`
+end
+
+function list
+    arg literal "list"
+    write `--- end of list ---
+`
+end

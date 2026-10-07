@@ -678,6 +678,18 @@ impl CapyLibParserState {
                                 && rest[idx] != "join"
                             {
                                 let mut typ = rest[idx].clone();
+                                // PROP-2026-0004 — ordered alternation `A | B | C`.
+                                // The line tokenizer splits on whitespace, so the
+                                // choice arrives as `A`, `|`, `B` or glued as
+                                // `A|B`; rejoin every piece that touches a `|`.
+                                let mut span = 1usize;
+                                while idx + span < rest.len()
+                                    && !matches!(rest[idx + span].as_str(), "default" | "sep" | "join")
+                                    && (typ.ends_with('|') || rest[idx + span].starts_with('|'))
+                                {
+                                    typ.push_str(&rest[idx + span]);
+                                    span += 1;
+                                }
                                 if typ.ends_with('*') {
                                     a.repeat = "*".to_string();
                                     typ = typ.trim_end_matches('*').to_string();
@@ -685,7 +697,19 @@ impl CapyLibParserState {
                                     a.repeat = "+".to_string();
                                     typ = typ.trim_end_matches('+').to_string();
                                 }
-                                if is_ident(&typ) {
+                                if typ.contains('|') {
+                                    let names: Vec<&str> = typ.split('|').collect();
+                                    if names.iter().any(|n| !is_ident(n)) {
+                                        return Err(self.errf(format!(
+                                            "arg capture: malformed alternation {} — write `A | B | C`, each a function name \
+(a repetition suffix `*` or `+` goes after the last name and applies to the whole choice)",
+                                            gofmt::quote(&rest[idx..idx + span].join(" "))
+                                        )));
+                                    }
+                                    a.type_ = names[0].to_string();
+                                    a.alts = names[1..].iter().map(|n| n.to_string()).collect();
+                                    idx += span;
+                                } else if is_ident(&typ) {
                                     a.type_ = typ;
                                     idx += 1;
                                 } else if !a.repeat.is_empty() {

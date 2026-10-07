@@ -1,5 +1,5 @@
 site_name: Capy
-site_description: A transpiler engine with zero default grammar. Define a tiny source language in a .capy library; get a code generator for any textual target — HTML, Python, Go, Terraform, and more.
+site_description: A transpiler engine with zero default grammar. Define a source language in a .capy library; get a code generator for any textual target — HTML, Python, Go, Terraform — or a full language front end, with a spanned parse tree, error recovery and diagnostics.
 site_url: https://olivierdevelops.github.io/capy/
 repo_url: https://github.com/olivierdevelops/capy
 repo_name: olivierdevelops/capy
@@ -73,11 +73,13 @@ nav:
     - "Tutorial 2 · Building a config DSL": tutorials/02-config-dsl.md
     - "Tutorial 3 · Transpiling to Python": tutorials/03-transpile-python.md
     - "Tutorial 4 · Custom operators": tutorials/04-custom-operators.md
+    - "Tutorial 5 · Reading diagnostics": tutorials/05-reading-diagnostics.md
     - Use cases: use-cases.md
 
   # Patterns — the "how to think about Capy" docs. Read these to
   # understand what's possible before you start building.
   - Patterns:
+    - "Host your language's frontend": language-frontend.md
     - Capy as an idea language: idea-language.md
     - Grammar as contract: grammar-as-contract.md
     - Design systems (React + Vue + Svelte): design-systems.md

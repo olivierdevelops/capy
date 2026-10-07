@@ -155,7 +155,7 @@ you don't spend prompt budget trying to fence it off.
 
 ---
 
-## Three workflow patterns
+## Five workflow patterns
 
 ### Pattern A: "Design the library once, agent emits source forever"
 
@@ -301,6 +301,45 @@ Best for:
   living tool tailored to one person or team.
 
 ---
+
+### Pattern E: "Emit, inspect, repair"
+
+The pattern that closes the loop on generation. An agent that emits source into
+your DSL should not hand it to `capy run` and hope — `run` stops at the first
+error and tells you nothing about the rest of the file. `capy ast --json`
+recovers past every failure and returns machine-readable diagnostics, so one
+call tells the model everything that is wrong.
+
+```text
+   model emits source
+          │
+          ▼
+   capy ast lib.capy out.capy --json
+          │
+          ├── exit 0, diagnostics: []  ──▶ accept, then capy run
+          │
+          └── exit 1 ──▶ feed diagnostics[] back to the model
+                          (code + message + line:col, every region at once)
+                          └──▶ re-emit ──┐
+                                         └── bounded retries, then give up
+```
+
+```sh
+capy ast lib.capy out.capy --json \
+  | jq -r '.diagnostics[] | "line \(.primary.start_line): \(.message)"'
+```
+
+Why it matters for token cost: one round trip surfaces *all* the errors, so a
+file with four mistakes takes one repair turn rather than four. And because the
+tree comes back alongside the diagnostics, the model can be shown what it did
+parse — usually more useful for repair than the error text alone.
+
+Keep the retry count bounded and fall back to asking the human; a model that
+cannot fix its own output in two passes is usually fighting a library gap rather
+than a typo. See [AST JSON schema](ast-json.md) and
+[Diagnostics](diagnostics.md).
+
+Best for: any agent that writes DSL source unattended.
 
 ## Capy as a portable rendering layer for AI agents
 

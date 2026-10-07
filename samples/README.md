@@ -1,20 +1,28 @@
 # Capy samples
 
-**50 self-contained demos.** Each shows a compact source DSL producing a
-substantial, useful target file. Every demo ships a `lib.yaml`,
-`script.capy`, `README.md`, and a verified golden output.
+**130 self-contained demos.** Each shows a compact source DSL producing a
+substantial, useful target file. A demo ships a `lib.capy`, one or more
+`*.capy` scripts, usually a `README.md`, and a verified golden output.
 
 Run any sample:
 
 ```sh
 cargo build --release --manifest-path rust/Cargo.toml -p capy-cli
-./capy run samples/<name>/lib.yaml samples/<name>/script.capy
+./rust/target/release/capy run samples/<name>/lib.capy samples/<name>/script.capy
 ```
 
 Run every sample's golden test:
 
 ```sh
-cargo test --manifest-path rust/Cargo.toml --test golden   # 116 cases, ~0.2s
+cargo test --manifest-path rust/Cargo.toml --test golden   # 131 cases, ~0.2s
+```
+
+Those two counts drift, so re-derive rather than trust them:
+
+```sh
+find samples -maxdepth 1 -mindepth 1 -type d | wc -l              # demos
+cargo test --manifest-path rust/Cargo.toml --test golden -- --nocapture 2>&1 \
+  | grep goldens:                                                 # cases
 ```
 
 ---
@@ -31,6 +39,20 @@ plugs together.
 | [scene-dsl/](scene-dsl/)       | A pure declarative DSL with no control flow defined. |
 | [builtin-functions/](builtin-functions/) | Live tour of every built-in template helper (`pascalCase`, `decoded`, `escapeHtml`, `percent`, `stars`, `indent`, …). Verifies the [function cookbook](../docs/function-cookbook.md). |
 | [library-keywords/](library-keywords/) | The canonical `if … end` block — `function` / `arg literal` / `arg capture` / `block_closer` / `write` / `${indent N body}`. Verifies the [library keyword cookbook](../docs/library-keywords.md). |
+
+---
+
+## Parser surface
+
+The engine's own parsing behaviour, made runnable. Added in 0.22.0; the two ordered-choice rows in 0.23.0.
+
+| Folder | What it shows |
+|--------|----------------|
+| [operator-precedence/](operator-precedence/) | One `any` capture takes a whole infix expression: `* / %` over `+ -`, comparison looser than both, `and` over `or`, `not` tightest, all left-associative. Each line prints its source text and its evaluated value. |
+| [language-frontend/](language-frontend/) | Capy as the front end of a **real language**: `fn` with typed parameter lists, `let` / `if` / `while` / `return`, nested brace scopes, expressions with precedence, spans on every node, and recovery on a broken function header. Lowers to Python. |
+| [expression-grammar/](expression-grammar/) | **Ordered choice** (`arg capture v call \| name \| num`): a recursive call grammar where an argument is a nested call, a name or a number, so `add(3, mul(4, 5))` parses. Shows first-match-wins order and the union diagnostic. |
+| [mixed-parameters/](mixed-parameters/) | A parameter list mixing marked (`mut c: Counter`) and unmarked (`n: int`) parameters with `mut_param \| plain_param*`. Rejected before 0.23.0. |
+| [parse-recovery/](parse-recovery/) | `capy run` refuses a broken file at the first error; `capy ast` recovers and reports all of them with the tree of what parsed. Carries all three golden kinds. |
 
 ---
 
@@ -128,26 +150,72 @@ Source-to-source DSLs that emit code in a target programming language.
 
 ## How goldens work
 
-Each script has a paired expected file:
+`rust/tests/golden.rs` walks `samples/`, pairs each directory's `lib.capy` with
+every other `*.capy` in it, and compares the result against the golden files
+sitting next to that script. Three kinds:
 
-- `<base>.expected.txt` — for runs that should succeed.
-- `<base>.expected-error.txt` — for runs that should error.
+| Golden | Asserts | Command it stands for |
+|---|---|---|
+| `<base>.expected.txt` | the run succeeds, with this output | `capy run lib.capy <base>.capy` |
+| `<base>.expected-error.txt` | the run fails, with this `LINE:COL: message` | `capy run lib.capy <base>.capy` |
+| `<base>.expected-ast.txt` | the recovered tree and its diagnostics | `capy ast lib.capy <base>.capy 2>&1` |
 
-`go test ./...` compares actual output to its golden. To regenerate
-after intentional changes:
+The AST kind is **optional** and independent: a script may carry both an
+`.expected-error.txt` and an `.expected-ast.txt`, because they assert two
+different commands on the same input. That is the point of
+[`parse-recovery/`](parse-recovery/) — `run` refuses the file, `ast` recovers it.
+Each counts as its own case.
+
+```sh
+cargo test --manifest-path rust/Cargo.toml --test golden
+```
+
+To regenerate after an intentional change:
 
 ```sh
 CAPY_UPDATE_GOLDENS=1 cargo test --manifest-path rust/Cargo.toml --test golden
 ```
 
+Review every regenerated golden by hand. An improved error message is a real
+change worth reading; bulk-accepting them is how a regression ships.
+
+### Two ways a sample silently asserts nothing
+
+Both are quiet — the suite stays green and you learn nothing:
+
+```text
+  samples/my-demo/
+    lib_thing.capy     <- NOT named lib.capy
+    script.capy            => the whole DIRECTORY is never discovered
+                              (golden.rs pairs on `lib.capy` exactly)
+
+  samples/my-demo/
+    lib.capy
+    script.capy        <- no golden file next to it
+                           => counted as SKIPPED, never compared
+```
+
+So: name the library `lib.capy`, and give every script a golden. The suite
+prints `N passed, M skipped` — watch the skip count, not just the failures.
+
 ## Adding a new sample
 
 ```sh
 capy init samples/my-new-sample
-# edit lib.yaml + script.capy
-capy run samples/my-new-sample/lib.yaml samples/my-new-sample/script.capy > samples/my-new-sample/script.expected.txt
+# edit lib.capy + script.capy, then run it until the output is what you want:
+./rust/target/release/capy run samples/my-new-sample/lib.capy samples/my-new-sample/script.capy
+
+# pre-create an EMPTY golden — CAPY_UPDATE_GOLDENS only refreshes files that
+# already exist, so a typo in the filename cannot silently mint one:
+touch samples/my-new-sample/script.expected.txt
+CAPY_UPDATE_GOLDENS=1 cargo test --manifest-path rust/Cargo.toml --test golden
+
+# then confirm it actually compares, and read what got written:
 cargo test --manifest-path rust/Cargo.toml --test golden
+cat samples/my-new-sample/script.expected.txt
 ```
 
 Then add your sample to the appropriate section above and write a brief
-`README.md` explaining what it teaches.
+`README.md` explaining what it teaches. If it is worth showing in the browser
+playground, add it to `rust/playground/src/curated.rs` — but only if it works on
+the wasm build (`capy ast` and diagnostics do not).

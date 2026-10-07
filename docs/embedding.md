@@ -162,6 +162,7 @@ pub struct ArgInfo {
     pub description: String, // trailing doc string
     pub optional: bool,      // trailing arg with a default
     pub default: String,     // value bound when omitted
+    pub alts: Vec<String>,   // 0.23.0: alternatives 2…n of `A | B | C` (`type_` is A); empty otherwise
 }
 ```
 

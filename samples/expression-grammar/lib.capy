@@ -1,0 +1,59 @@
+# expression-grammar — a recursive expression grammar with ORDERED CHOICE.
+#
+# A call's argument is either a nested call, a name, or a number:
+#
+#   return add(3, mul(4, 5))
+#
+# One capture type names three functions, tried left to right:
+#
+#   arg capture v call | name | num
+#
+# - `call | name | num`  — the first alternative that matches wins (PEG order);
+# - each alternative is a library FUNCTION. A flat alternative is a `bare`
+#   function with one capture (`name`, `num` below) — a built-in type name is
+#   not allowed in the choice;
+# - the grammar nests as deep as the engine's depth bound allows (64 captures,
+#   31 call levels: depth 31 parses, 32 is refused), because `call` consumes a name and `(` BEFORE it
+#   recurses — it is right-recursive, not left-recursive.
+#
+# ORDER MATTERS when an earlier alternative is permissive. `num` is declared
+# `int`, which accepts a bare identifier at parse time, so `name` is listed
+# first: `x` becomes a `name`, `3` falls through to `num`.
+#
+# See docs/library-authoring.md ("Ordered choice") and PROP-2026-0004.
+extension txt
+
+function ret
+    arg literal "return"
+    arg capture value call
+    write `return ${value};
+`
+end
+
+function call
+    bare
+    arg capture fname ident
+    arg literal "("
+    arg capture args operand* sep "," join ", "
+    arg literal ")"
+    write `${fname}(${args})`
+end
+
+# The choice. `sub[].func` in `capy ast --json` names the alternative that matched.
+function operand
+    bare
+    arg capture v call | name | num
+    write `${v}`
+end
+
+function name
+    bare
+    arg capture id ident
+    write `${id}`
+end
+
+function num
+    bare
+    arg capture n int
+    write `${n}`
+end

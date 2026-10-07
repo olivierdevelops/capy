@@ -24,6 +24,7 @@ textual.
 [See the samples :material-folder-open:](showcase.md){ .md-button }
 [Get started in 5 min :material-rocket-launch:](getting-started.md){ .md-button }
 [For AI agents :material-robot-outline:](ai-agents.md){ .md-button }
+[Host your language :material-file-tree:](language-frontend.md){ .md-button }
 
 </div>
 
@@ -70,6 +71,67 @@ OS. It just writes DSL; the host handles the rest.
 [MCP Apps / AI widgets :material-view-grid:](mcp-widgets.md){ .md-button }
 [MCP server setup :material-server:](mcp.md){ .md-button }
 [One-page LLM brief :material-file-document:](CAPY_FOR_LLMS.md){ .md-button }
+
+</div>
+
+---
+
+<div class="capy-section" markdown>
+
+## :material-file-tree: Or host your own language
+
+The same engine that renders artifacts is a **language front end**. Declare a
+grammar — nested scopes, typed parameter lists, expressions with real
+precedence — and get a spanned parse tree, error recovery, and diagnostics your
+users can actually read. No lexer, no parser generator, no build step.
+
+<div class="capy-ai-grid" markdown>
+
+<div class="capy-ai-cell" markdown>
+**Your source**
+
+```text
+fn gcd(a: int, b: int) {
+    while b != 0 {
+        let t = b
+        let b = a % b
+        let a = t
+    }
+    return a
+}
+```
+</div>
+
+<div class="capy-ai-cell" markdown>
+**`capy ast` — the tree**
+
+```text
+fn 1:1-1:23
+  name = "gcd" 1:4
+  params:
+    param 1:8-1:14
+      pname = "a" 1:8
+      ptype = "int" 1:11
+    param 1:16-1:22 …
+  while 2:5-2:17
+    cond = "b != 0" 2:11
+    let 3:9-3:18 …
+  return 7:5-7:13
+```
+</div>
+
+</div>
+
+About 70 lines of grammar declaration produce that. Parsing **recovers**, so one
+bad function header does not cost you the rest of the file — and a missing `)`
+reports ``expected `)`, found "{" in `fn` ``, not "no function matched".
+
+Capy is the front end: tokens → tree → diagnostics. Type checking, analysis and
+codegen stay yours.
+
+[Host your language's frontend :material-arrow-right:](language-frontend.md){ .md-button .md-button--primary }
+[Diagnostics :material-alert-circle-outline:](diagnostics.md){ .md-button }
+[AST JSON schema :material-code-json:](ast-json.md){ .md-button }
 
 </div>
 
@@ -366,7 +428,10 @@ it. Same source → many artifacts, byte-identical every time, all
 typed and validated at the boundary. The grammar is expressive
 enough to parse **matched-pair HTML and XML** — one generic
 `<tag>…</tag>` function, with mismatched nesting caught as a parse
-error ([see it in the playground](playground.md)). Use it from the
+error ([see it in the playground](playground.md)) — and expressive
+enough to be the **front end of a real language**, with nested
+scopes, precedence, spans, error recovery and diagnostics
+([host your language](language-frontend.md)). Use it from the
 CLI, embed it as a Rust library, ship it through an MCP server to AI
 agents, or [try it right now in your browser](playground.md) — the
 compiler runs as WebAssembly.

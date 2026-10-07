@@ -1,0 +1,54 @@
+# operator-precedence — the infix expression grammar shipped in 0.22.0.
+#
+# Before 0.22.0 a library that wanted `1 + 2 * 3` had to declare the shape
+# itself, one function per operator, and comparison was a single
+# non-associative step. Now a single `any` capture takes the whole
+# expression and the engine builds the tree, with conventional precedence
+# and left associativity.
+#
+# The library is deliberately tiny — three functions — because the point
+# is what the ENGINE does with the captured expression, not what the
+# library does with it. Two views of every value are printed:
+#
+#   ${value}                 -> the SOURCE TEXT the author wrote
+#   ${context.vars[name]}    -> the EVALUATED result
+#
+# Those two faces of one capture are the reason the precedence is visible
+# at all: the left column is what you typed, the right column is what it
+# means. See docs/language-reference.md#operator-precedence.
+extension calc
+
+context
+    vars {}
+end
+
+# `let NAME = EXPR` — capture a whole expression as one value.
+function let
+    arg literal "let"
+    arg capture name ident
+    arg literal "="
+    arg capture value any
+    set context.vars[name] value
+    write `let ${name} = ${value}
+`
+end
+
+# `show NAME` — read the evaluated value back out of context.
+#
+# A separate function on purpose: a `set` lands for the NEXT statement, so
+# a function's own `write` cannot see its own mutation.
+function show
+    arg literal "show"
+    arg capture name ident
+    write `      ${name} == ${context.vars[name]}
+`
+end
+
+# `note TEXT` — a section heading, so the golden reads as a document.
+function note
+    arg literal "note"
+    arg capture text tail
+    write `
+${text}
+`
+end

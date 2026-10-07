@@ -4,7 +4,18 @@
 //! comparing against `<base>.expected.txt` (success) or
 //! `<base>.expected-error.txt` (error). This is the acceptance test: it makes the
 //! crate self-verifying without needing the Go implementation present.
+//!
+//! PROP-2026-0002 R12 adds a third, OPTIONAL golden kind:
+//! `<base>.expected-ast.txt` holds what `capy ast <lib> <script> 2>&1` prints —
+//! the recovered tree plus its diagnostics. It asserts a *different command* on
+//! the same input, so a script may carry both an `.expected-error.txt` (what
+//! `run` refuses) and an `.expected-ast.txt` (what `parse` recovers); each is
+//! counted as its own case. Without this the 0.22.0 parser surface —
+//! diagnostics, recovery, `capy ast` — has no coverage in the sample corpus at
+//! all.
 
+use capy_core::capy::Library;
+use capy_core::domain::ast_text;
 use capy_core::orchestrator::run;
 use std::path::{Path, PathBuf};
 
@@ -90,6 +101,34 @@ fn golden_samples_match() {
         let base = script.file_stem().unwrap().to_string_lossy().into_owned();
         let ok_path = dir.join(format!("{}.expected.txt", base));
         let err_path = dir.join(format!("{}.expected-error.txt", base));
+
+        // Optional AST golden — an ADDITIONAL assertion, not an alternative to
+        // the run-based ones below. Rendered by `capy_core::domain::ast_text`,
+        // the same module `capy ast` prints through, so this golden can never
+        // drift from what a user sees in a terminal.
+        let ast_path = dir.join(format!("{}.expected-ast.txt", base));
+        if ast_path.exists() {
+            match Library::from_file(&lib.to_string_lossy()) {
+                Err(e) => failures.push(format!("{name}: AST golden — library failed to load: {e}")),
+                Ok(library) => match std::fs::read_to_string(script) {
+                    Err(e) => failures.push(format!("{name}: AST golden — script unreadable: {e}")),
+                    Ok(src) => {
+                        let got = ast_text::render(&library.parse(&src));
+                        let want = std::fs::read_to_string(&ast_path).unwrap();
+                        let (g, w) = (normalize(&got), normalize(&want));
+                        if g == w {
+                            pass += 1;
+                        } else if update {
+                            std::fs::write(&ast_path, &got).unwrap();
+                            updated += 1;
+                        } else {
+                            failures
+                                .push(format!("{name}: AST mismatch\n{}", first_diff(&w, &g)));
+                        }
+                    }
+                },
+            }
+        }
 
         let result = run::run(&lib.to_string_lossy(), &script.to_string_lossy());
 

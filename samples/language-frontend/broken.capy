@@ -1,0 +1,12 @@
+fn add(x: int, y: int {
+    return x + y
+}
+
+fn area(w: int, h: int) {
+    let a = w * h
+    return a
+}
+
+while limit < 10 {
+    let limit = limit + 1
+}

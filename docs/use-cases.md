@@ -8,6 +8,12 @@ That said, Capy is also unusually well-suited to AI workflows — in
 both directions (AI as library author OR AI as library user). The
 AI patterns live in their own section near the bottom.
 
+One use case deserves its own page: since 0.22.0 Capy has what a
+**language front end** needs — nested scopes, expressions with
+precedence, spans, error recovery and diagnostics — so you can declare
+a grammar instead of writing a lexer and parser. See
+[host your language's frontend](language-frontend.md).
+
 Capy isn't a general-purpose programming language and it isn't a
 general-purpose templating engine. It lives in a specific design
 space: **anything where you'd otherwise hand-roll a tiny parser or

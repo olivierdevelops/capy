@@ -1,0 +1,40 @@
+fn 1:1-1:23
+  name = "gcd" 1:4
+  params:
+    param 1:8-1:14
+      pname = "a" 1:8
+      ptype = "int" 1:11
+    param 1:16-1:22
+      pname = "b" 1:16
+      ptype = "int" 1:19
+  while 2:5-2:17
+    cond = "b != 0" 2:11
+    let 3:9-3:18
+      name = "t" 3:13
+      value = "b" 3:17
+    let 4:9-4:22
+      name = "b" 4:13
+      value = "a % b" 4:17
+    let 5:9-5:18
+      name = "a" 5:13
+      value = "t" 5:17
+  return 7:5-7:13
+    value = "a" 7:12
+fn 10:1-10:32
+  name = "classify" 10:4
+  params:
+    param 10:13-10:19
+      pname = "n" 10:13
+      ptype = "int" 10:16
+    param 10:21-10:31
+      pname = "limit" 10:21
+      ptype = "int" 10:28
+  let 11:5-11:26
+    name = "score" 11:9
+    value = "n * 2 + 1" 11:17
+  if 12:5-12:32
+    cond = "score > limit and n != 0" 12:8
+    return 13:9-13:17
+      value = "1" 13:16
+  return 15:5-15:13
+    value = "0" 15:12

@@ -270,6 +270,7 @@ impl Library {
                     description: a.description.clone(),
                     optional: a.optional,
                     default: a.default.clone(),
+                    alts: a.alts.clone(),
                 });
             }
             if let Some(b) = &fnv.block {
@@ -324,6 +325,9 @@ pub struct ArgInfo {
     pub optional: bool,
     /// The value bound when an optional capture is omitted.
     pub default: String,
+    /// Alternatives 2…n of an ordered choice (`type_` is alternative 1). Empty
+    /// for a single-type capture. PROP-2026-0004.
+    pub alts: Vec<String>,
 }
 
 /// Port of `FunctionInfo` — the introspected shape of one library function.

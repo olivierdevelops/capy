@@ -1,0 +1,47 @@
+# mixed-parameters — some parameters carry a `mut` marker, others do not.
+#
+#   def f(mut c: Counter, n: int)   ->   f(&c: Counter, n: int)
+#
+# Before ordered choice a `param` rule had ONE shape, so a leading `mut` was
+# either required on every parameter or on none:
+#
+#   `def f(mut c: Counter, n: int)`  ->  expected `mut`, found "n"   (0.22.0)
+#
+# Now the parameter list is a choice between two functions:
+#
+#   arg capture ps mut_param | plain_param* sep "," join ", "
+#
+# `mut_param` is listed first because it starts with the literal `mut`, which a
+# plain parameter can never begin with here, so the order is only a convention —
+# but if `plain_param` started with a bare `ident`, `mut` would be swallowed as
+# a parameter NAME, so put the marked shape first.
+#
+# See docs/library-authoring.md ("Ordered choice") and PROP-2026-0004 UC-06.
+extension txt
+
+function def_fn
+    arg literal "def"
+    arg capture name ident
+    arg literal "("
+    arg capture ps mut_param | plain_param* sep "," join ", "
+    arg literal ")"
+    write `${name}(${ps})
+`
+end
+
+function mut_param
+    bare
+    arg literal "mut"
+    arg capture pname ident
+    arg literal ":"
+    arg capture ptype ident
+    write `&${pname}: ${ptype}`
+end
+
+function plain_param
+    bare
+    arg capture pname ident
+    arg literal ":"
+    arg capture ptype ident
+    write `${pname}: ${ptype}`
+end

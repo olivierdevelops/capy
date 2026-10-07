@@ -1,0 +1,4 @@
+[ ] write the proposal (due 2026-09-16)
+[x] read the release notes
+[ ] ship the samples (due 2026-09-30)
+--- end of list ---

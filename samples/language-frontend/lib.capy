@@ -1,0 +1,82 @@
+# language-frontend — a frontend for a small but real imperative language.
+#
+# This is the "host your language on Capy" shape, in one file. It is not a
+# config DSL or a template: it is a grammar with nested scopes, typed
+# parameter lists, recursive expressions and statement-level recovery.
+#
+#   fn NAME(P: T, …) { … }    named nonterminal for the parameter list
+#   let NAME = EXPR           a whole expression in one `any` capture
+#   if EXPR { … }             nested block scope
+#   while EXPR { … }          nested block scope
+#   return EXPR
+#   NAME(ARGS)                a call statement
+#
+# Two things make it a frontend rather than a template:
+#
+#   1. `capy ast` gives you the tree — every node spanned, blocks nested,
+#      the parameter list a real sub-tree rather than a flat string.
+#   2. Parsing RECOVERS, so a file with several mistakes yields the tree of
+#      what parsed plus one diagnostic per bad region. That is what a
+#      language's users need from its error messages.
+#
+# The `write` templates lower it to Python, to show the frontend is attached
+# to something. Lowering is optional — a consumer that only wants the tree
+# never calls `capy run` at all.
+extension ml
+
+# --- the parameter list: a named nonterminal, not a flat token run ---
+
+function param
+    arg capture pname ident
+    arg literal ":"
+    arg capture ptype ident
+    write `${pname}: ${ptype}`
+end
+
+# --- declarations ---
+
+function fn
+    arg literal "fn"
+    arg capture name ident
+    arg literal "("
+    arg capture params param* sep "," join ", "
+    arg literal ")"
+    block_open "{" close "}"
+    write `def ${name}(${params}):
+${indent 4 body}
+`
+end
+
+# --- statements ---
+
+function let
+    arg literal "let"
+    arg capture name ident
+    arg literal "="
+    arg capture value any
+    write `${name} = ${value}
+`
+end
+
+function if
+    arg literal "if"
+    arg capture cond any
+    block_open "{" close "}"
+    write `if ${cond}:
+${indent 4 body}`
+end
+
+function while
+    arg literal "while"
+    arg capture cond any
+    block_open "{" close "}"
+    write `while ${cond}:
+${indent 4 body}`
+end
+
+function return
+    arg literal "return"
+    arg capture value any
+    write `return ${value}
+`
+end

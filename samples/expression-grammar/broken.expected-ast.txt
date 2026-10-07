@@ -1,0 +1,2 @@
+<error> 1:1-1:17  8 token(s) skipped
+error[E0001] 1:1: expected a `call`, a `name`, or a `num`, found "+" in argument `v` of `operand`

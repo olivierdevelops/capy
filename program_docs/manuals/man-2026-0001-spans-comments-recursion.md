@@ -5,8 +5,8 @@ document_type: manual
 status: active
 
 created_date: 2026-09-16
-last_updated: 2026-09-16
-document_revision: 2
+last_updated: 2026-10-07
+document_revision: 3
 
 authors:
   - Olivier
@@ -39,6 +39,7 @@ reason: A reader must be able to use these features without reading the source o
 related_documents:
   - PLAN-2026-0001
   - SYS-2026-0001
+  - MAN-2026-0002
 
 supersedes: null
 superseded_by: null
@@ -57,7 +58,7 @@ next_review_date: 2027-03-16
 
 > **Status:** Active
 > **Created:** 2026-09-16
-> **Last Updated:** 2026-09-16
+> **Last Updated:** 2026-10-07
 > **Affected Versions:** 0.22.0
 > **Owner:** Capy Engine
 > **Affected Components:** capy-core
@@ -224,9 +225,18 @@ Grouping parentheses work where they do not collide with the prefix-call form
 | Grouping is conditional | `(foo)` is a zero-argument call, not a grouped identifier |
 | Cascade constants untuned | Suppression and cap use defaults, not corpus-derived values |
 
+## Related Documents
+
+- `MAN-2026-0002` — ordered choice, the fourth grammar combinator (0.23.0). Read it
+  after §3 above: choice composes with recursion, and the left-recursion rule in §3
+  applies to every alternative.
+- `SYS-2026-0001` — the parser pipeline as implemented
+- `PLAN-2026-0001` — the plan this chapter documents
+
 ## Change History
 
 | Revision | Date | Author | Change |
 |---|---|---|---|
 | 1 | 2026-09-16 | Olivier | Initial manual chapter |
 | 2 | 2026-09-16 | Olivier | Added reading errors, recovery and arithmetic for 0.22.0; the AST is now a public API |
+| 3 | 2026-10-07 | Olivier | Added cross-link: see MAN-2026-0002 for ordered choice, the fourth combinator |

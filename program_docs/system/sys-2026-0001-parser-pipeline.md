@@ -5,8 +5,8 @@ document_type: system
 status: active
 
 created_date: 2026-09-16
-last_updated: 2026-09-16
-document_revision: 2
+last_updated: 2026-10-07
+document_revision: 3
 
 authors:
   - Olivier
@@ -31,13 +31,17 @@ applicable_environments:
 audience:
   - engineers
 
-scope: Describes the implemented lexer-to-AST pipeline at 0.21.0, including trivia handling, span population and the recursion guards.
+scope: Describes the implemented lexer-to-AST pipeline through 0.23.0, including trivia handling, span population, the recursion guards, diagnostics, value expressions and ordered choice in a capture type.
 
 reason: DOCUMENTATION.md section 31 requires system documentation to describe the current implemented system whenever behaviour or internal interfaces change.
 
 related_documents:
   - PLAN-2026-0001
   - PROP-2026-0001
+  - PLAN-2026-0003
+  - PROP-2026-0004
+  - ADR-0003
+  - DEMO-2026-0003
 
 supersedes: null
 superseded_by: null
@@ -56,14 +60,14 @@ next_review_date: 2027-03-16
 
 > **Status:** Active
 > **Created:** 2026-09-16
-> **Last Updated:** 2026-09-16
+> **Last Updated:** 2026-10-07
 > **Affected Versions:** 0.22.0
 > **Owner:** Capy Engine
 > **Affected Components:** capy-core
 
 ## Summary
 
-This describes what the code does at 0.21.0, not what was intended.
+This describes what the code does through 0.23.0, not what was intended.
 
 ## Pipeline
 
@@ -94,8 +98,11 @@ Block { stmts: Vec<FuncCall> }
 | Token | `rust/src/domain/token.rs` | `kind`, `text`, `line`, `col`, `width`; `TokenKind::Comment` added |
 | Lexer | `rust/src/orchestrator/features/make_lexer.rs` | `tokenize_impl(source, markers, keep_comments)`; the two public wrappers differ only in that flag |
 | AST | `rust/src/domain/ast.rs` | `Span`; `FuncCall.span`, `FuncCall.leading_comments`, `CaptureValue.span`; both structs `#[non_exhaustive]` |
-| Parser | `rust/src/orchestrator/features/make_parser.rs` | trivia strip, span population, `MAX_PARSE_DEPTH` |
-| Loader | `rust/src/orchestrator/features/make_library_loader.rs` | `reject_left_recursion` after `is_func` resolution |
+| Parser | `rust/src/orchestrator/features/make_parser.rs` | trivia strip, span population, `MAX_PARSE_DEPTH`; `capture_func_type_inner` and `match_alt` (ordered choice, 0.23.0) |
+| Loader | `rust/src/orchestrator/features/make_library_loader.rs` | `reject_left_recursion` after `is_func` resolution; alternatives validated as library functions and carried through `compile_args` / `compile_elements` (0.23.0) |
+| Lib-parser | `rust/src/infra/capy_lib_parser.rs` | reads `arg capture NAME A \| B \| C` into `RawArg.type_` + `RawArg.alts` (0.23.0) |
+| Data model | `rust/src/infra/raw_library.rs`, `rust/src/domain/library.rs` | `alts: Vec<String>` on `RawArg`, `ArgEntry`, `PatternElement`; `PatternElement::alternatives()` (0.23.0) |
+| Public surface | `rust/src/capy.rs`, `rust/src/domain/docs.rs` | `ArgInfo.alts`; the `capy docs` Type column prints the union (0.23.0) |
 
 ## Span semantics
 
@@ -122,6 +129,9 @@ Two independent mechanisms, both required:
 
 A function that declares no `arg literal` has its own name prepended as one, so
 it always consumes a token and can never be a left-recursive hop.
+
+Since 0.23.0 the graph's edges come from every alternative of a choice, not just
+a capture's first type (see "Ordered choice" below).
 
 ## Diagnostics and recovery (0.22.0)
 
@@ -155,12 +165,88 @@ changed. Arithmetic and boolean operators produce `Expr::Binary`.
 as a complete expression that is not a bare identifier, which leaves `(upper n)`
 and `(foo)` exactly as they were.
 
+## Ordered choice (0.23.0)
+
+A capture type may name several library functions: `arg capture v call | name | num`.
+Each statement below was checked against the code on 2026-10-07.
+
+```text
+  lib file                 lib-parser            loader                       matcher
+  ─────────────            ───────────           ──────────────────           ─────────────────────
+  v call | name | num ──►  type_  = "call"  ──►  every name must be a   ──►  targets = [cap_type,
+                           alts   = [name,       library FUNCTION               alts…] in order
+                                    num]         guard: edge to EVERY           match_alt: first
+                                                 alternative                    match wins
+```
+
+**Lib-parser** (`capy_lib_parser.rs`). The line is split on whitespace, so a choice
+arrives as the tokens `A`, `|`, `B`, or glued as `A|B`. Every piece that touches a
+`|` is rejoined (stopping at `default`, `sep`, `join`), then the text is split on
+`|`. A repetition suffix (`*`, `+`) is trimmed from the **last** name before the
+split, so it applies to the whole choice. If any name is not an identifier the
+load fails with `malformed alternation`. Otherwise `type_` is alternative 1 and
+`alts` holds 2…n; `alts` is empty for an ordinary capture.
+
+**Loader** (`make_library_loader.rs`).
+
+- `validate_cross_references`: when `alts` is non-empty, every name — `type_`
+  and each of `alts` — must be a library function, else the load fails with
+  ``capture "v" alternation names "int", which is not a library function`` and a
+  hint to wrap the type in a `bare` function. A single-type capture takes the
+  unchanged path.
+- `reject_left_recursion`: the leading-position walk adds an edge to **every**
+  alternative via `PatternElement::alternatives()` (`cap_type` first, then
+  `alts`), so a cycle through any alternative is refused with the existing
+  message. The walk is still iterative.
+- `compile_args` and `compile_elements` copy `alts` through to `PatternElement`.
+
+**Matcher** (`make_parser.rs`).
+
+- `capture_func_type_inner` resolves the target list from
+  `el.alternatives()` — `cap_type`, then `alts` — so a single-type capture has
+  exactly one target and behaves as before.
+- `match_alt` tries the targets in order and returns the first that matches
+  (`find_map` over `match_one`). `match_one` restores the token cursor on failure
+  and also treats a match that consumed nothing as a failure, so the rewind is
+  local to the capture.
+- `match_alt` itself notes no expectation. A repetition that simply ends is not a
+  failure, so existing diagnostics are byte-identical.
+- The **mandatory** call sites — exactly-one, and `+` with zero matches — note
+  `Expectation::Nonterminal` for **every** alternative, in order. The existing
+  furthest-failure merge unions them, which is what prints
+  ``expected a `call`, a `name`, or a `num` ``.
+- The tree node for the winner has `func` set to the winning alternative's name,
+  which is what `capy ast --json` shows in `sub[].func`. No serializer change and
+  `schema_version` stays `1`.
+- Depth is still bounded by `MAX_PARSE_DEPTH`; the bound's message is consumed
+  by the rewind, so a too-deep input reports the generic expectation.
+
+**Public surfaces.**
+
+| Surface | What it shows |
+|---|---|
+| `ArgInfo.type_` | alternative 1 (unchanged meaning) |
+| `ArgInfo.alts` | alternatives 2…n; empty for a single-type capture |
+| `capy docs` | the Type column joins `type_` and `alts` with ` \| ` |
+| `capy ast --json` | `sub[].func` is the matched alternative |
+
+The browser introspection JSON (`rust/wasm/src/lib.rs`) emits `type` only and does
+not carry `alts`.
+
+## Last Verified Version
+
+0.23.0 working tree on top of `84f984c`, 2026-10-07; `cargo test --workspace`:
+128 passed, 0 failed (`DEMO-2026-0003` U-13).
+
 ## Known limitations
 
 - No byte offsets on `Span`.
 - The depth-limit error surfaces as the generic "no library function matches".
 - Only leading comments are attached; trailing and interior are retained but
   unattached.
+- Alternatives must be library functions; built-in and declared types are
+  refused at load.
+- The browser introspection JSON does not carry `alts`.
 
 ## Change History
 
@@ -168,3 +254,4 @@ and `(foo)` exactly as they were.
 |---|---|---|---|
 | 1 | 2026-09-16 | Olivier | Initial document |
 | 2 | 2026-09-16 | Olivier | Added the 0.22.0 diagnostics, recovery and value-expression sections |
+| 3 | 2026-10-07 | Olivier | Added ordered choice (0.23.0): lib-parser, loader validation and guard, matcher `match_alt`, public surfaces; refreshed scope and component table |

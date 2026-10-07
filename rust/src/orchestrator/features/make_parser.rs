@@ -104,6 +104,8 @@ fn parse_impl(
         depth: 0,
         leading,
         furthest: Furthest::default(),
+        depth_err: None,
+        fail_code: codes::NO_MATCH,
         ctx_stack: Vec::new(),
         diagnostics: Vec::new(),
         last_reported: None,
@@ -215,6 +217,13 @@ struct OuterP {
     leading: BTreeMap<usize, Vec<Span>>,
     /// R14 — furthest-failure record; survives backtracking.
     furthest: Furthest,
+    /// PLAN-2026-0004 — the nesting-bound error for the statement being parsed.
+    /// `match_one` turns every sub-failure into a rewind, which used to swallow
+    /// the bound's own message; it is remembered here so a statement that fails
+    /// *because* of the bound can say so.
+    depth_err: Option<CapyError>,
+    /// Diagnostic code for the failure `parse_stmt` last returned.
+    fail_code: &'static str,
     /// R26 — the shape/argument the matcher is currently inside.
     ctx_stack: Vec<ContextFrame>,
     /// R20 — diagnostics collected while recovering. Empty ⇒ clean parse.
@@ -339,7 +348,8 @@ impl OuterP {
                     }
                     if report {
                         let span = self.span_between(before, self.pos.max(before + 1));
-                        let d = Diagnostic::error(codes::NO_MATCH, span, e.msg.clone());
+                        let code = std::mem::replace(&mut self.fail_code, codes::NO_MATCH);
+                        let d = Diagnostic::error(code, span, e.msg.clone());
                         self.diagnostics.push(d);
                         self.last_reported = Some(before);
                         errors.push(ErrorNode {
@@ -373,6 +383,9 @@ impl OuterP {
 
     /// Port of `parseStmt`.
     fn parse_stmt(&mut self) -> Result<FuncCall, CapyError> {
+        // A bound error from an earlier, finished statement must not colour this one.
+        self.depth_err = None;
+        self.fail_code = codes::NO_MATCH;
         let start_tok = self.peek();
         // PLAN-2026-0001 R2 — index of the statement's first token, so the span
         // can be extended over the block body and closer once they are parsed.
@@ -569,6 +582,12 @@ impl OuterP {
         // nothing else matched either — surface that error (it points at the real
         // problem inside the body, not the generic "no match").
         if let Some(e) = block_err {
+            return Err(e);
+        }
+        // PLAN-2026-0004 — if the statement died against the nesting bound, say
+        // so (E0003) instead of whatever shape-level expectation the rewind left.
+        if let Some(e) = self.depth_err.take() {
+            self.fail_code = codes::NESTING_TOO_DEEP;
             return Err(e);
         }
         // PLAN-2026-0002 R14 — if some shape got PAST the first token, report
@@ -1045,15 +1064,20 @@ impl OuterP {
         // process rather than returning an error.
         if self.depth >= MAX_PARSE_DEPTH {
             let t = self.peek();
-            return Err(CapyError::new(
+            let err = CapyError::new(
                 t.line,
                 t.col,
                 format!(
                     "nesting too deep (limit {MAX_PARSE_DEPTH}) while matching {} — \
 the source nests further than the parser will follow",
-                    gofmt::quote(&el.cap_type)
+                    gofmt::quote(&el.alternatives().collect::<Vec<_>>().join(" | "))
                 ),
-            ));
+            );
+            // Keep the first (innermost-reached) one for this statement.
+            if self.depth_err.is_none() {
+                self.depth_err = Some(err.clone());
+            }
+            return Err(err);
         }
         self.depth += 1;
         let out = self.capture_func_type_inner(el);

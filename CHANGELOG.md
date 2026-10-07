@@ -8,6 +8,23 @@ may break between minor versions**.
 
 ## [Unreleased]
 
+## [0.24.0] — 2026-10-07
+
+Follow-ups to ordered choice (`PROP-2026-0005`).
+
+### Added
+
+- `E0003` is now emitted: a statement that fails because the nesting bound was reached
+  reports `nesting too deep (limit 64) while matching "…"` instead of a generic
+  `expected …`. The bound itself is unchanged.
+- The browser `capyIntrospect` JSON carries `alts` on each capture arg (empty for a plain
+  capture); `type` keeps meaning alternative 1.
+
+### Changed
+
+- `capy version` / `capy --version` print the crate version for an unstamped local build
+  (`capy 0.24.0`) instead of `capy dev`. A stamped `CAPY_VERSION` still wins.
+
 ## [0.23.0] — 2026-10-07
 
 Ordered choice for grammars (`PROP-2026-0004`).

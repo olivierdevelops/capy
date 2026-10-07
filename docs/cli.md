@@ -78,8 +78,10 @@ benchmarks + tips:
 
 ## `capy version`
 
-Print the version baked in at build time. `dev` if you built from source
-without `-ldflags "-X main.version=..."`.
+Print the version baked in at build time. A release build is stamped with its tag through
+`CAPY_VERSION`; a local build without it prints the crate version (`capy 0.24.0`). Before
+0.24.0 every unstamped build printed `capy dev`, which made a stale binary impossible to
+spot. `capy --version` prints the same thing.
 
 ## `capy help [<command>]`
 

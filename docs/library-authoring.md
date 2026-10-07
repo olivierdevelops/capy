@@ -682,10 +682,14 @@ error: expected a `call`, a `name`, or a `num`, found "+" in argument `v` of `op
     │               ^
 ```
 
-Nesting is bounded at 64 captures — about 31 call levels in the sample.
-Beyond the bound the parse is refused with an ordinary error, never a crash;
-the bound's own message is consumed by capture-local backtracking and surfaces as
-the generic `expected` error.
+Nesting is bounded at 64 captures — about 31 call levels in the sample. Beyond the
+bound the parse is refused, never a crash, and the error names the bound:
+
+```text
+error: nesting too deep (limit 64) while matching "call | name | num" — the source nests further than the parser will follow
+```
+
+`capy ast` reports it as `E0003` (before 0.24.0 it surfaced as the generic `expected` error).
 
 ## Recursive captures: right-recursive, not left-recursive
 

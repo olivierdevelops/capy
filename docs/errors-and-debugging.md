@@ -297,15 +297,16 @@ alternative must be a function, so wrap a built-in type in a `bare` function.
 Before this check existed, such a library passed `capy check` and then aborted
 the process with a stack overflow, which an embedding program could not catch.
 
-## `no library function matches` on deeply nested input
+## `nesting too deep` on deeply nested input
 
-A nonterminal descent stops at 64 levels. Source nested deeper than that is
-refused; the message currently falls back to the generic "no library function
-matches" rather than naming the limit. If you hit this with hand-written source,
-the grammar is usually the problem rather than the depth.
+A nonterminal descent stops at 64 captures. Source nested deeper than that is refused,
+and since 0.24.0 the error names the limit:
 
-A dedicated code, [`E0003`](diagnostics.md#diagnostic-codes), is **reserved**
-for this situation but is not emitted yet — through `capy ast` the depth limit
-still arrives as `E0001`, the same code as a genuine unknown function. Naming
-the limit is a known limitation of 0.22.0 and is on the
-[roadmap](roadmap.md).
+```text
+error: nesting too deep (limit 64) while matching "call | name | num" — the source nests further than the parser will follow
+```
+
+Through `capy ast` it carries the code [`E0003`](diagnostics.md#diagnostic-codes), so a tool
+can tell "too deep" from a genuine unknown function (`E0001`). Before 0.24.0 this arrived as
+the generic `expected …` / "no library function matches" message. If you hit it with
+hand-written source, the grammar is usually the problem rather than the depth.

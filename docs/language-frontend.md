@@ -273,7 +273,7 @@ Honest boundaries, so you can tell quickly whether this fits:
 | **Expression trees over JSON** | In the Rust AST, not in `capy ast --json`. Embed in Rust, or track the proposal to serialize it. |
 | **Byte offsets** | Spans carry line and column. An LSP integration converts on its side. |
 | **Left-recursive grammars** | Rejected at library load with a cycle trace, rather than overflowing the stack. Rewrite right-recursively; infix operators are built in, which removes the usual reason to want left recursion. |
-| **Unbounded nesting** | Nonterminal descent stops at 64 captures — about 31 levels of nested calls in a choice-based grammar. |
+| **Unbounded nesting** | Nonterminal descent stops at 64 captures — about 31 levels of nested calls in a choice-based grammar. Beyond it the error names the limit (`nesting too deep`, code `E0003`). |
 | **AST over the wasm ABI** | The browser [playground](playground.md) can transpile but cannot show a tree or diagnostics. CLI and embedding only. |
 | **Codegen beyond text** | Capy emits text. That is enough for a transpiler or a source-to-source compiler; it is not a backend. |
 

@@ -51,6 +51,12 @@ for the per-release detail.
   lets a declared expression grammar nest and a parameter list mix marked and
   unmarked parameters (`0.23.0`). See
   [ordered choice](library-authoring.md#ordered-choice).
+- ✅ **Name the nesting limit** — source nested past the parser's depth bound now
+  reports `nesting too deep (limit 64) …` with code `E0003` instead of the generic
+  message (`0.24.0`). See [diagnostics](diagnostics.md#diagnostic-codes).
+- ✅ **`capy version` identifies the build** — an unstamped local build prints the
+  crate version instead of `dev`, and the browser introspection JSON carries `alts`
+  (`0.24.0`).
 
 ## Near-term
 
@@ -72,9 +78,6 @@ for the per-release detail.
   language.
 - 🔭 **Byte offsets on `Span`** — spans carry line and column today; an editor
   integration has to convert. Tracked as the main gap for language-server work.
-- 🔭 **Name the nesting limit** — source nested past the parser's depth bound
-  still reports the generic "no library function matches". `E0003` is reserved
-  for it but not yet emitted.
 - 🔭 **AST and diagnostics over the wasm ABI** — the browser
   [playground](playground.md) can run a transpile but cannot show a tree or a
   diagnostic, so parser-surface demos are CLI-only.

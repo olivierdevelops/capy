@@ -257,18 +257,53 @@ fn five_deep_nest_parses() {
     );
 }
 
-/// T-03 / R4 — depth 70 hits the EXISTING bound. The contract is the one
-/// `recursion_guard.rs` already pins: the call RETURNS an `Err` — never a panic
-/// or a stack overflow. The depth message itself is consumed by capture-local
-/// backtracking and surfaces as the generic expectation error; that is today's
-/// behaviour for a single-type capture too, and is listed as a known limitation.
+/// T-03 / R4 — depth 70 hits the nesting bound. The contract `recursion_guard.rs`
+/// pins still holds (an `Err`, never a panic or stack overflow), and since 0.24.0 the
+/// error NAMES the bound instead of surfacing as a generic `expected` message
+/// (PLAN-2026-0004 R1).
 #[test]
 fn seventy_deep_nest_hits_the_existing_bound() {
     let lib = load(CALL_LIB).unwrap();
     let n = 70;
     let src = format!("return {}1{}\n", "f(".repeat(n), ")".repeat(n));
     let err = lib.run(&src).expect_err("must exceed the depth bound");
-    assert!(!err.to_string().is_empty(), "the refusal must carry a message");
+    let msg = err.to_string();
+    assert!(msg.contains("nesting too deep"), "the bound must be named: {msg}");
+    assert!(msg.contains("call | name | num"), "and say what it was matching: {msg}");
+}
+
+/// PLAN-2026-0004 R1 — `capy ast` reports the bound as `E0003`, not `E0001`.
+#[test]
+fn depth_bound_is_reported_as_e0003() {
+    let lib = load(CALL_LIB).unwrap();
+    let n = 40;
+    let src = format!("return {}1{}\n", "f(".repeat(n), ")".repeat(n));
+    let r = lib.parse(&src);
+    assert!(!r.is_clean());
+    assert_eq!(r.diagnostics.len(), 1, "{:?}", r.diagnostics);
+    assert_eq!(r.diagnostics[0].code, "E0003");
+    assert!(r.diagnostics[0].msg.contains("nesting too deep"));
+}
+
+/// PLAN-2026-0004 R1 — the line before the bound still parses, and the bound does not
+/// leak into the next statement: a later, ordinary failure is `E0001`.
+#[test]
+fn depth_error_does_not_leak_into_the_next_statement() {
+    let lib = load(CALL_LIB).unwrap();
+    let deep = format!("return {}1{}\n", "f(".repeat(40), ")".repeat(40));
+    let src = format!("return add(1, 2)\n{deep}return add(3, +)\n");
+    let r = lib.parse(&src);
+    let codes: Vec<&str> = r.diagnostics.iter().map(|d| d.code).collect();
+    assert_eq!(codes, ["E0003", "E0001"], "{:?}", r.diagnostics);
+}
+
+/// 31 call levels are still accepted: the bound itself did not move.
+#[test]
+fn thirty_one_levels_still_parse() {
+    let lib = load(CALL_LIB).unwrap();
+    let n = 31;
+    let src = format!("return {}1{}\n", "f(".repeat(n), ")".repeat(n));
+    assert!(lib.run(&src).is_ok());
 }
 
 // --- R6 -------------------------------------------------------------------

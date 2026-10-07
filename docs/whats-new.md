@@ -4,6 +4,28 @@ title: What's new — engine primitives shipped in this release
 
 # What's new
 
+## 0.24.0 — the nesting limit has a name
+
+**Too deep is no longer reported as malformed.** Source nested past the parser's bound
+(64 captures, about 31 call levels in a choice-based grammar) used to surface as a generic
+``expected `)`, found …`` error. It now says what happened, and `capy ast` gives it the code
+`E0003`:
+
+```text
+before:  error: expected `)`, found "1" in `call`
+after:   error: nesting too deep (limit 64) while matching "call | name | num" — the source nests further than the parser will follow
+```
+
+The bound itself did not move, and an ordinary mistake after a deep statement is still `E0001`.
+
+**The browser sees the whole choice.** `capyIntrospect` now carries `alts` next to `type`, so a
+tool can show every alternative of `call | name | num`.
+
+**`capy version` identifies the build.** A local build prints the crate version (`capy 0.24.0`)
+instead of `capy dev`, so a stale binary on your PATH is visible.
+
+Nothing existing changes: every pre-existing golden is byte-identical.
+
 ## 0.23.0 — ordered choice for grammars
 
 **A capture can now choose.** Capy had sequence, repetition and recursion but no

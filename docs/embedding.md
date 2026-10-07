@@ -211,9 +211,11 @@ comment markers: ["#"]
 ```
 
 The same data is available from the browser via the wasm build —
-`capyIntrospect(librarySrc)` returns the identical JSON shape. An
+`capyIntrospect(librarySrc)` returns the same declared functions as JSON. An
 editor can `JSON.parse` it and build autocomplete with zero
-hand-maintenance.
+hand-maintenance. Each capture arg carries `type` (alternative 1) and, since 0.24.0, `alts`
+— the remaining alternatives of an [ordered choice](library-authoring.md#ordered-choice),
+empty for an ordinary capture. The browser JSON still omits `optional` and `default`.
 
 ## A real example
 

@@ -42,11 +42,13 @@ use capy_core::orchestrator::commands;
 use impl_resolve::resolve_lib_with_impl;
 use lib_path::{library_name_looks_valid, resolve_lib};
 
-/// Set at build time via `CAPY_VERSION`, mirroring Go's
-/// `-ldflags "-X main.version=…"`.
+/// Set at build time via `CAPY_VERSION` (CI stamps the release tag), mirroring
+/// Go's `-ldflags "-X main.version=…"`. An ordinary local build falls back to the
+/// crate version, as `capy_version` in the wasm ABI already does, so a stale binary
+/// is identifiable from `capy version` instead of every build printing `dev`.
 const VERSION: &str = match option_env!("CAPY_VERSION") {
     Some(v) => v,
-    None => "dev",
+    None => env!("CARGO_PKG_VERSION"),
 };
 
 fn main() {

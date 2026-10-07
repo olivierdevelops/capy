@@ -201,6 +201,16 @@ pub unsafe extern "C" fn capy_introspect(lib_ptr: *const u8, lib_len: u32) -> *m
                     s.push_str(&jstr(&a.name));
                     s.push_str(",\"type\":");
                     s.push_str(&jstr(&a.type_));
+                    // PROP-2026-0004: alternatives 2…n of an ordered choice; `type`
+                    // keeps meaning alternative 1. Additive — empty for a plain capture.
+                    s.push_str(",\"alts\":[");
+                    for (k, alt) in a.alts.iter().enumerate() {
+                        if k > 0 {
+                            s.push(',');
+                        }
+                        s.push_str(&jstr(alt));
+                    }
+                    s.push(']');
                     s.push_str(",\"description\":");
                     s.push_str(&jstr(&a.description));
                     s.push('}');
@@ -254,4 +264,42 @@ pub extern "C" fn capy_version() -> *mut u8 {
         _ => env!("CARGO_PKG_VERSION"),
     };
     into_result_buffer(format!("{{\"ok\":true,\"output\":{}}}", jstr(version)))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Reads a `[u32 len][bytes]` result buffer back into a string.
+    unsafe fn take(ptr: *mut u8) -> String {
+        let n = u32::from_le_bytes([*ptr, *ptr.add(1), *ptr.add(2), *ptr.add(3)]) as usize;
+        let bytes = std::slice::from_raw_parts(ptr.add(4), n);
+        String::from_utf8_lossy(bytes).into_owned()
+    }
+
+    fn introspect(lib: &str) -> String {
+        unsafe { take(capy_introspect(lib.as_ptr(), lib.len() as u32)) }
+    }
+
+    const CHOICE_LIB: &str = "extension txt\n\
+function operand\n    bare\n    arg capture v call | name | num\nend\n\
+function call\n    bare\n    arg capture f ident\n    arg literal \"(\"\n    arg literal \")\"\nend\n\
+function name\n    bare\n    arg capture id ident\nend\n\
+function num\n    bare\n    arg capture n int\nend\n";
+
+    /// PLAN-2026-0004 — the browser introspection JSON carries the whole choice.
+    /// `type` stays alternative 1 (additive change, ARCH-001).
+    #[test]
+    fn introspect_json_carries_alts() {
+        let json = introspect(CHOICE_LIB);
+        assert!(json.contains("\"type\":\"call\",\"alts\":[\"name\",\"num\"]"), "got: {json}");
+    }
+
+    /// A plain capture reports an empty `alts`, so a consumer can read the field
+    /// unconditionally.
+    #[test]
+    fn introspect_json_alts_is_empty_for_a_plain_capture() {
+        let json = introspect("extension txt\nfunction say\n    arg capture w ident\nend\n");
+        assert!(json.contains("\"type\":\"ident\",\"alts\":[]"), "got: {json}");
+    }
 }

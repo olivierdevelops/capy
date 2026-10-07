@@ -6,7 +6,7 @@ status: completed
 
 created_date: 2026-10-07
 last_updated: 2026-10-07
-document_revision: 1
+document_revision: 2
 
 authors:
   - Olivier
@@ -291,7 +291,7 @@ None.
 
 After the version bump and the `capy docs` pipe-escaping fix, the wasm build was re-measured on the
 release tree: **1 389 633 bytes** (+17 bytes against the figure above), still below the 1 410 035
-ceiling. `cargo tree -p capy-core --depth 1` reports `capy-core v0.23.0` with exactly one dependency
+ceiling, leaving **20 402 bytes** of headroom (20 419 above). `cargo tree -p capy-core --depth 1` reports `capy-core v0.23.0` with exactly one dependency
 (`regex`). `cargo test --workspace`: 128 passed, 0 failed; golden suite 131 passed, 8 skipped, 0 failed.
 
 ## Related Documents
@@ -309,3 +309,4 @@ ceiling. `cargo tree -p capy-core --depth 1` reports `capy-core v0.23.0` with ex
 | Revision | Date | Author | Change |
 |---|---|---|---|
 | 1 | 2026-10-07 | Olivier | Initial record |
+| 2 | 2026-10-07 | Olivier | Corrections from a full read-through after the tag (documentation only; no code change) |

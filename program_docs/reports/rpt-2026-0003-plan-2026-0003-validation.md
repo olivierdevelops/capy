@@ -6,7 +6,7 @@ status: completed
 
 created_date: 2026-10-07
 last_updated: 2026-10-07
-document_revision: 1
+document_revision: 2
 
 authors:
   - Olivier
@@ -160,12 +160,12 @@ test result: ok. 18 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; fin
 | Measurement | Baseline | Observed | Threshold | Test | Result |
 |---|---|---|---|---|---|
 | M-01 transpile time, best of 5 | 190.903 µs | 194.935 µs (+2.11 %) | <= +10 % (<= 210.0 µs) | TEST-2026-0010 | PASS |
-| M-02 wasm size | 1 386 116 B (1 342 891 at 0.21.0) | 1 389 616 B (+3 500, +0.25 %; +3.48 % cumulative) | <= 1 410 035 B (cumulative 5 %) | TEST-2026-0010 | PASS |
+| M-02 wasm size | 1 386 116 B (1 342 891 at 0.21.0) | 1 389 633 B on the final tree (+3 517, +0.25 %; +3.48 % cumulative); 1 389 616 B before the version bump and the `capy docs` escape fix | <= 1 410 035 B (cumulative 5 %) | TEST-2026-0010 | PASS |
 | M-03 `capy-core` direct dependencies | 1 | 1 (`regex`) | exactly 1 | TEST-2026-0010 | PASS |
 | M-04 golden suite wall time | baseline copy 0.0611 s | 0.0612 s, ratio 1.002 | <= 1.15x | TEST-2026-0010 | PASS |
 
-The 5 % wasm allowance is shared across releases and **20 419 bytes** of headroom
-remain (see `TEST-2026-0008`, `TEST-2026-0010`).
+The 5 % wasm allowance is shared across releases and **20 402 bytes** of headroom
+remain (20 419 before the final-tree re-measurement) (see `TEST-2026-0008`, `TEST-2026-0010`).
 
 ### Carried PROP-2026-0002 requirements (R1 to R19)
 
@@ -246,7 +246,7 @@ None; no incident occurred during implementation.
 2. **Alternatives must be library functions** (OQ-08).
 3. **`cargo fmt --check` is not enforced** in this repo: 227 pre-existing diffs at
    HEAD; the gate is clippy, tests and `mkdocs --strict`.
-4. **wasm headroom is 20 419 bytes** of the shared 5 % allowance.
+4. **wasm headroom is 20 402 bytes** of the shared 5 % allowance.
 5. **`capy docs` escapes the choice as `\|`** in its Markdown table. Found by `DEMO-2026-0003` U-06 (bare pipes read as column separators); fixed in `rust/src/domain/docs.rs` before release.
 6. **The wasm `capyIntrospect` JSON carries `type` only, not `alts`.** It already omitted `optional` and `default`; the Rust `ArgInfo.alts` is the public surface.
 
@@ -259,7 +259,7 @@ None; no incident occurred during implementation.
 | `default` capture inside a repeated nonterminal fails when omitted (OQ-06); not investigated, out of scope | Capy Engine | a separate defect proposal |
 | Leading-optional combinator (OQ-07) deferred | Capy Engine | revisit only if duplication recurs |
 | ~~Add the `language-reference.md#operator-precedence` link to `docs/CAPY_FOR_LLMS.md`~~ | Capy Engine | **done** in this release |
-| Remaining wasm headroom of 20 419 bytes | Capy Engine | any plan touching the wasm build must budget against it |
+| Remaining wasm headroom of 20 402 bytes | Capy Engine | any plan touching the wasm build must budget against it |
 | Add `alts` to the wasm `capyIntrospect` JSON | Capy Engine | a future plan; additive |
 
 ## Questions Required by DOCUMENTATION.md Section 28
@@ -268,7 +268,7 @@ None; no incident occurred during implementation.
 |---|---|
 | Was the planned functionality actually implemented? | Yes. Loader, `alts` data model, guard over every alternative, ordered-choice matcher with repetition, union diagnostic, introspection and docs table, samples and tests exist and pass. |
 | Does it behave as expected? | Yes for R1 to R3, R5 to R11 and UC-01, UC-03 to UC-06. R4 and UC-02 behave as expected except the depth message wording (`PARTIAL`). |
-| Were all expected files and components modified? | Yes for the implementation, tests, samples and docs (list below). Version files and the P6/P7 documents are not yet written; that is the next phase, not a gap in the implementation. |
+| Were all expected files and components modified? | Yes for the implementation, tests, samples and docs (list below). Version files and the P6/P7 documents were written after this validation (`REL-0.23.0`, version bump, `DEMO-2026-0003`, `MAN-2026-0002`, `SYS-2026-0001`). |
 | Did implementation introduce unintended behaviour? | No (see above). |
 | Are there remaining limitations? | Yes, six, listed above. |
 | Are there unresolved incidents? | No. |
@@ -329,8 +329,7 @@ files modified, 1017 insertions, 129 deletions, plus untracked files).
 alternation works as specified, its order and guard assertions were shown able to
 fail by mutation, no pre-existing golden changed, and all four measurements pass.
 The single engine-side shortfall (R4, depth message) is inherited unchanged from
-0.22.0 and is recorded, not new. The carried documentation work is verified with
-one missing link recorded as a follow-up.
+0.22.0 and is recorded, not new. The carried documentation work is verified; the one missing link it turned up was added in the same release.
 
 The lesson worth carrying is the mutation check: the order tests and the
 second-alternative guard test each went red when the behaviour they guard was
@@ -356,3 +355,4 @@ referenced from that document (`DOCUMENTATION.md` section 28).
 | Revision | Date | Author | Change |
 |---|---|---|---|
 | 1 | 2026-10-07 | Olivier | Initial validation |
+| 2 | 2026-10-07 | Olivier | Corrections from a full read-through after the tag (documentation only; no code change) |

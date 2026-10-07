@@ -6,7 +6,7 @@ status: completed
 
 created_date: 2026-10-07
 last_updated: 2026-10-07
-document_revision: 1
+document_revision: 2
 
 authors:
   - Olivier
@@ -132,7 +132,7 @@ Every requirement is met as written in `PROP-2026-0002`; any shortfall is marked
 | R1 | `errors-and-debugging.md` explains `run` stops at first error while `Library::parse` / `capy ast` recover, links `diagnostics.md` | `grep -n "diagnostics.md\|Library::parse" docs/errors-and-debugging.md` | `:80 `docs/diagnostics.md` (Diagnostics)`, `:86 Embedding Capy? Library::parse returns the same ParseResult the CLI…`; both links resolve under `mkdocs build --strict` (R18) | PASS |
 | R2 | `troubleshooting.md` "My script fails to parse" opens with `capy ast` | `grep -n "capy ast" docs/troubleshooting.md` | `:33 **Start here: capy ast shows every failure, not just the first.**`, `:36 capy ast lib.capy script.capy`, `:39 capy run stops at the first bad line…` | PASS |
 | R3 | `capy ast` in cheat sheet, features, `CAPY_FOR_LLMS`, `editor-tooling`; at least 8 pages mention it | `grep -l "capy ast" docs/*.md docs/**/*.md \| sort -u \| wc -l`; `grep -l "capy ast" docs/syntax-cheat-sheet.md docs/features.md docs/CAPY_FOR_LLMS.md docs/editor-tooling.md` | `18` pages; all four named pages listed | PASS |
-| R4 | Precedence summarised in cheat sheet, features, `CAPY_FOR_LLMS`, answered in `faq`, **each linking** `language-reference.md#operator-precedence` | `grep -c "language-reference.md#operator-precedence" docs/syntax-cheat-sheet.md docs/features.md docs/CAPY_FOR_LLMS.md docs/faq.md`; `grep -n "### Operator precedence" docs/language-reference.md` | cheat sheet `1`, features `1`, faq `1`, **`CAPY_FOR_LLMS.md` `0`** (it has the precedence summary at lines 242 to 247 but no link; `grep -c "language-reference" docs/CAPY_FOR_LLMS.md` is `0`); anchor exists at `language-reference.md:98` | PASS |
+| R4 | Precedence summarised in cheat sheet, features, `CAPY_FOR_LLMS`, answered in `faq`, **each linking** `language-reference.md#operator-precedence` | `grep -c "language-reference.md#operator-precedence" docs/syntax-cheat-sheet.md docs/features.md docs/CAPY_FOR_LLMS.md docs/faq.md`; `grep -n "### Operator precedence" docs/language-reference.md` | cheat sheet `1`, features `1`, faq `1`, `CAPY_FOR_LLMS.md` `1`. **First run: `CAPY_FOR_LLMS.md` gave `0`** (the summary at lines 242 to 247 had no link); the link was added and the check re-run. Anchor exists at `language-reference.md:98` | PASS |
 | R5 | Every error or CLI transcript in a changed page is verbatim from the binary | see *R5 transcript comparison* below | `parse-recovery` and `language-frontend` transcripts and the four showcase error tabs match; only `<-` annotations, `...` elisions and a blank separator differ | PASS |
 | R6 | `roadmap.md` "Already shipped" lists diagnostics, recovery, `capy ast`, precedence with version and link | `grep -n "✅" docs/roadmap.md \| sed -n 1,8p` | `:35 Actionable parse diagnostics`, `:39 Error recovery`, `:42 capy ast <lib> <script> [--json]`, `:45 Infix operator precedence … (0.22.0)` with ``docs/language-reference.md#operator-precedence` (language reference)` | PASS |
 | R7 | Each of the five `REL-0.22.0` Known Limitations is published or deferred with reason | per-limitation greps below | L1 byte offsets: `ast-json.md`, `diagnostics.md`, `embedding.md`; L2 depth message: `errors-and-debugging.md:302`; L3 grouping: `language-reference.md:123`; L4 cascade: `diagnostics.md`, `errors-and-debugging.md`, `language-frontend.md`; L5 wasm ABI: `ast-json.md:26`, `diagnostics.md`, `faq.md`, `language-frontend.md` | PASS |
@@ -286,3 +286,4 @@ Capy Engine (Olivier, with an AI agent running the commands)
 | Revision | Date | Author | Change |
 |---|---|---|---|
 | 1 | 2026-10-07 | Olivier | Initial record |
+| 2 | 2026-10-07 | Olivier | Corrections from a full read-through after the tag (documentation only; no code change): R4 row now shows the first-run failure and the re-run |

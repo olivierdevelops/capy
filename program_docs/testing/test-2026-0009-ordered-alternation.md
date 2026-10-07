@@ -6,7 +6,7 @@ status: completed
 
 created_date: 2026-10-07
 last_updated: 2026-10-07
-document_revision: 1
+document_revision: 2
 
 authors:
   - Olivier
@@ -260,8 +260,9 @@ of new golden files, every pre-existing golden is byte-identical (R7).
 
 QUAL-003: a test that cannot fail is not a test. Two mutations of the
 implementation were applied by hand, the tests were run, and each mutation was
-reverted. Both mutations were run when `rust/tests/alternation.rs` held its
-first eight functions; the remaining ten tests were added afterwards.
+reverted. Mutation (a) was run when `rust/tests/alternation.rs` held its first eight
+functions (1 failed, 7 passed). Mutation (b) was run against all eighteen (4 failed,
+14 passed).
 
 ```text
    MUTATION (a) — guard looks only at the FIRST alternative
@@ -277,7 +278,7 @@ first eight functions; the remaining ten tests were added afterwards.
 
    MUTATION (b) — alternatives iterated in REVERSE order
    ────────────────────────────────────────────────────────
-   make_parser.rs  match_one
+   make_parser.rs  match_alt   (targets.iter().find_map  ──►  targets.iter().rev().find_map)
         try cap_type, alts[0], alts[1] ...             ──►  reversed
 
    cargo test --test alternation
@@ -378,3 +379,4 @@ None in the implementation. Two observations, neither a defect of this change:
 | Revision | Date | Author | Change |
 |---|---|---|---|
 | 1 | 2026-10-07 | Olivier | Initial record |
+| 2 | 2026-10-07 | Olivier | Corrections from a full read-through after the tag (documentation only; no code change) |

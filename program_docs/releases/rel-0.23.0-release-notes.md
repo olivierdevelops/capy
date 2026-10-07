@@ -6,7 +6,7 @@ status: completed
 
 created_date: 2026-10-07
 last_updated: 2026-10-07
-document_revision: 1
+document_revision: 2
 
 authors:
   - Olivier
@@ -351,3 +351,4 @@ alternative 1.
 | Revision | Date | Author | Change |
 |---|---|---|---|
 | 1 | 2026-10-07 | Olivier | Initial release document: tag `v0.23.0` created and verified against commit `8f10723e07eec625e7721a4941651b3541cd1aa8` before this document was written |
+| 2 | 2026-10-07 | Olivier | Documentation corrections after a full read-through of DEMO-2026-0003, RPT-2026-0003, TEST-2026-0009…0011 and MAN-2026-0002 (stale numbers, one inaccurate mutation note, escaped-pipe examples). No code change; the tag `v0.23.0` is unaffected |

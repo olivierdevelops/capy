@@ -6,7 +6,7 @@ status: active
 
 created_date: 2026-10-07
 last_updated: 2026-10-07
-document_revision: 1
+document_revision: 2
 
 authors:
   - Olivier
@@ -171,8 +171,11 @@ Implementation detail is in `SYS-2026-0001`.
 
 ## Installation and Setup
 
-Prerequisite: a `capy` binary at 0.23.0 or later (`capy version`). Nothing else is
-required; the feature is in the library grammar.
+Prerequisite: a `capy` binary built from 0.23.0 or later. `capy version` prints
+`capy dev` for every build, so check behaviour instead: a library with a cycle through a
+later alternative must be refused by `capy check` (DEMO-2026-0003 U-05); see
+`TRBL-2026-0001` for a stale binary on PATH. Nothing else is required; the feature is in
+the library grammar.
 
 ```sh
 cargo build --release --manifest-path rust/Cargo.toml -p capy-cli
@@ -356,13 +359,13 @@ or fix the source.
 ### Task: inspect a choice
 
 ```sh
-$CAPY docs samples/expression-grammar/lib.capy | grep 'call | name'
+$CAPY docs samples/expression-grammar/lib.capy | grep 'call .| name'
 $CAPY ast --json samples/expression-grammar/lib.capy /tmp/n.capy \
   | jq -c '[.. | objects | select(has("func")) | .func]'
 ```
 
 ```text
-| `v` | `call | name | num` | *(no description)* |
+| `v` | `call \| name \| num` | *(no description)* |
 ["ret","call","operand","num","operand","call","operand","num","operand","num"]
 ```
 
@@ -435,8 +438,8 @@ regenerated and diffed in CI shows when an alternative was added or reordered.
 | An alternative matches but consumes nothing | Treated as a failure and rewound; the next alternative is tried |
 | Repetition ends because no alternative matches | Not an error; the list simply stops. Existing diagnostics are unchanged |
 | `+` with zero matches | An error listing every alternative |
-| `a|b` with no spaces | The same choice as `a \| b` |
-| The `|` in source (`|>`) | Unaffected — `|` is the choice token only in a capture type of a library file |
+| `a\|b` with no spaces | The same choice as `a \| b` |
+| The `\|` in source (`\|>`) | Unaffected — `\|` is the choice token only in a capture type of a library file |
 
 ## Failure Modes, Recovery and Rollback
 
@@ -458,7 +461,6 @@ public field; `type_` is unchanged.
 | First match wins, no ambiguity detection | A permissive early alternative hides later ones; order carefully |
 | No named union | Repeat the `A \| B` list where it recurs; revisit if unions repeat (PROP-2026-0004 OQ-04) |
 | Depth bound is not named in the error | Surfaces as the ordinary `expected …` message |
-| `capy docs` does not escape `\|` in the Type column | Strict Markdown renderers may split the cell |
 | The browser introspection JSON does not carry `alts` | Read the first alternative only; use the Rust field or `capy docs` |
 | Optional captures before a block opener and `} else {` continuation | Not part of this release; on the roadmap |
 
@@ -505,3 +507,4 @@ the AST JSON schema ([`docs/ast-json.md`](../../docs/ast-json.md)).
 | Revision | Date | Author | Change |
 |---|---|---|---|
 | 1 | 2026-10-07 | Olivier | Initial chapter for 0.23.0 |
+| 2 | 2026-10-07 | Olivier | Corrections from a full read-through after the tag (documentation only; no code change) |

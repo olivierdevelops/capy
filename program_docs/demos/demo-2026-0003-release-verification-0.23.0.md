@@ -6,7 +6,7 @@ status: active
 
 created_date: 2026-10-07
 last_updated: 2026-10-07
-document_revision: 1
+document_revision: 2
 
 authors:
   - Olivier
@@ -76,14 +76,16 @@ next_review_date: 2027-04-07
 
 Thirteen released updates, each verifiable from a shell. The first eight are the
 engine change: a capture type may now name several functions (`call | name | num`),
-tried left to right. The last five are the carried documentation and samples
-work, whose commands are re-run here so the pages cannot drift from the binary.
+tried left to right. U-09 to U-12 are the carried documentation and samples
+work, whose commands are re-run here so the pages cannot drift from the binary;
+U-13 is the regression run over the whole workspace.
 
 ```text
   WHAT 0.23.0 ADDS                             WHERE YOU VERIFY IT
   ──────────────────────────────────────────   ──────────────────────────
   CHOICE  arg capture v call | name | num      U-01 .. U-08   (engine)
-  carried public docs and samples              U-09 .. U-13   (PROP-2026-0002)
+  carried public docs and samples              U-09 .. U-12   (PROP-2026-0002)
+  no existing library changed                  U-13           (regression)
 ```
 
 ## Release Identity
@@ -107,8 +109,13 @@ change in 0.23.0 does what its inciting requirement asked.
 0.23.0, working tree on `main` at base commit `84f984c`, **before** the version
 bump: `rust/Cargo.toml` still read `0.22.0` when these commands were run, so the
 binary reports `capy dev` rather than `0.23.0`. Behaviour, not the version string,
-is what is verified here. Re-run `capy version` after the release commit to
-confirm the string.
+is what is verified here. `capy version` prints `capy dev` for every build, so it
+cannot confirm the version (`TRBL-2026-0001`); `cargo tree -p capy-core --depth 1`
+reports `capy-core v0.23.0`.
+
+**Re-verified on the tagged tree.** After the version bump, U-01 to U-08 and U-13 were
+re-run against the tagged commit `8f10723`; all outputs matched what is quoted here
+(128 passed, 0 failed). The `capy docs` output quoted in U-06 is the post-fix, escaped form.
 
 ## Prerequisites
 
@@ -459,7 +466,7 @@ $CAPY docs samples/mixed-parameters/lib.capy | grep -n "mut_param"
 ```
 
 ```text
-22:| `ps` | `mut_param | plain_param` | *(no description)* |
+22:| `ps` | `mut_param \| plain_param` | *(no description)* |
 24:### `mut_param`
 ```
 
@@ -788,3 +795,4 @@ debug profile, working tree on top of `84f984c`.
 | Revision | Date | Author | Change |
 |---|---|---|---|
 | 1 | 2026-10-07 | Olivier | Initial guide; thirteen updates executed against the 0.23.0 working tree |
+| 2 | 2026-10-07 | Olivier | Corrections from a full read-through after the tag (documentation only; no code change) |

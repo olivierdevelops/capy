@@ -6,7 +6,7 @@ status: active
 
 created_date: 2026-09-16
 last_updated: 2026-10-07
-document_revision: 2
+document_revision: 3
 
 authors:
   - Olivier
@@ -60,6 +60,7 @@ Lookup by software version, per `DOCUMENTATION.md` §17.
 
 | Version | Tag | Release Document | Plan | Validation | Demo | Status |
 |---|---|---|---|---|---|---|
+| 0.24.0 | `v0.24.0` | REL-0.24.0 | PLAN-2026-0004 | RPT-2026-0004 | DEMO-2026-0004 | released — commit `54f1a5e` |
 | 0.23.0 | `v0.23.0` | REL-0.23.0 | PLAN-2026-0003 | RPT-2026-0003 | DEMO-2026-0003 | released — commit `8f10723` |
 | 0.22.0 | `v0.22.0` | REL-0.22.0 | PLAN-2026-0002 | RPT-2026-0002 | DEMO-2026-0002 | released — commit `f72fa3d` |
 | 0.21.0 | `v0.21.0` | REL-0.21.0 | PLAN-2026-0001 | RPT-2026-0001 | DEMO-2026-0001 | released — commit `cf5f2f1` |
@@ -69,7 +70,7 @@ Lookup by software version, per `DOCUMENTATION.md` §17.
 
 | Version | Plan | Scope |
 |---|---|---|
-| — | — | **PROP-2026-0001 is complete** (0.21.0, 0.22.0). **PROP-2026-0004 is complete** (0.23.0). `PROP-2026-0003` is a draft with no plan. |
+| — | — | **PROP-2026-0001 is complete** (0.21.0, 0.22.0). **PROP-2026-0004 is complete** (0.23.0). **PROP-2026-0005 is complete** (0.24.0). `PROP-2026-0003` is a draft with no plan. |
 
 ## Change History
 
@@ -77,3 +78,4 @@ Lookup by software version, per `DOCUMENTATION.md` §17.
 |---|---|---|---|
 | 1 | 2026-09-16 | Olivier | Initial index |
 | 2 | 2026-10-07 | Olivier | Added 0.23.0 |
+| 3 | 2026-10-07 | Olivier | Added 0.24.0 |

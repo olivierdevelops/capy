@@ -2,11 +2,11 @@
 document_id: PLAN-2026-0004
 title: Implementation Plan — Ordered-Choice Follow-Ups (0.24.0)
 document_type: plan
-status: approved
+status: completed
 
 created_date: 2026-10-07
 last_updated: 2026-10-07
-document_revision: 1
+document_revision: 2
 
 approval:
   approved_by:
@@ -65,7 +65,7 @@ next_review_date: 2027-04-07
 
 # Implementation Plan — Ordered-Choice Follow-Ups (0.24.0)
 
-> **Status:** Approved
+> **Status:** Completed
 > **Created:** 2026-10-07
 > **Last Updated:** 2026-10-07
 > **Affected Versions:** 0.24.0
@@ -106,17 +106,17 @@ measurement. The deviation is repeated in `RPT-2026-0004` and `REL-0.24.0`.
 
 | State | Count | Notes |
 |---|---:|---|
-| NOT STARTED | 5 | `W-08` and the four release rows (commits, tag, push, `REL-0.24.0`) — finalised in the release-finalize commit |
+| NOT STARTED | 0 | |
 | IN PROGRESS | 0 | |
 | BLOCKED | 0 | |
-| DONE | 8 | `W-01`…`W-07` and the version bump; tests T-01…T-08, requirements R1…R8 and measurements M-01…M-04 all DONE / PASS |
+| DONE | 13 | `W-01`…`W-08` and all release rows; tests T-01…T-08, requirements R1…R8 and measurements M-01…M-04 all DONE / PASS |
 | FAILED | 0 | |
 | DEFERRED | 0 | |
 
-- **Current phase:** P5/P6 — validated (`RPT-2026-0004`, no PARTIAL); demo, manual, system, then release.
-- **Next action:** documentation set, tag, push, `REL-0.24.0`.
+- **Current phase:** **COMPLETE.** P0–P6 exited; `RPT-2026-0004` validated with no PARTIAL; 0.24.0 released.
+- **Next action:** none.
 - **Blockers:** none
-- **Release target:** 0.24.0
+- **Release target:** 0.24.0 — **released** (`v0.24.0`)
 
 ## Requirements and Use Cases
 
@@ -188,7 +188,7 @@ M-01 and M-04 compare retained baseline binaries against new ones **interleaved 
 | W-05 | version fallback | P2 | R6 / C-03 | `rust/cli/src/main.rs` | DONE | `capy version` prints `capy 0.24.0`; mutation (b) turns the version test red |
 | W-06 | version tests | P2 | R6 | `rust/cli/tests/version.rs` | DONE | `rust/cli/tests/version.rs` — 2 pass |
 | W-07 | docs | P3 | R8 / C-04 | see File Checklist | DONE | `mkdocs build --strict` rc=0; messages re-run against `rust/target/debug/capy` |
-| W-08 | version bump, commits, tag, push, `REL-0.24.0` | P6 | — | see Version checklist | NOT STARTED | |
+| W-08 | version bump, commits, tag, push, `REL-0.24.0` | P6 | — | see Version checklist | DONE | `v0.24.0` → `54f1a5ead499e5ad4d5317ba19cfc4abe78bee63`; `REL-0.24.0` |
 
 ## File and Artifact Checklist
 
@@ -233,10 +233,10 @@ M-01 and M-04 compare retained baseline binaries against new ones **interleaved 
 | Step | Detail | Status |
 |---|---|---|
 | Version source | 7 files, as `chore(release): 0.23.0` — done in `cb23972` | DONE |
-| Commits | `fix(parser)…`, `chore(release): 0.24.0`, `docs(program)…` (tagged), `docs(release): finalize` | NOT STARTED |
-| Tag | `v0.24.0`; `git rev-list -n 1` equals the recorded SHA | NOT STARTED |
-| Push | `main` and `v0.24.0` to `origin` — authorized by the owner on 2026-10-07 for this release's flow | NOT STARTED |
-| Release document | `REL-0.24.0`, after the tag | NOT STARTED |
+| Commits | `a046032` plan, `8769f51` fix, `cb23972` chore(release), `54f1a5e` docs(program) (tagged), then the finalize commit | DONE |
+| Tag | `v0.24.0`; `git rev-list -n 1 v0.24.0` = `54f1a5ead499e5ad4d5317ba19cfc4abe78bee63`; `git describe --tags --exact-match HEAD` = `v0.24.0` at tagging | DONE |
+| Push | `main` and `v0.24.0` to `origin` — authorized by the owner on 2026-10-07 for this release's flow | DONE — pushed together with the finalize commit |
+| Release document | `REL-0.24.0`, after the tag | DONE |
 
 ## Decisions, Findings, Deviations and Blockers
 
@@ -265,3 +265,4 @@ None blocking (`PROP-2026-0005` OQ-01, OQ-02 defaulted).
 | Revision | Date | Author | Change |
 |---|---|---|---|
 | 1 | 2026-10-07 | Olivier | Initial approved plan, committed before the code was re-applied |
+| 2 | 2026-10-07 | Olivier | Closed: all phases DONE; release recorded in `REL-0.24.0` |

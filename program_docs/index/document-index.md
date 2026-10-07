@@ -6,7 +6,7 @@ status: active
 
 created_date: 2026-09-16
 last_updated: 2026-10-07
-document_revision: 4
+document_revision: 5
 
 authors:
   - Olivier
@@ -108,6 +108,7 @@ Lookup by ID, type, status, component and owner, per `DOCUMENTATION.md` §17.
 | TEST-2026-0013 | Test — Measured Results for 0.24.0 | test | completed | capy-core, capy-wasm-abi | Capy Engine | 2026-10-07 | [`testing/test-2026-0013-measured-results-0.24.0.md`](../testing/test-2026-0013-measured-results-0.24.0.md) |
 | RPT-2026-0004 | Validation of PLAN-2026-0004 — Ordered-Choice Follow-Ups (0.24.0) | report | completed | capy-core, capy-cli, capy-wasm-abi, docs | Capy Engine | 2026-10-07 | [`reports/rpt-2026-0004-plan-2026-0004-validation.md`](../reports/rpt-2026-0004-plan-2026-0004-validation.md) |
 | DEMO-2026-0004 | Release Verification Guide — 0.24.0 | demo | active | capy-core, capy-cli, capy-wasm-abi, docs | Capy Engine | 2026-10-07 | [`demos/demo-2026-0004-release-verification-0.24.0.md`](../demos/demo-2026-0004-release-verification-0.24.0.md) |
+| REL-0.24.0 | Release 0.24.0 — The Nesting Bound Has a Name | release | completed | capy-core, capy-cli, capy-wasm-abi, docs | Release Management | 2026-10-07 | [`releases/rel-0.24.0-release-notes.md`](../releases/rel-0.24.0-release-notes.md) |
 | STD-2026-0000 | Project Standards Index | standard | active | All | Capy Engine | 2026-09-16 | [`standards/index.md`](../standards/index.md) |
 | STD-2026-0001 | Project Goals | standard | active | All | Capy Engine | 2026-09-16 | [`standards/project-goals.md`](../standards/project-goals.md) |
 | STD-2026-0002 | Engineering Philosophy | standard | active | All | Capy Engine | 2026-09-16 | [`standards/engineering-philosophy.md`](../standards/engineering-philosophy.md) |
@@ -162,3 +163,4 @@ Lookup by ID, type, status, component and owner, per `DOCUMENTATION.md` §17.
 | 2 | 2026-10-07 | Olivier | Added the 0.23.0 documents (ADR-0003, PLAN-2026-0003, TEST-2026-0009…0011, RPT-2026-0003, DEMO-2026-0003, MAN-2026-0002); PROP-2026-0002 and PROP-2026-0004 now `implemented`; next-ID table advanced |
 | 3 | 2026-10-07 | Olivier | Added REL-0.23.0, INC-2026-0001, TRBL-2026-0001 |
 | 4 | 2026-10-07 | Olivier | Added the 0.24.0 documents (PROP-2026-0005, ADR-0004, PLAN-2026-0004, TEST-2026-0012/0013, RPT-2026-0004, DEMO-2026-0004); PROP-2026-0005 `implemented`; next-ID table advanced |
+| 5 | 2026-10-07 | Olivier | Added REL-0.24.0 |

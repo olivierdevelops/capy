@@ -5,8 +5,8 @@ document_type: proposal
 status: implemented
 
 created_date: 2026-09-16
-last_updated: 2026-09-16
-document_revision: 2
+last_updated: 2026-10-07
+document_revision: 3
 
 authors:
   - Olivier
@@ -66,9 +66,9 @@ next_review_date: 2027-03-16
 
 # Public Documentation and Samples for the 0.22.0 Parser Surface
 
-> **Status:** Draft
+> **Status:** Implemented
 > **Created:** 2026-09-16
-> **Last Updated:** 2026-09-16
+> **Last Updated:** 2026-10-07
 > **Affected Versions:** 0.22.0 →
 > **Owner:** Capy Engine
 > **Affected Components:** docs, samples, capy-cli (test harness only)
@@ -745,3 +745,4 @@ Neither is in this proposal's scope; both are recorded so they are not lost.
 |---|---|---|---|
 | 1 | 2026-09-16 | Olivier | Initial proposal — docs and samples scope for the 0.22.0 parser surface |
 | 2 | 2026-09-16 | Olivier | Implemented. OQ-01 resolved to Option B; deviations D-01…D-05 and follow-ups FU-01, FU-02 recorded |
+| 3 | 2026-10-07 | Olivier | Visible header corrected to match the `implemented` front matter. Released in 0.23.0 (carried by `PLAN-2026-0003`); validated in `TEST-2026-0011` and `RPT-2026-0003` |

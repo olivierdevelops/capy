@@ -2,7 +2,7 @@
 
 > **Status:** Active
 > **Created:** 2026-09-16
-> **Last Updated:** 2026-09-16
+> **Last Updated:** 2026-10-07
 > **Owner:** Engineering Documentation Team
 
 Entry point for all documentation governed by
@@ -39,6 +39,8 @@ as they are needed; the standard does not require them all up front.
 | `releases/` | release | `REL` | yes |
 | `reports/` | report | `RPT` | yes |
 | `testing/` | test | `TEST` | yes |
+| `incidents/` | incident | `INC` | yes — `resolved/` |
+| `troubleshooting/` | troubleshooting | `TRBL` | yes — `platform/` |
 
 ## Index
 

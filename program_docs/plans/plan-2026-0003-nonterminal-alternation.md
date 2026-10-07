@@ -6,7 +6,7 @@ status: completed
 
 created_date: 2026-10-07
 last_updated: 2026-10-07
-document_revision: 1
+document_revision: 2
 
 approval:
   approved_by:
@@ -114,17 +114,17 @@ Recorded here, repeated in `RPT-2026-0003` and `REL-0.23.0`.
 
 | State | Count | Notes |
 |---|---:|---|
-| NOT STARTED | 5 | release commit, SHA, tag, push, `REL-0.23.0` — P7, finalised in the release-finalize commit |
+| NOT STARTED | 0 | |
 | IN PROGRESS | 0 | |
 | BLOCKED | 0 | |
-| DONE | 24 | phases P0–P6 and the version bump |
+| DONE | 29 | all phases P0–P7 |
 | FAILED | 0 | |
 | DEFERRED | 0 | |
 
-- **Current phase:** P7 — release. P0–P6 exited; `RPT-2026-0003` validated with one documented `PARTIAL` (R4).
-- **Next action:** release commit, tag, push, `REL-0.23.0`.
+- **Current phase:** **COMPLETE.** P0–P7 exited; `RPT-2026-0003` validated with one documented `PARTIAL` (R4); 0.23.0 released.
+- **Next action:** none.
 - **Blockers:** none
-- **Release target:** 0.23.0
+- **Release target:** 0.23.0 — **released** (`v0.23.0`)
 
 ## Requirements and Use Cases
 
@@ -281,25 +281,25 @@ the working tree immediately before any `PROP-2026-0004` change.
 
 ## Section 31 Documentation-Impact Decision
 
-| Artifact | Decision (to be confirmed in `REL-0.23.0`) | Reason |
+| Artifact | Decision (confirmed in `REL-0.23.0`) | Reason |
 |---|---|---|
-| README.md | to assess | capability list may name combinators |
+| README.md | NOT APPLICABLE | no capability or combinator list; see `REL-0.23.0` |
 | System documentation | UPDATED | `SYS-2026-0001` matcher section gains ordered choice |
-| Architecture documentation | to assess | no component boundary moves |
+| Architecture documentation | NOT APPLICABLE | no component boundary moves; `ARCH-2026-0001` node shape unchanged |
 | API and CLI reference | UPDATED | `capy docs` output, `ArgInfo.alts` |
 | Manual | UPDATED | new chapter |
-| Troubleshooting | to assess | left-recursion message now covers alternatives |
+| Troubleshooting | UPDATED | `docs/errors-and-debugging.md` left-recursion section; `TRBL-2026-0001` |
 
 ## Version, Release and Rollout Checklist
 
 | Step | Detail | Status |
 |---|---|---|
 | Version source | `rust/Cargo.toml` `[workspace.package] version` → `0.23.0`, the four crate path-dependency pins and `Cargo.lock` synchronised (same 7 files as `chore(release): 0.22.0`) | DONE |
-| Release commit | `release: v0.23.0` after every earlier stage passes | NOT STARTED |
-| Record SHA | `git rev-parse HEAD` (full) | NOT STARTED |
-| Tag | `git tag -a v0.23.0`; `git rev-list -n 1 v0.23.0` equals the SHA | NOT STARTED |
-| Push | `git push origin main` and `git push origin v0.23.0` — authorized by the owner on 2026-10-07 | NOT STARTED |
-| Release document | `REL-0.23.0` created **after** the tag | NOT STARTED |
+| Release commit | `d7d99fc` feat, `5cacbe4` chore(release), `8f10723` docs(program) — the tagged commit; a fresh worktree checkout reproduced 128 tests / 131 goldens | DONE |
+| Record SHA | `8f10723e07eec625e7721a4941651b3541cd1aa8` | DONE |
+| Tag | `git tag -a v0.23.0`; `git rev-list -n 1 v0.23.0` = `8f10723e07eec625e7721a4941651b3541cd1aa8`; `git describe --tags --exact-match HEAD` = `v0.23.0` | DONE |
+| Push | `git push origin main` and `git push origin v0.23.0` — authorized by the owner on 2026-10-07 | DONE — pushed together with the finalize commit |
+| Release document | `REL-0.23.0` created **after** the tag | DONE |
 
 ## Decisions, Findings, Deviations and Blockers
 
@@ -308,6 +308,8 @@ the working tree immediately before any `PROP-2026-0004` change.
 | 2026-10-07 | Decision | OQ-02, OQ-08 settled in `ADR-0003` |
 | 2026-10-07 | Deviation | not gated behind `PROP-2026-0003` INC-1 (draft, no plan) |
 | 2026-10-07 | Decision | carried `PROP-2026-0002` work released with this version by owner instruction |
+| 2026-10-07 | Incident | `INC-2026-0001` — `capy docs` printed unescaped pipes; found by DEMO U-06, fixed before the release commit |
+| 2026-10-07 | Finding | `TRBL-2026-0001` — a stale `capy` on PATH rejects shipped samples |
 
 ## Rollout Strategy
 
@@ -337,3 +339,4 @@ None blocking. OQ-04, OQ-06, OQ-07 deferred (`ADR-0003`).
 | Revision | Date | Author | Change |
 |---|---|---|---|
 | 1 | 2026-10-07 | Olivier | Initial approved plan |
+| 2 | 2026-10-07 | Olivier | Closed: all phases DONE, release recorded in `REL-0.23.0`, incident and troubleshooting entries added |

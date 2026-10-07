@@ -6,7 +6,7 @@ status: active
 
 created_date: 2026-09-16
 last_updated: 2026-10-07
-document_revision: 3
+document_revision: 4
 
 authors:
   - Olivier
@@ -101,6 +101,13 @@ Lookup by ID, type, status, component and owner, per `DOCUMENTATION.md` §17.
 | INC-2026-0001 | Incident — `capy docs` Printed Unescaped Pipes in a Markdown Table Cell | incident | resolved | capy-core | Capy Engine | 2026-10-07 | [`incidents/resolved/inc-2026-0001-docs-table-unescaped-pipe.md`](../incidents/resolved/inc-2026-0001-docs-table-unescaped-pipe.md) |
 | TRBL-2026-0001 | Troubleshooting — A Stale `capy` on PATH Rejects Shipped Samples | troubleshooting | active | capy-cli | Capy Engine | 2026-10-07 | [`troubleshooting/platform/trbl-2026-0001-stale-capy-on-path.md`](../troubleshooting/platform/trbl-2026-0001-stale-capy-on-path.md) |
 | REL-0.23.0 | Release 0.23.0 — Ordered Choice for Grammars | release | completed | capy-core, capy-cli, docs, samples | Release Management | 2026-10-07 | [`releases/rel-0.23.0-release-notes.md`](../releases/rel-0.23.0-release-notes.md) |
+| PROP-2026-0005 | Ordered-Choice Follow-Ups — Name the Nesting Bound, Expose `alts` to the Browser, Identify the Build | proposal | implemented | capy-core, capy-cli, capy-wasm-abi, docs | Capy Engine | 2026-10-07 | [`proposals/prop-2026-0005-ordered-choice-follow-ups.md`](../proposals/prop-2026-0005-ordered-choice-follow-ups.md) |
+| ADR-0004 | Approve PROP-2026-0005 — Ordered-Choice Follow-Ups | decision | approved | capy-core, capy-cli, capy-wasm-abi, docs | Capy Engine | 2026-10-07 | [`decisions/adr-0004-approve-ordered-choice-follow-ups.md`](../decisions/adr-0004-approve-ordered-choice-follow-ups.md) |
+| PLAN-2026-0004 | Implementation Plan — Ordered-Choice Follow-Ups (0.24.0) | plan | completed | capy-core, capy-cli, capy-wasm-abi, docs | Capy Engine | 2026-10-07 | [`plans/plan-2026-0004-ordered-choice-follow-ups.md`](../plans/plan-2026-0004-ordered-choice-follow-ups.md) |
+| TEST-2026-0012 | Test — Nesting Bound, Browser alts and Build Identity | test | completed | capy-core, capy-cli, capy-wasm-abi, docs | Capy Engine | 2026-10-07 | [`testing/test-2026-0012-nesting-bound-wasm-alts-version.md`](../testing/test-2026-0012-nesting-bound-wasm-alts-version.md) |
+| TEST-2026-0013 | Test — Measured Results for 0.24.0 | test | completed | capy-core, capy-wasm-abi | Capy Engine | 2026-10-07 | [`testing/test-2026-0013-measured-results-0.24.0.md`](../testing/test-2026-0013-measured-results-0.24.0.md) |
+| RPT-2026-0004 | Validation of PLAN-2026-0004 — Ordered-Choice Follow-Ups (0.24.0) | report | completed | capy-core, capy-cli, capy-wasm-abi, docs | Capy Engine | 2026-10-07 | [`reports/rpt-2026-0004-plan-2026-0004-validation.md`](../reports/rpt-2026-0004-plan-2026-0004-validation.md) |
+| DEMO-2026-0004 | Release Verification Guide — 0.24.0 | demo | active | capy-core, capy-cli, capy-wasm-abi, docs | Capy Engine | 2026-10-07 | [`demos/demo-2026-0004-release-verification-0.24.0.md`](../demos/demo-2026-0004-release-verification-0.24.0.md) |
 | STD-2026-0000 | Project Standards Index | standard | active | All | Capy Engine | 2026-09-16 | [`standards/index.md`](../standards/index.md) |
 | STD-2026-0001 | Project Goals | standard | active | All | Capy Engine | 2026-09-16 | [`standards/project-goals.md`](../standards/project-goals.md) |
 | STD-2026-0002 | Engineering Philosophy | standard | active | All | Capy Engine | 2026-09-16 | [`standards/engineering-philosophy.md`](../standards/engineering-philosophy.md) |
@@ -114,18 +121,18 @@ Lookup by ID, type, status, component and owner, per `DOCUMENTATION.md` §17.
 
 | Status | Documents |
 |---|---|
-| active | REF-2026-0001, STD-2026-0000…0006, DEMO-2026-0001…0003, MAN-2026-0001, MAN-2026-0002, SYS-2026-0001, ARCH-2026-0001, TRBL-2026-0001 |
+| active | REF-2026-0001, STD-2026-0000…0006, DEMO-2026-0001…0004, MAN-2026-0001, MAN-2026-0002, SYS-2026-0001, ARCH-2026-0001, TRBL-2026-0001 |
 | draft | PROP-2026-0003 |
-| approved | ADR-0001, ADR-0002, ADR-0003 |
-| completed | TEST-2026-0001…0011, RPT-2026-0001…0003, PLAN-2026-0001…0003, REL-0.21.0, REL-0.22.0, REL-0.23.0 |
-| implemented | PROP-2026-0001, PROP-2026-0002, PROP-2026-0004 |
+| approved | ADR-0001, ADR-0002, ADR-0003, ADR-0004 |
+| completed | TEST-2026-0001…0013, RPT-2026-0001…0004, PLAN-2026-0001…0004, REL-0.21.0, REL-0.22.0, REL-0.23.0, REL-0.24.0 |
+| implemented | PROP-2026-0001, PROP-2026-0002, PROP-2026-0004, PROP-2026-0005 |
 | resolved | INC-2026-0001 |
 
 ## By component
 
 | Component | Documents |
 |---|---|
-| capy-core | PROP-2026-0001, PROP-2026-0003, PROP-2026-0004, INC-2026-0001, REL-0.23.0, PLAN-2026-0001, PLAN-2026-0003, ADR-0003, TEST-2026-0009…0011, RPT-2026-0003, DEMO-2026-0003, MAN-2026-0002 |
+| capy-core | PROP-2026-0001, PROP-2026-0003, PROP-2026-0004, INC-2026-0001, REL-0.23.0, PLAN-2026-0001, PLAN-2026-0003, PLAN-2026-0004, PROP-2026-0005, ADR-0004, TEST-2026-0012, TEST-2026-0013, RPT-2026-0004, DEMO-2026-0004, ADR-0003, TEST-2026-0009…0011, RPT-2026-0003, DEMO-2026-0003, MAN-2026-0002 |
 | capy-cli | PROP-2026-0001, PROP-2026-0002, PLAN-2026-0001 |
 | capy-wasm-abi | PROP-2026-0001 |
 | docs | REF-2026-0001, PROP-2026-0001, PROP-2026-0002, PROP-2026-0003, PROP-2026-0004, PLAN-2026-0001, PLAN-2026-0003, ADR-0003 |
@@ -134,18 +141,18 @@ Lookup by ID, type, status, component and owner, per `DOCUMENTATION.md` §17.
 
 | Prefix | Next |
 |---|---|
-| `PROP` | PROP-2026-0005 |
+| `PROP` | PROP-2026-0006 |
 | `STD` | STD-2026-0007 |
-| `PLAN` | PLAN-2026-0004 |
-| `TEST` | TEST-2026-0012 |
-| `DEMO` | DEMO-2026-0004 |
+| `PLAN` | PLAN-2026-0005 |
+| `TEST` | TEST-2026-0014 |
+| `DEMO` | DEMO-2026-0005 |
 | `MAN` | MAN-2026-0003 |
 | `SYS` | SYS-2026-0002 |
 | `ARCH` | ARCH-2026-0002 |
-| `ADR` | ADR-0004 |
+| `ADR` | ADR-0005 |
 | `INC` | INC-2026-0002 |
 | `TRBL` | TRBL-2026-0002 |
-| `RPT` | RPT-2026-0004 |
+| `RPT` | RPT-2026-0005 |
 
 ## Change History
 
@@ -154,3 +161,4 @@ Lookup by ID, type, status, component and owner, per `DOCUMENTATION.md` §17.
 | 1 | 2026-09-16 | Olivier | Initial index |
 | 2 | 2026-10-07 | Olivier | Added the 0.23.0 documents (ADR-0003, PLAN-2026-0003, TEST-2026-0009…0011, RPT-2026-0003, DEMO-2026-0003, MAN-2026-0002); PROP-2026-0002 and PROP-2026-0004 now `implemented`; next-ID table advanced |
 | 3 | 2026-10-07 | Olivier | Added REL-0.23.0, INC-2026-0001, TRBL-2026-0001 |
+| 4 | 2026-10-07 | Olivier | Added the 0.24.0 documents (PROP-2026-0005, ADR-0004, PLAN-2026-0004, TEST-2026-0012/0013, RPT-2026-0004, DEMO-2026-0004); PROP-2026-0005 `implemented`; next-ID table advanced |

@@ -106,15 +106,15 @@ measurement. The deviation is repeated in `RPT-2026-0004` and `REL-0.24.0`.
 
 | State | Count | Notes |
 |---|---:|---|
-| NOT STARTED | 17 | |
+| NOT STARTED | 5 | `W-08` and the four release rows (commits, tag, push, `REL-0.24.0`) — finalised in the release-finalize commit |
 | IN PROGRESS | 0 | |
 | BLOCKED | 0 | |
-| DONE | 0 | |
+| DONE | 8 | `W-01`…`W-07` and the version bump; tests T-01…T-08, requirements R1…R8 and measurements M-01…M-04 all DONE / PASS |
 | FAILED | 0 | |
 | DEFERRED | 0 | |
 
-- **Current phase:** P0 — contracts approved (`ADR-0004`).
-- **Next action:** P1.
+- **Current phase:** P5/P6 — validated (`RPT-2026-0004`, no PARTIAL); demo, manual, system, then release.
+- **Next action:** documentation set, tag, push, `REL-0.24.0`.
 - **Blockers:** none
 - **Release target:** 0.24.0
 
@@ -122,14 +122,14 @@ measurement. The deviation is repeated in `RPT-2026-0004` and `REL-0.24.0`.
 
 | Req / UC | Planned Outcome | Acceptance Criterion | Phase | Status |
 |---|---|---|---|---|
-| R1 / UC-01 | bound named | message has `nesting too deep (limit 64)` + the alternatives | P1 | NOT STARTED |
-| R2 / UC-01 | `E0003` | `parse` diagnostic code `E0003`, others `E0001` | P1 | NOT STARTED |
-| R3 / UC-02 | no leak | `[E0003, E0001]` | P1 | NOT STARTED |
-| R4 / UC-01 | bound unchanged | 31 parse, 32 refused | P1 | NOT STARTED |
-| R5 / UC-03 | `alts` in browser JSON | `"type":"call","alts":["name","num"]`, `[]` for plain | P2 | NOT STARTED |
-| R6 / UC-04 | version identifies build | `capy <crate version>`, not `dev` | P2 | NOT STARTED |
-| R7 | nothing else changes | goldens byte-identical | P3 | NOT STARTED |
-| R8 | docs true | `mkdocs --strict` exit 0 | P3 | NOT STARTED |
+| R1 / UC-01 | bound named | message has `nesting too deep (limit 64)` + the alternatives | P1 | **DONE** |
+| R2 / UC-01 | `E0003` | `parse` diagnostic code `E0003`, others `E0001` | P1 | **DONE** |
+| R3 / UC-02 | no leak | `[E0003, E0001]` | P1 | **DONE** |
+| R4 / UC-01 | bound unchanged | 31 parse, 32 refused | P1 | **DONE** |
+| R5 / UC-03 | `alts` in browser JSON | `"type":"call","alts":["name","num"]`, `[]` for plain | P2 | **DONE** |
+| R6 / UC-04 | version identifies build | `capy <crate version>`, not `dev` | P2 | **DONE** |
+| R7 | nothing else changes | goldens byte-identical | P3 | **DONE** |
+| R8 | docs true | `mkdocs --strict` exit 0 | P3 | **DONE** |
 
 ## Applicable Project Standards
 
@@ -181,13 +181,13 @@ M-01 and M-04 compare retained baseline binaries against new ones **interleaved 
 
 | ID | Task | Phase | Req / Change | Files | Status | Evidence |
 |---|---|---|---|---|---|---|
-| W-01 | `depth_err`, `fail_code`; report `E0003` | P1 | R1–R4 / C-01 | `rust/src/orchestrator/features/make_parser.rs` | NOT STARTED | |
-| W-02 | depth tests | P1 | R1–R4 | `rust/tests/alternation.rs` | NOT STARTED | |
-| W-03 | `alts` in `capy_introspect` | P2 | R5 / C-02 | `rust/wasm/src/lib.rs` | NOT STARTED | |
-| W-04 | wasm tests | P2 | R5 | `rust/wasm/src/lib.rs` (`#[cfg(test)]`) | NOT STARTED | |
-| W-05 | version fallback | P2 | R6 / C-03 | `rust/cli/src/main.rs` | NOT STARTED | |
-| W-06 | version tests | P2 | R6 | `rust/cli/tests/version.rs` | NOT STARTED | |
-| W-07 | docs | P3 | R8 / C-04 | see File Checklist | NOT STARTED | |
+| W-01 | `depth_err`, `fail_code`; report `E0003` | P1 | R1–R4 / C-01 | `rust/src/orchestrator/features/make_parser.rs` | DONE | `depth_err` / `fail_code` in `make_parser.rs`; mutation (a) turns 3 tests red (TEST-2026-0012 T-01…T-03) |
+| W-02 | depth tests | P1 | R1–R4 | `rust/tests/alternation.rs` | DONE | `seventy_deep_nest_hits_the_existing_bound`, `depth_bound_is_reported_as_e0003`, `depth_error_does_not_leak_into_the_next_statement`, `thirty_one_levels_still_parse` — 21 pass |
+| W-03 | `alts` in `capy_introspect` | P2 | R5 / C-02 | `rust/wasm/src/lib.rs` | DONE | `capy_introspect` emits `"alts"`; mutation (c) turns `introspect_json_carries_alts` red |
+| W-04 | wasm tests | P2 | R5 | `rust/wasm/src/lib.rs` (`#[cfg(test)]`) | DONE | 2 wasm unit tests pass |
+| W-05 | version fallback | P2 | R6 / C-03 | `rust/cli/src/main.rs` | DONE | `capy version` prints `capy 0.24.0`; mutation (b) turns the version test red |
+| W-06 | version tests | P2 | R6 | `rust/cli/tests/version.rs` | DONE | `rust/cli/tests/version.rs` — 2 pass |
+| W-07 | docs | P3 | R8 / C-04 | see File Checklist | DONE | `mkdocs build --strict` rc=0; messages re-run against `rust/target/debug/capy` |
 | W-08 | version bump, commits, tag, push, `REL-0.24.0` | P6 | — | see Version checklist | NOT STARTED | |
 
 ## File and Artifact Checklist
@@ -207,23 +207,23 @@ M-01 and M-04 compare retained baseline binaries against new ones **interleaved 
 
 | ID | Validates | Procedure | Expected | Status |
 |---|---|---|---|---|
-| T-01 | R1, R4 | 70-deep through `run`; 31-deep | names the bound; 31 parses | NOT STARTED |
-| T-02 | R2 | 40-deep through `parse` | one diagnostic, `E0003` | NOT STARTED |
-| T-03 | R3 | ordinary, deep, ordinary-failure | `[E0003, E0001]` | NOT STARTED |
-| T-04 | R5 | `capy_introspect` choice and plain libraries | `alts` populated / `[]` | NOT STARTED |
-| T-05 | R6 | `capy version`, `--version` | crate version, equal, not `dev` | NOT STARTED |
-| T-06 | R7 | `cargo test --test golden` | 131 / 8 / 0 | NOT STARTED |
-| T-07 | R8 | run changed pages' commands; `mkdocs --strict` | exit 0 | NOT STARTED |
-| T-08 | GATE-001 | build, clippy, `cargo test --workspace` | exit 0 | NOT STARTED |
+| T-01 | R1, R4 | 70-deep through `run`; 31-deep | names the bound; 31 parses | DONE |
+| T-02 | R2 | 40-deep through `parse` | one diagnostic, `E0003` | DONE |
+| T-03 | R3 | ordinary, deep, ordinary-failure | `[E0003, E0001]` | DONE |
+| T-04 | R5 | `capy_introspect` choice and plain libraries | `alts` populated / `[]` | DONE |
+| T-05 | R6 | `capy version`, `--version` | crate version, equal, not `dev` | DONE |
+| T-06 | R7 | `cargo test --test golden` | 131 / 8 / 0 | DONE |
+| T-07 | R8 | run changed pages' commands; `mkdocs --strict` | exit 0 | DONE |
+| T-08 | GATE-001 | build, clippy, `cargo test --workspace` | exit 0 | DONE |
 
 ## Section 31 Documentation-Impact Decision
 
 | Artifact | Decision | Reason |
 |---|---|---|
 | Release verification guide / demo | UPDATED | `DEMO-2026-0004` |
-| README.md | to assess | |
+| README.md | NOT APPLICABLE | no capability or combinator list; see `REL-0.24.0` |
 | System documentation | UPDATED | `SYS-2026-0001` (matcher, wasm JSON, version) |
-| Architecture documentation | to assess | |
+| Architecture documentation | NOT APPLICABLE | no component boundary moves; `ARCH-2026-0001` node shape unchanged |
 | API and CLI reference | UPDATED | `docs/embedding.md`, `docs/diagnostics.md` |
 | Manual | UPDATED | `MAN-2026-0002` limitations, `MAN-2026-0001` unaffected |
 | Troubleshooting | UPDATED | `TRBL-2026-0001` status |
@@ -232,7 +232,7 @@ M-01 and M-04 compare retained baseline binaries against new ones **interleaved 
 
 | Step | Detail | Status |
 |---|---|---|
-| Version source | 7 files, as `chore(release): 0.23.0` | NOT STARTED |
+| Version source | 7 files, as `chore(release): 0.23.0` — done in `cb23972` | DONE |
 | Commits | `fix(parser)…`, `chore(release): 0.24.0`, `docs(program)…` (tagged), `docs(release): finalize` | NOT STARTED |
 | Tag | `v0.24.0`; `git rev-list -n 1` equals the recorded SHA | NOT STARTED |
 | Push | `main` and `v0.24.0` to `origin` — authorized by the owner on 2026-10-07 for this release's flow | NOT STARTED |

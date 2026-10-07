@@ -104,7 +104,7 @@ list, the LLM brief and the editor-tooling guide;
 [errors & debugging](errors-and-debugging.md) and
 [troubleshooting](troubleshooting.md) explain when to reach for `ast` instead of
 `run`; and the known limits of the surface — no byte offsets, `E0002`/`E0003`
-reserved but unemitted, nothing over the wasm ABI — are stated in
+reserved but unemitted (as of 0.22.0 — `E0003` is emitted since 0.24.0), nothing over the wasm ABI — are stated in
 [diagnostics](diagnostics.md), [ast-json](ast-json.md) and on the
 [roadmap](roadmap.md).
 

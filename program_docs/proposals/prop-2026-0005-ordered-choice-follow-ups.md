@@ -2,11 +2,11 @@
 document_id: PROP-2026-0005
 title: Ordered-Choice Follow-Ups — Name the Nesting Bound, Expose `alts` to the Browser, Identify the Build
 document_type: proposal
-status: approved
+status: implemented
 
 created_date: 2026-10-07
 last_updated: 2026-10-07
-document_revision: 1
+document_revision: 2
 
 approval:
   approved_by:
@@ -69,7 +69,7 @@ next_review_date: 2027-04-07
 
 # Ordered-Choice Follow-Ups — Name the Nesting Bound, Expose `alts` to the Browser, Identify the Build
 
-> **Status:** Approved (2026-10-07, Olivier — by explicit instruction)
+> **Status:** Implemented in 0.24.0 (approved 2026-10-07, Olivier)
 > **Created:** 2026-10-07
 > **Last Updated:** 2026-10-07
 > **Affected Versions:** 0.24.0 →
@@ -318,3 +318,4 @@ One plan (`PLAN-2026-0004`), one release (`0.24.0`).
 | Revision | Date | Author | Change |
 |---|---|---|---|
 | 1 | 2026-10-07 | Olivier | Initial proposal, approved the same day |
+| 2 | 2026-10-07 | Olivier | **Implemented** in 0.24.0 under `PLAN-2026-0004` (`ADR-0004`). Validation: `RPT-2026-0004`, no PARTIAL or FAIL. Order-of-work deviation recorded there |

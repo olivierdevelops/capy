@@ -6,7 +6,7 @@ status: active
 
 created_date: 2026-10-07
 last_updated: 2026-10-07
-document_revision: 2
+document_revision: 3
 
 authors:
   - Olivier
@@ -40,9 +40,13 @@ reason: A library author must be able to declare a recursive or multi-shape gram
 related_documents:
   - MAN-2026-0001
   - DEMO-2026-0003
+  - DEMO-2026-0004
   - PLAN-2026-0003
+  - PLAN-2026-0004
   - PROP-2026-0004
+  - PROP-2026-0005
   - ADR-0003
+  - ADR-0004
   - SYS-2026-0001
 
 supersedes: null
@@ -63,7 +67,7 @@ next_review_date: 2027-04-07
 > **Status:** Active
 > **Created:** 2026-10-07
 > **Last Updated:** 2026-10-07
-> **Affected Versions:** 0.23.0
+> **Affected Versions:** 0.23.0 and later (revised for 0.24.0)
 > **Owner:** Capy Engine
 > **Affected Components:** capy-core, capy-cli
 
@@ -96,6 +100,7 @@ a grammar can nest and a parameter list can mix shapes.
         │
         ▼
   DEMO-2026-0003  run every procedure below and compare output
+  DEMO-2026-0004  0.24.0: the named depth bound, `alts` in the browser, `capy version`
 ```
 
 Read MAN-2026-0001 §3 (recursion limits) first: choice composes with recursion,
@@ -112,6 +117,9 @@ and the left-recursion rule it describes governs every alternative here.
 | `capy docs` prints the union; `ArgInfo.alts` | [Introspection](#task-inspect-a-choice) | DEMO-2026-0003 U-06 |
 | `capy ast --json` names the matched alternative | [Reading the tree](#task-inspect-a-choice) | DEMO-2026-0003 U-07 |
 | A built-in type is refused as an alternative | [Errors and recovery](#errors-and-recovery-reference) | DEMO-2026-0003 U-08 |
+| **0.24.0** — a too-deep source is reported as `nesting too deep (limit 64) …`, code `E0003` under `capy ast` | [Errors and recovery](#errors-and-recovery-reference) | DEMO-2026-0004 U-01 to U-04 |
+| **0.24.0** — the browser introspection JSON carries `alts` | [Introspection](#task-inspect-a-choice) | DEMO-2026-0004 U-05 |
+| **0.24.0** — `capy version` prints the crate version (`capy 0.24.0`) | [Installation and setup](#installation-and-setup) | DEMO-2026-0004 U-06 |
 
 History lives in `program_docs/releases/`; the user-facing summary is
 [`docs/whats-new.md`](../../docs/whats-new.md).
@@ -165,17 +173,31 @@ combinator for library authors, not syntax the engine provides.
 
 Recursion terminates because the recursive alternative (`call`) consumes a name
 and a `(` **before** it descends — it is right-recursive. Descent is bounded at 64
-captures regardless (about 31 call levels in the sample).
+captures regardless (about 31 call levels in the sample). A source nested past the
+bound is refused with a message that names it (`E0003`, see Errors below).
 
 Implementation detail is in `SYS-2026-0001`.
 
 ## Installation and Setup
 
-Prerequisite: a `capy` binary built from 0.23.0 or later. `capy version` prints
-`capy dev` for every build, so check behaviour instead: a library with a cycle through a
-later alternative must be refused by `capy check` (DEMO-2026-0003 U-05); see
-`TRBL-2026-0001` for a stale binary on PATH. Nothing else is required; the feature is in
-the library grammar.
+Prerequisite: a `capy` binary built from 0.23.0 or later. Since 0.24.0, `capy version`
+(and `capy --version`) print the crate version for a local build, so the build is
+identifiable:
+
+```sh
+$CAPY version
+```
+
+```text
+capy 0.24.0
+```
+
+A release build stamped with `CAPY_VERSION` prints the stamp instead. A 0.23.0 or earlier
+build printed `capy dev` for every build, so on those, check behaviour instead: a library
+with a cycle through a later alternative must be refused by `capy check`
+(DEMO-2026-0003 U-05). See `TRBL-2026-0001` for a stale binary on PATH and for the plain
+`cargo build` pitfall (use `cargo build --workspace`). Nothing else is required; the
+feature is in the library grammar.
 
 ```sh
 cargo build --release --manifest-path rust/Cargo.toml -p capy-cli
@@ -354,6 +376,23 @@ or fix the source.
 
 **Verified demo.** `DEMO-2026-0003` U-04.
 
+A source that nests **deeper than the parser will follow** is a different failure,
+and since 0.24.0 it says so. Using a 70-deep `return f(f(…1…))`:
+
+```sh
+$CAPY ast samples/expression-grammar/lib.capy deep.capy; echo "exit $?"
+```
+
+```text
+<error> 1:1-1:219  213 token(s) skipped
+error[E0003] 1:1: nesting too deep (limit 64) while matching "call | name | num" — the source nests further than the parser will follow
+exit 1
+```
+
+**Recovery:** flatten the source (31 call levels is the most this grammar accepts) or
+restructure the grammar. An ordinary error in the *next* statement is still `E0001`
+(`DEMO-2026-0004` U-04).
+
 ---
 
 ### Task: inspect a choice
@@ -402,7 +441,9 @@ $CAPY ast --json samples/expression-grammar/lib.capy /tmp/n.capy \
 | `Library::introspect()` → `ArgInfo.alts: Vec<String>` | Read the declared choice | none | a loaded library | `alts` populated for a choice; empty otherwise | — | none | task "inspect" | 0.23.0 |
 
 HTTP and event surfaces: NOT APPLICABLE — Capy exposes none for this feature.
-The browser build's `capyIntrospect` JSON does not carry `alts` (see Limitations).
+Since 0.24.0 the browser build's `capyIntrospect` JSON carries `alts` after `type` on
+every capture (`"type":"call","alts":["name","num"]`; `"alts":[]` for a plain capture),
+verified by the wasm crate's unit tests (`DEMO-2026-0004` U-05).
 
 ## UI Screen and Interaction Reference
 
@@ -410,7 +451,7 @@ NOT APPLICABLE — a command-line and library feature with no screen.
 
 ## Errors and Recovery Reference
 
-All messages below were produced by the 0.23.0 binary (DEMO-2026-0003).
+All messages below were produced by the 0.23.0 and 0.24.0 binaries (DEMO-2026-0003, DEMO-2026-0004).
 
 | Error / Code / Message | Surface | Cause | User-Visible Result | Recovery | Retry Safe | Related Feature |
 |---|---|---|---|---|---|---|
@@ -418,7 +459,8 @@ All messages below were produced by the 0.23.0 binary (DEMO-2026-0003).
 | `function "expr": left recursion — it can match itself without consuming a token (cycle: expr -> expr). Rewrite …` | `check`, any load | A cycle exists through **any** alternative before a token is consumed | library refused, exit `1` | Put a literal before the capture, or make the recursion trail | yes | Guard |
 | `function "call": capture "v" alternation names "int", which is not a library function` | `check`, any load | An alternative is a built-in or declared type, or unknown | library refused, exit `1` | Wrap the type in a `bare` one-capture function and name that | yes | Alternatives are functions |
 | `line 4: arg capture: malformed alternation "b \|\| c" — write \`A \| B \| C\` …` | `check`, any load | An empty or non-identifier name in the choice | library refused | Write `A \| B \| C` | yes | Syntax |
-| ``expected `)`, found "1" in `call` `` at 32 call levels | `run`, `ast` | The 64-capture nesting bound; its own message is consumed by the rewind | exit `1`, no crash | Flatten the source or the grammar | yes | Depth bound |
+| ``nesting too deep (limit 64) while matching "call \| name \| num" — the source nests further than the parser will follow`` (`E0003` under `capy ast`) at 32 call levels | `run`, `ast`, `Library::parse` | The 64-capture nesting bound was reached; the message names the bound and the alternatives (0.24.0) | exit `1`, no crash; `ast` prints one `<error>` region | Flatten the source or the grammar | yes | Depth bound |
+| ``expected `)`, found "1" in `call` `` at 32 call levels | `run`, `ast` | The same bound **before 0.24.0**: its message was consumed by the rewind | exit `1` | Upgrade; `capy version` shows the build | yes | Depth bound |
 
 ## Examples and Demos
 
@@ -460,8 +502,7 @@ public field; `type_` is unchanged.
 | Alternatives are library functions only | Wrap a built-in type in a `bare` function |
 | First match wins, no ambiguity detection | A permissive early alternative hides later ones; order carefully |
 | No named union | Repeat the `A \| B` list where it recurs; revisit if unions repeat (PROP-2026-0004 OQ-04) |
-| Depth bound is not named in the error | Surfaces as the ordinary `expected …` message |
-| The browser introspection JSON does not carry `alts` | Read the first alternative only; use the Rust field or `capy docs` |
+| The depth bound (64 captures, 31 call levels in the sample) is fixed | A deeper source is refused with `nesting too deep` (`E0003`); it cannot be raised from a library |
 | Optional captures before a block opener and `} else {` continuation | Not part of this release; on the roadmap |
 
 ## Troubleshooting References
@@ -488,6 +529,9 @@ and the DEMO-2026-0003 Troubleshooting table.
 | Union diagnostic | 0.23.0 | extends the 0.22.0 furthest-failure union | — | development |
 | `ArgInfo.alts` | 0.23.0 | additive field | — | development |
 | `capy docs` union Type column | 0.23.0 | Type column prints the choice | — | development |
+| Depth-bound error names the bound, code `E0003` | 0.24.0 | replaces the generic `expected …` message | — | development |
+| `alts` in the wasm `capy_introspect` JSON | 0.24.0 | additive field after `type` | — | development |
+| `capy version` prints the crate version | 0.24.0 | was `capy dev` for every unstamped build | — | development |
 
 ## Related Features
 
@@ -497,8 +541,9 @@ the AST JSON schema ([`docs/ast-json.md`](../../docs/ast-json.md)).
 ## Related Documents
 
 - `MAN-2026-0001` — spans, comments, recursion limits, errors, recovery
-- `DEMO-2026-0003` — the verified procedures for this chapter
-- `PLAN-2026-0003`, `PROP-2026-0004`, `ADR-0003` — plan, proposal, decision
+- `DEMO-2026-0003`, `DEMO-2026-0004` — the verified procedures for this chapter
+- `PLAN-2026-0003`, `PROP-2026-0004`, `ADR-0003` — plan, proposal, decision (0.23.0)
+- `PLAN-2026-0004`, `PROP-2026-0005`, `ADR-0004` — the 0.24.0 follow-ups
 - `SYS-2026-0001` — how the matcher, loader and lib-parser implement it
 - [`docs/library-authoring.md`](../../docs/library-authoring.md#ordered-choice) — the user-site page
 
@@ -508,3 +553,4 @@ the AST JSON schema ([`docs/ast-json.md`](../../docs/ast-json.md)).
 |---|---|---|---|
 | 1 | 2026-10-07 | Olivier | Initial chapter for 0.23.0 |
 | 2 | 2026-10-07 | Olivier | Corrections from a full read-through after the tag (documentation only; no code change) |
+| 3 | 2026-10-07 | Olivier | 0.24.0: the depth bound is named (`E0003`); the browser JSON carries `alts`; `capy version` prints the crate version; removed the two limitations and the `capy dev` statement that became false; linked DEMO-2026-0004 |

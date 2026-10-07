@@ -6,7 +6,7 @@ status: active
 
 created_date: 2026-09-16
 last_updated: 2026-10-07
-document_revision: 3
+document_revision: 4
 
 authors:
   - Olivier
@@ -31,7 +31,7 @@ applicable_environments:
 audience:
   - engineers
 
-scope: Describes the implemented lexer-to-AST pipeline through 0.23.0, including trivia handling, span population, the recursion guards, diagnostics, value expressions and ordered choice in a capture type.
+scope: Describes the implemented lexer-to-AST pipeline through 0.24.0, including trivia handling, span population, the recursion guards (and how the nesting bound is reported), diagnostics, value expressions, ordered choice in a capture type, and the version string.
 
 reason: DOCUMENTATION.md section 31 requires system documentation to describe the current implemented system whenever behaviour or internal interfaces change.
 
@@ -42,6 +42,10 @@ related_documents:
   - PROP-2026-0004
   - ADR-0003
   - DEMO-2026-0003
+  - PLAN-2026-0004
+  - PROP-2026-0005
+  - ADR-0004
+  - DEMO-2026-0004
 
 supersedes: null
 superseded_by: null
@@ -61,13 +65,13 @@ next_review_date: 2027-03-16
 > **Status:** Active
 > **Created:** 2026-09-16
 > **Last Updated:** 2026-10-07
-> **Affected Versions:** 0.22.0
+> **Affected Versions:** 0.22.0 and later (current through 0.24.0)
 > **Owner:** Capy Engine
 > **Affected Components:** capy-core
 
 ## Summary
 
-This describes what the code does through 0.23.0, not what was intended.
+This describes what the code does through 0.24.0, not what was intended.
 
 ## Pipeline
 
@@ -98,7 +102,7 @@ Block { stmts: Vec<FuncCall> }
 | Token | `rust/src/domain/token.rs` | `kind`, `text`, `line`, `col`, `width`; `TokenKind::Comment` added |
 | Lexer | `rust/src/orchestrator/features/make_lexer.rs` | `tokenize_impl(source, markers, keep_comments)`; the two public wrappers differ only in that flag |
 | AST | `rust/src/domain/ast.rs` | `Span`; `FuncCall.span`, `FuncCall.leading_comments`, `CaptureValue.span`; both structs `#[non_exhaustive]` |
-| Parser | `rust/src/orchestrator/features/make_parser.rs` | trivia strip, span population, `MAX_PARSE_DEPTH`; `capture_func_type_inner` and `match_alt` (ordered choice, 0.23.0) |
+| Parser | `rust/src/orchestrator/features/make_parser.rs` | trivia strip, span population, `MAX_PARSE_DEPTH`; `capture_func_type_inner` and `match_alt` (ordered choice, 0.23.0); `depth_err` and `fail_code` (named nesting bound, 0.24.0) |
 | Loader | `rust/src/orchestrator/features/make_library_loader.rs` | `reject_left_recursion` after `is_func` resolution; alternatives validated as library functions and carried through `compile_args` / `compile_elements` (0.23.0) |
 | Lib-parser | `rust/src/infra/capy_lib_parser.rs` | reads `arg capture NAME A \| B \| C` into `RawArg.type_` + `RawArg.alts` (0.23.0) |
 | Data model | `rust/src/infra/raw_library.rs`, `rust/src/domain/library.rs` | `alts: Vec<String>` on `RawArg`, `ArgEntry`, `PatternElement`; `PatternElement::alternatives()` (0.23.0) |
@@ -126,6 +130,9 @@ Two independent mechanisms, both required:
 2. **Parse time** — `MAX_PARSE_DEPTH = 64` bounds nonterminal descent. This is
    not redundant: a *valid* right-recursive library fed deeply nested input
    aborted without it.
+
+Since 0.24.0 the parse-time bound is reported by name; see "The nesting bound
+is reported (0.24.0)" below.
 
 A function that declares no `arg literal` has its own name prepended as one, so
 it always consumes a token and can never be a left-recursive hop.
@@ -218,8 +225,9 @@ load fails with `malformed alternation`. Otherwise `type_` is alternative 1 and
 - The tree node for the winner has `func` set to the winning alternative's name,
   which is what `capy ast --json` shows in `sub[].func`. No serializer change and
   `schema_version` stays `1`.
-- Depth is still bounded by `MAX_PARSE_DEPTH`; the bound's message is consumed
-  by the rewind, so a too-deep input reports the generic expectation.
+- Depth is still bounded by `MAX_PARSE_DEPTH`. Before 0.24.0 the bound's message
+  was consumed by the rewind, so a too-deep input reported the generic expectation;
+  see the next section for how it is reported now.
 
 **Public surfaces.**
 
@@ -230,23 +238,75 @@ load fails with `malformed alternation`. Otherwise `type_` is alternative 1 and
 | `capy docs` | the Type column joins `type_` and `alts` with ` \| ` |
 | `capy ast --json` | `sub[].func` is the matched alternative |
 
-The browser introspection JSON (`rust/wasm/src/lib.rs`) emits `type` only and does
-not carry `alts`.
+The browser introspection JSON (`rust/wasm/src/lib.rs`, `capy_introspect`) writes,
+for each argument, `"type":…` followed by `"alts":[…]` and then `"description"`. `type`
+keeps meaning alternative 1; `alts` holds 2…n, and is `[]` for a plain capture, so a
+consumer may read the field unconditionally (0.24.0; before it the JSON emitted `type`
+only). Two unit tests in that file assert both shapes
+(`introspect_json_carries_alts`, `introspect_json_alts_is_empty_for_a_plain_capture`).
+
+## The nesting bound is reported (0.24.0)
+
+`capture_func_type` increments a depth counter around every function-typed capture
+and refuses to descend once `depth >= MAX_PARSE_DEPTH` (64). `match_one` turns any
+sub-failure into a rewind, which used to discard the refusal and let the shape-level
+expectation stand. Two fields on the parser carry the information past the rewind:
+
+```text
+  field        type                  set where                         reset where
+  ──────────   ───────────────────   ───────────────────────────────   ──────────────────────
+  depth_err    Option<CapyError>     capture_func_type, at the         parse_stmt entry; taken
+                                     bound; only if still None         (take) when reported
+                                     (the first one reached is kept)
+  fail_code    &'static str          parse_stmt, when it returns       parse_stmt entry (E0001);
+                                     the bound error (E0003)           consumed by the recovery
+                                                                       diagnostic (mem::replace)
+```
+
+- The error message is
+  ``nesting too deep (limit 64) while matching "call | name | num" — the source nests further than the parser will follow``;
+  the quoted part is `el.alternatives()` joined with ` | `. Its position is the token
+  where the bound was reached.
+- `parse_stmt` resets `depth_err = None` and `fail_code = NO_MATCH` on entry, so a
+  bound error from an earlier statement cannot colour a later one. `parse_stmt` is
+  also entered for block bodies, so the reset applies there too.
+- When no shape matched, the order of reporting at the end of `parse_stmt` is:
+  (1) `block_err`, an error from a matched block opener's body; (2) `depth_err`,
+  with `fail_code = NESTING_TOO_DEEP` (`E0003`); (3) the furthest-failure error
+  (`furthest_error`, code `E0001`); (4) "no library function matches token …".
+  So the bound is reported **before** the furthest-failure error, which is why a
+  statement that died against it no longer reads as ``expected `)`, found "1"``.
+- The recovery loop (the `Err(e) if self.recover` arm) takes `fail_code` with `mem::replace`
+  (back to `NO_MATCH`) when it builds the `Diagnostic`, so the diagnostic carries
+  `E0003` for that statement and `E0001` for the next. `Library::run` (no recovery)
+  returns the same error as `Err`, so `capy run` prints the new message with the
+  caret at the bound token.
+- Only the reporting changed. `MAX_PARSE_DEPTH` is still 64; 31 call levels parse
+  and 32 are refused in `samples/expression-grammar` (`DEMO-2026-0004` U-03).
+
+## The version string (0.24.0)
+
+`rust/cli/src/main.rs` defines `VERSION` as `option_env!("CAPY_VERSION")` when set at
+compile time, else `env!("CARGO_PKG_VERSION")`. `capy version` and `capy --version`
+print `capy <VERSION>`; an unstamped build therefore prints `capy 0.24.0`, no longer
+`capy dev`. The wasm `capy_version` export already used the same fallback (it also
+ignores an empty `CAPY_VERSION`).
 
 ## Last Verified Version
 
-0.23.0 working tree on top of `84f984c`, 2026-10-07; `cargo test --workspace`:
-128 passed, 0 failed (`DEMO-2026-0003` U-13).
+0.24.0, `main` at `cb23972`, 2026-10-07; `cargo test --workspace`: 135 passed,
+0 failed (`DEMO-2026-0004` U-07). Each statement in the 0.24.0 sections above was
+checked against `make_parser.rs`, `rust/wasm/src/lib.rs` and `rust/cli/src/main.rs`.
 
 ## Known limitations
 
 - No byte offsets on `Span`.
-- The depth-limit error surfaces as the generic "no library function matches".
+- `E0002` (an unclosed delimiter) is still reserved and unemitted.
+- The nesting bound is fixed at 64 captures and is not configurable.
 - Only leading comments are attached; trailing and interior are retained but
   unattached.
 - Alternatives must be library functions; built-in and declared types are
   refused at load.
-- The browser introspection JSON does not carry `alts`.
 
 ## Change History
 
@@ -255,3 +315,4 @@ not carry `alts`.
 | 1 | 2026-09-16 | Olivier | Initial document |
 | 2 | 2026-09-16 | Olivier | Added the 0.22.0 diagnostics, recovery and value-expression sections |
 | 3 | 2026-10-07 | Olivier | Added ordered choice (0.23.0): lib-parser, loader validation and guard, matcher `match_alt`, public surfaces; refreshed scope and component table |
+| 4 | 2026-10-07 | Olivier | 0.24.0: documented `depth_err` / `fail_code` and `E0003`, the wasm `alts` field and the version fallback; removed the statements that became false (bound message consumed by the rewind; generic "no library function matches" at the bound; browser JSON without `alts`); last verified 0.24.0 |

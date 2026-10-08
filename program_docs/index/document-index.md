@@ -6,7 +6,7 @@ status: active
 
 created_date: 2026-09-16
 last_updated: 2026-10-07
-document_revision: 5
+document_revision: 6
 
 authors:
   - Olivier
@@ -102,6 +102,7 @@ Lookup by ID, type, status, component and owner, per `DOCUMENTATION.md` §17.
 | TRBL-2026-0001 | Troubleshooting — A Stale `capy` on PATH Rejects Shipped Samples | troubleshooting | active | capy-cli | Capy Engine | 2026-10-07 | [`troubleshooting/platform/trbl-2026-0001-stale-capy-on-path.md`](../troubleshooting/platform/trbl-2026-0001-stale-capy-on-path.md) |
 | REL-0.23.0 | Release 0.23.0 — Ordered Choice for Grammars | release | completed | capy-core, capy-cli, docs, samples | Release Management | 2026-10-07 | [`releases/rel-0.23.0-release-notes.md`](../releases/rel-0.23.0-release-notes.md) |
 | PROP-2026-0005 | Ordered-Choice Follow-Ups — Name the Nesting Bound, Expose `alts` to the Browser, Identify the Build | proposal | implemented | capy-core, capy-cli, capy-wasm-abi, docs | Capy Engine | 2026-10-07 | [`proposals/prop-2026-0005-ordered-choice-follow-ups.md`](../proposals/prop-2026-0005-ordered-choice-follow-ups.md) |
+| PROP-2026-0006 | Scaling and Incremental Parsing — Remove the Quadratic State Cost, Establish a Scaling Baseline, Decide on Incremental Reparse | proposal | draft | capy-core, capy-cli, capy-wasm-abi, docs | Capy Engine | 2026-10-07 | [`proposals/prop-2026-0006-scaling-and-incremental-parsing.md`](../proposals/prop-2026-0006-scaling-and-incremental-parsing.md) |
 | ADR-0004 | Approve PROP-2026-0005 — Ordered-Choice Follow-Ups | decision | approved | capy-core, capy-cli, capy-wasm-abi, docs | Capy Engine | 2026-10-07 | [`decisions/adr-0004-approve-ordered-choice-follow-ups.md`](../decisions/adr-0004-approve-ordered-choice-follow-ups.md) |
 | PLAN-2026-0004 | Implementation Plan — Ordered-Choice Follow-Ups (0.24.0) | plan | completed | capy-core, capy-cli, capy-wasm-abi, docs | Capy Engine | 2026-10-07 | [`plans/plan-2026-0004-ordered-choice-follow-ups.md`](../plans/plan-2026-0004-ordered-choice-follow-ups.md) |
 | TEST-2026-0012 | Test — Nesting Bound, Browser alts and Build Identity | test | completed | capy-core, capy-cli, capy-wasm-abi, docs | Capy Engine | 2026-10-07 | [`testing/test-2026-0012-nesting-bound-wasm-alts-version.md`](../testing/test-2026-0012-nesting-bound-wasm-alts-version.md) |
@@ -123,7 +124,7 @@ Lookup by ID, type, status, component and owner, per `DOCUMENTATION.md` §17.
 | Status | Documents |
 |---|---|
 | active | REF-2026-0001, STD-2026-0000…0006, DEMO-2026-0001…0004, MAN-2026-0001, MAN-2026-0002, SYS-2026-0001, ARCH-2026-0001, TRBL-2026-0001 |
-| draft | PROP-2026-0003 |
+| draft | PROP-2026-0003, PROP-2026-0006 |
 | approved | ADR-0001, ADR-0002, ADR-0003, ADR-0004 |
 | completed | TEST-2026-0001…0013, RPT-2026-0001…0004, PLAN-2026-0001…0004, REL-0.21.0, REL-0.22.0, REL-0.23.0, REL-0.24.0 |
 | implemented | PROP-2026-0001, PROP-2026-0002, PROP-2026-0004, PROP-2026-0005 |
@@ -142,7 +143,7 @@ Lookup by ID, type, status, component and owner, per `DOCUMENTATION.md` §17.
 
 | Prefix | Next |
 |---|---|
-| `PROP` | PROP-2026-0006 |
+| `PROP` | PROP-2026-0007 |
 | `STD` | STD-2026-0007 |
 | `PLAN` | PLAN-2026-0005 |
 | `TEST` | TEST-2026-0014 |
@@ -164,3 +165,4 @@ Lookup by ID, type, status, component and owner, per `DOCUMENTATION.md` §17.
 | 3 | 2026-10-07 | Olivier | Added REL-0.23.0, INC-2026-0001, TRBL-2026-0001 |
 | 4 | 2026-10-07 | Olivier | Added the 0.24.0 documents (PROP-2026-0005, ADR-0004, PLAN-2026-0004, TEST-2026-0012/0013, RPT-2026-0004, DEMO-2026-0004); PROP-2026-0005 `implemented`; next-ID table advanced |
 | 5 | 2026-10-07 | Olivier | Added REL-0.24.0 |
+| 6 | 2026-10-07 | Olivier | Added draft PROP-2026-0006 |

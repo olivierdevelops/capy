@@ -436,6 +436,10 @@ impl InnerEvaluator {
                 let v = self.eval_render(inner, locals)?;
                 Ok(Val::Bool(!v.is_truthy()))
             }
+            Expr::Unary(u) => {
+                let v = self.eval_render(&u.operand, locals)?;
+                unary(&u.op, &v)
+            }
             Expr::Compare(c) => {
                 let l = self.eval_render(&c.left, locals)?;
                 let r = self.eval_render(&c.right, locals)?;
@@ -760,6 +764,10 @@ impl InnerEvaluator {
             Expr::Not(inner) => {
                 let v = self.eval(inner, caps, locals)?;
                 Ok(Val::Bool(!v.is_truthy()))
+            }
+            Expr::Unary(u) => {
+                let v = self.eval(&u.operand, caps, locals)?;
+                unary(&u.op, &v)
             }
             Expr::Compare(c) => {
                 let l = self.eval(&c.left, caps, locals)?;
@@ -1600,6 +1608,7 @@ fn expr_kind_name(x: &Expr) -> &'static str {
         Expr::Compare(_) => "domain.CompareExpr",
         Expr::Binary(_) => "domain.BinaryExpr",
         Expr::Not(_) => "domain.NotExpr",
+        Expr::Unary(_) => "domain.UnaryExpr",
         Expr::List(_) => "domain.ListLit",
         Expr::Obj(_) => "domain.ObjLit",
     }
@@ -1676,7 +1685,41 @@ fn go_regex_error(pattern: &str, e: &regex::Error) -> String {
 /// promotes the result. String `+` concatenates, which is what a transpiler's
 /// users reach for; every other combination is an error rather than a silent
 /// coercion.
+/// `-x` and `~x` on a number.
+fn unary(op: &str, v: &Val) -> Result<Val, CapyError> {
+    match (op, v) {
+        ("-", Val::Int(i)) => Ok(Val::Int(i.wrapping_neg())),
+        ("-", Val::Float(f)) => Ok(Val::Float(-f)),
+        ("~", Val::Int(i)) => Ok(Val::Int(!i)),
+        _ => Err(CapyError::msg(format!("cannot apply `{op}` to {}", type_name_of(v)))),
+    }
+}
+
+/// The integer-only operators: `** & | ^ << >>`.
+fn int_arith(op: &str, a: i64, b: i64) -> Option<Result<Val, CapyError>> {
+    let bad = |what: &str| Some(Err(CapyError::msg(format!("`{op}`: {what}"))));
+    match op {
+        "&" => Some(Ok(Val::Int(a & b))),
+        "|" => Some(Ok(Val::Int(a | b))),
+        "^" => Some(Ok(Val::Int(a ^ b))),
+        "<<" | ">>" if !(0..64).contains(&b) => bad("the shift amount must be 0..=63"),
+        "<<" => Some(Ok(Val::Int(a.wrapping_shl(b as u32)))),
+        ">>" => Some(Ok(Val::Int(a >> b))),
+        "**" if b < 0 => bad("a negative exponent has no integer result"),
+        "**" => match a.checked_pow(b.min(u32::MAX as i64) as u32) {
+            Some(v) => Some(Ok(Val::Int(v))),
+            None => bad("the power does not fit a 64-bit integer"),
+        },
+        _ => None,
+    }
+}
+
 fn arith(op: &str, l: &Val, r: &Val) -> Result<Val, CapyError> {
+    if let (Val::Int(a), Val::Int(b)) = (l, r) {
+        if let Some(v) = int_arith(op, *a, *b) {
+            return v;
+        }
+    }
     if op == "+" {
         if let (Val::Str(a), Val::Str(b)) = (l, r) {
             return Ok(Val::Str(format!("{a}{b}")));

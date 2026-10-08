@@ -25,6 +25,7 @@ fn shape(e: &Expr) -> String {
         Expr::Binary(b) => format!("({} {} {})", shape(&b.left), b.op, shape(&b.right)),
         Expr::Compare(c) => format!("({} {} {})", shape(&c.left), c.op, shape(&c.right)),
         Expr::Not(x) => format!("(not {})", shape(x)),
+        Expr::Unary(u) => format!("({} {})", u.op, shape(&u.operand)),
         Expr::Var(steps) => steps
             .iter()
             .map(|s| s.field.clone())
@@ -106,6 +107,19 @@ fn round_trip_preserves_structure() {
         "1 + 2 * 3 - 4",
         "x.y + z.w * 2",
         "not a and b",
+        "-a ** 2",
+        "(-a) ** 2",
+        "a ** b ** c",
+        "(a ** b) ** c",
+        "a & b | c ^ d",
+        "a | (b & c)",
+        "a << 1 + 2",
+        "(a << 1) + 2",
+        "-(a + b)",
+        "~a & b",
+        "a in b == c",
+        "a <=> b",
+        "a @ b * c",
     ];
     for src in corpus {
         let once = parse(src);
@@ -144,4 +158,25 @@ fn equal_precedence_right_operand_keeps_parentheses() {
         "(a - (b - c))",
         "rendered as {rendered:?}"
     );
+}
+
+/// 0.25.0 — the operators Ambit asked for (PROP-2026-0046): bitwise, shifts, `**`, `@`, `<=>`, `in`, and the prefix `-` and `~`.
+#[test]
+fn bitwise_power_and_prefix_operators() {
+    let cases = [
+        ("a | b ^ c & d", "(a | (b ^ (c & d)))"), // | loosest, then ^, then &
+        ("a & b == c", "((a & b) == c)"),          // bitwise binds tighter than comparison (Python's order, not C's)
+        ("a << 1 + 2", "(a << (1 + 2))"),          // shifts looser than +
+        ("a ** b ** c", "(a ** (b ** c))"),        // ** is right-associative
+        ("-a ** 2", "(- (a ** 2))"),               // a prefix operator is looser than **
+        ("-a * b", "((- a) * b)"),                 // and tighter than *
+        ("~a & b", "((~ a) & b)"),
+        ("a @ b * c", "((a @ b) * c)"),
+        ("a in b and c", "((a in b) and c)"),
+        ("a <=> b", "(a <=> b)"),
+        ("2 ** -1", "(2 ** -1)"),             // `-1` is a number literal
+    ];
+    for (src, want) in cases {
+        assert_eq!(shape(&parse(src)), want, "parsing {src:?}");
+    }
 }

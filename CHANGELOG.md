@@ -8,6 +8,23 @@ may break between minor versions**.
 
 ## [Unreleased]
 
+## [0.25.0] — 2026-10-08
+
+Operators for Ambit (`PROP-2026-0046` in the Ambit repository).
+
+### Added
+
+- The value-expression parser reads more operators. Binding power, loosest first:
+  `or`, `and`, comparison (`== != < > <= >=`) with `<=>` and `in`, `|`, `^`, `&`, `<< >>`, `+ -`, `* / % @`,
+  prefix `-` and `~`, then `**`, which is right-associative (`a ** b ** c` is `a ** (b ** c)`; `-a ** 2` is `-(a ** 2)`).
+  The old operators keep their relative order. Bitwise operators bind tighter than a comparison (Python's order).
+- `Expr::Unary` / `UnaryExpr`: a prefix `-` or `~` (`not` keeps its own node). A number literal still carries its own sign.
+- The inner evaluator applies `& | ^ << >> **` to integers and `-` / `~` to numbers; `@`, `in` and `<=>` are for grammars that give them a meaning.
+
+### Changed
+
+- `expr_to_text` prints and parenthesises the new operators so a round trip keeps the tree (`tests/precedence.rs`).
+
 ## [0.24.0] — 2026-10-07
 
 Follow-ups to ordered choice (`PROP-2026-0005`).

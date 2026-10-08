@@ -40,10 +40,19 @@ pub fn parse_value<R: TokReader + ?Sized>(
 /// ```text
 ///   1  or
 ///   2  and
-///   3  ==  !=  <  >  <=  >=        ← was a single non-associative step
-///   4  +  -
-///   5  *  /  %
+///   3  ==  !=  <  >  <=  >=  <=>  in      ← comparison; `<=>` and `in` are Binary nodes
+///   4  |
+///   5  ^
+///   6  &
+///   7  <<  >>
+///   8  +  -
+///   9  *  /  %  @
+///  10  prefix  -  ~                        ← parse_unary
+///  11  **                                  ← RIGHT-associative: `a ** b ** c` is `a ** (b ** c)`
 /// ```
+///
+/// (0.25.0: the levels above 3 were 4 and 5; bitwise, shifts, `@`, `**`, `in`, `<=>` and the prefix operators are new. The relative order of the old
+/// operators is unchanged.)
 ///
 /// Comparison keeps producing [`Expr::Compare`] rather than a binary node, so
 /// every existing evaluator and round-trip path for comparisons is untouched;
@@ -54,12 +63,19 @@ fn binding_power(t: &crate::domain::token::Token) -> Option<(u8, &'static str)> 
         TokenKind::Ident => match text {
             "or" => Some((1, "or")),
             "and" => Some((2, "and")),
+            "in" => Some((3, "arith")),
             _ => None,
         },
         TokenKind::Punct => match text {
             "==" | "!=" | "<" | ">" | "<=" | ">=" => Some((3, "cmp")),
-            "+" | "-" => Some((4, "arith")),
-            "*" | "/" | "%" => Some((5, "arith")),
+            "<=>" => Some((3, "arith")),
+            "|" => Some((4, "arith")),
+            "^" => Some((5, "arith")),
+            "&" => Some((6, "arith")),
+            "<<" | ">>" => Some((7, "arith")),
+            "+" | "-" => Some((8, "arith")),
+            "*" | "/" | "%" | "@" => Some((9, "arith")),
+            "**" => Some((11, "arith")),
             _ => None,
         },
         _ => None,
@@ -81,7 +97,8 @@ fn parse_binary<R: TokReader + ?Sized>(
         let op = t.text.clone();
         r.advance();
         // Left-associative: the right operand binds tighter than this level.
-        let right = parse_binary(r, stop, bp + 1)?;
+        // `**` is right-associative: its right operand binds at the SAME level.
+        let right = parse_binary(r, stop, if op == "**" { bp } else { bp + 1 })?;
         left = if kind == "cmp" {
             Expr::Compare(Box::new(CompareExpr { op, left, right }))
         } else {
@@ -101,6 +118,13 @@ pub fn parse_unary<R: TokReader + ?Sized>(
         r.advance();
         let x = parse_unary(r, stop)?;
         return Ok(Expr::Not(Box::new(x)));
+    }
+    // `-x` and `~x`: tighter than `*`, looser than `**`, so `-2 ** 2` is `-(2 ** 2)`. A number literal already carries its own sign, so `-3` is
+    // still the literal.
+    if t.kind == TokenKind::Punct && (t.text == "-" || t.text == "~") && !contains(stop, &t.text) {
+        r.advance();
+        let operand = parse_binary(r, stop, 11)?;
+        return Ok(Expr::Unary(Box::new(crate::domain::ast::UnaryExpr { op: t.text.clone(), operand })));
     }
     parse_primary(r, stop)
 }

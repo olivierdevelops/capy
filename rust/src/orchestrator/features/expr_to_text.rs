@@ -33,6 +33,10 @@ pub fn expr_to_text(x: &Expr) -> String {
         // expression, and silently the wrong emitted code. T-27 is the gate.
         Expr::Binary(b) => {
             let p = prec_of(&b.op);
+            if b.op == "**" {
+                // right-associative: the LEFT operand needs parens at equal precedence, the right does not
+                return format!("{} {} {}", wrap_if_looser_or_equal(&b.left, p), b.op, wrap_if_looser(&b.right, p));
+            }
             format!(
                 "{} {} {}",
                 wrap_if_looser(&b.left, p),
@@ -43,6 +47,8 @@ pub fn expr_to_text(x: &Expr) -> String {
             )
         }
         Expr::Not(x) => format!("not {}", expr_to_text(x)),
+        // a prefix operator binds at level 10: a looser operand is parenthesised, so `-(a + b)` round-trips
+        Expr::Unary(u) => format!("{}{}", u.op, wrap_if_looser(&u.operand, 10)),
         Expr::List(items) => {
             let parts: Vec<String> = items.iter().map(expr_to_text).collect();
             format!("[{}]", parts.join(", "))
@@ -95,9 +101,14 @@ fn prec_of(op: &str) -> u8 {
     match op {
         "or" => 1,
         "and" => 2,
-        "==" | "!=" | "<" | ">" | "<=" | ">=" => 3,
-        "+" | "-" => 4,
-        "*" | "/" | "%" => 5,
+        "==" | "!=" | "<" | ">" | "<=" | ">=" | "<=>" | "in" => 3,
+        "|" => 4,
+        "^" => 5,
+        "&" => 6,
+        "<<" | ">>" => 7,
+        "+" | "-" => 8,
+        "*" | "/" | "%" | "@" => 9,
+        "**" => 11,
         _ => 0,
     }
 }
@@ -105,6 +116,7 @@ fn prec_of(op: &str) -> u8 {
 fn prec_of_expr(x: &Expr) -> Option<u8> {
     match x {
         Expr::Binary(b) => Some(prec_of(&b.op)),
+        Expr::Unary(_) => Some(10),
         Expr::Compare(c) => Some(prec_of(&c.op)),
         _ => None,
     }

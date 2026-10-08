@@ -188,8 +188,17 @@ pub enum Expr {
     /// existing evaluator path is untouched.
     Binary(Box<BinaryExpr>),
     Not(Box<Expr>),
+    /// A prefix arithmetic operator: `-x` (negate) and `~x` (bit complement). `op` is `-` or `~`.
+    Unary(Box<UnaryExpr>),
     List(Vec<Expr>),
     Obj(ObjLit),
+}
+
+/// A prefix operation: `-x` or `~x`.
+#[derive(Debug, Clone, PartialEq)]
+pub struct UnaryExpr {
+    pub op: String,
+    pub operand: Expr,
 }
 
 /// PLAN-2026-0002 R10 — an infix operation with its two operands.

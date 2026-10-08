@@ -8,6 +8,29 @@ may break between minor versions**.
 
 ## [Unreleased]
 
+Speed and memory (`PROP-2026-0007`, measured in `TEST-2026-0014`). Output is unchanged except for the one fix under *Fixed*.
+
+### Changed
+
+- `Library::run` recognises the leading run of flat, single-line statements straight from the source bytes and, for functions that only
+  `write` plain `${capture}` / `${line}` / `${col}` templates, renders them without building a syntax tree. The first line it cannot decide
+  with proof is handed to the normal lexer and parser (same line numbers, same errors). On 100 000 lines of such statements: 18–24x faster and
+  about 15 MB peak memory instead of 265 MB. `parse`, `parse_recovering` and `capy ast` are untouched.
+- Candidate functions are sorted once per library and dispatched by their first token; the evaluator no longer deep-clones every function
+  definition on each run. A 15-line script against a 1 000-function library: 5.7 ms to 0.03 ms.
+- The parser allocates far less on rejected candidates; the lexer borrows its lines; templates are parsed once; `regex_match` and `pattern`
+  types cache compiled regexes (bounded, 64 entries).
+
+### Fixed
+
+- A rule that failed after splitting a merged punctuation token (`><`, `=>`) left the remainder in the token stream, so later rules saw
+  corrupted tokens: a `tail` capture could hold `> -> =>` for `=> -> =>`. `ErrorNode.tokens` in `capy ast --json` now holds the real source
+  tokens (two shipped samples' JSON changed). Regression test: `tests/cursor_split.rs`.
+
+### Size
+
+- The wasm module grows by about 40 KB (+2.8 %).
+
 ## [0.25.0] — 2026-10-08
 
 Operators for Ambit (`PROP-2026-0046` in the Ambit repository).

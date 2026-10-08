@@ -22,8 +22,9 @@ use crate::domain::host::{Host, NoOpHost};
 use crate::domain::val::Val;
 use crate::gofmt;
 use crate::infra::helpers;
-use regex::Regex;
-use std::collections::BTreeMap;
+use std::cell::RefCell;
+use std::collections::{BTreeMap, HashMap};
+use std::rc::Rc;
 use std::sync::Arc;
 
 /// Scope maps used by the evaluator.
@@ -504,6 +505,44 @@ impl InnerEvaluator {
     /// scope. Unlike `interpolate_generic` (dotted paths only), this evaluates
     /// the full inner-expression grammar: helper calls, pipes, nested calls.
     fn interpolate_render(&self, s: &str, locals: &Locals) -> Result<String, CapyError> {
+        // PROP-2026-0007 E6: a template's `${...}` bodies were re-split, re-tokenised and
+        // re-parsed on every render. Parse each template once (lazily, on first render, so
+        // an error still surfaces at the same moment) and render from the cached form.
+        let cached = TEMPLATES.with(|c| c.borrow().get(s).cloned());
+        let parts = match cached {
+            Some(p) => p,
+            None => match compile_template(s) {
+                Some(p) => {
+                    let rc = Rc::new(p);
+                    TEMPLATES.with(|c| {
+                        let mut m = c.borrow_mut();
+                        if m.len() >= TEMPLATE_CACHE_CAP {
+                            m.clear(); // bounded (ARCH-003)
+                        }
+                        m.insert(s.to_string(), rc.clone());
+                    });
+                    rc
+                }
+                // A scan error ("unterminated ${...}"): keep the original path so the
+                // earlier `${}` parts still evaluate first, exactly as before. Never cached.
+                None => return self.interpolate_render_slow(s, locals),
+            },
+        };
+        let mut out = String::new();
+        for part in parts.iter() {
+            match part {
+                Part::Static(t) => out.push_str(t),
+                Part::Interp(c) => {
+                    let v = self.eval_compiled(c, locals)?;
+                    out.push_str(&v.to_go_string());
+                }
+            }
+        }
+        Ok(out)
+    }
+
+    /// The original, uncached implementation (see [`Self::interpolate_render`]).
+    fn interpolate_render_slow(&self, s: &str, locals: &Locals) -> Result<String, CapyError> {
         let b = s.as_bytes();
         let mut out: Vec<u8> = Vec::with_capacity(b.len());
         let mut i = 0usize;
@@ -547,6 +586,70 @@ impl InnerEvaluator {
             }
         }
         Ok(String::from_utf8_lossy(&out).into_owned())
+    }
+
+    /// `eval_interp` over a pre-parsed body. Mirrors it stage for stage.
+    fn eval_compiled(&self, stages: &[CStage], locals: &Locals) -> Result<Val, CapyError> {
+        let mut running = Val::Null;
+        for (idx, stage) in stages.iter().enumerate() {
+            if stage.atoms.is_empty() {
+                continue;
+            }
+            let rest = &stage.atoms[1..];
+            // A pipe stage receives the running value as one extra final argument.
+            let mut arg_vals: Vec<Val> = Vec::with_capacity(rest.len() + 1);
+            for a in rest {
+                arg_vals.push(self.eval_catom(a, locals)?);
+            }
+            if idx > 0 {
+                arg_vals.push(running.clone());
+            }
+            if stage.atoms.len() == 1 && idx == 0 {
+                // Single atom: it's a value (path or literal), not a call.
+                running = self.eval_catom(&stage.atoms[0], locals)?;
+                continue;
+            }
+            let head = stage.head.as_str();
+            let (res, ok, err) = helpers::apply_helper(head, &arg_vals);
+            if ok {
+                if let Some(e) = err {
+                    return Err(CapyError::msg(e));
+                }
+                running = res.unwrap_or(Val::Null);
+                continue;
+            }
+            if head == "len" && arg_vals.len() == 1 {
+                running = Val::Int(builtin_len(&arg_vals[0]));
+                continue;
+            }
+            return Err(CapyError::msg(format!("interp: unknown helper {}", gofmt::quote(head))));
+        }
+        Ok(running)
+    }
+
+    /// `eval_interp_atom` over a pre-classified atom.
+    fn eval_catom(&self, a: &CAtom, locals: &Locals) -> Result<Val, CapyError> {
+        match a {
+            CAtom::Empty => Ok(Val::Str(String::new())),
+            CAtom::Str(s) => Ok(Val::Str(s.clone())),
+            CAtom::Int(v) => Ok(Val::Int(*v)),
+            CAtom::Float(v) => Ok(Val::Float(*v)),
+            CAtom::Paren(c) => self.eval_compiled(c, locals),
+            // A bare name: `eval_interp_path` with nothing after the root.
+            CAtom::Name(n) => {
+                if let Some(v) = locals.get(n) {
+                    Ok(v.clone())
+                } else if n == "context" {
+                    Ok(self.context.clone())
+                } else {
+                    Ok(Val::Str(String::new())) // missing paths render empty
+                }
+            }
+            CAtom::Path(p) => match self.eval_interp_path(p, locals) {
+                Err(_) => Ok(Val::Str(String::new())),
+                Ok(v) => Ok(v),
+            },
+        }
     }
 
     /// Port of `evalInterp`.
@@ -826,8 +929,9 @@ impl InnerEvaluator {
                 }
                 let s = self.eval(&n.args[0], caps, locals)?;
                 let p = self.eval(&n.args[1], caps, locals)?;
-                let rx = Regex::new(&p.to_go_string())
-                    .map_err(|e| CapyError::msg(go_regex_error(&p.to_go_string(), &e)))?;
+                let pat = p.to_go_string();
+                let rx = crate::infra::regex_cache::compiled(&pat)
+                    .map_err(|e| CapyError::msg(go_regex_error(&pat, &e)))?;
                 return Ok(Val::Bool(rx.is_match(&s.to_go_string())));
             }
             "env" => {
@@ -1367,6 +1471,125 @@ fn unescape_string_lit_inner(s: &str) -> String {
         i += 1;
     }
     String::from_utf8_lossy(&out).into_owned()
+}
+
+// ---- E6: parsed form of a template (PROP-2026-0007) ----------------------------------
+
+pub(crate) enum Part {
+    Static(String),
+    Interp(Rc<Vec<CStage>>),
+}
+
+pub(crate) struct CStage {
+    /// The first atom's text, as `apply_helper` wants it.
+    pub(crate) head: String,
+    pub(crate) atoms: Vec<CAtom>,
+}
+
+pub(crate) enum CAtom {
+    Empty,
+    Str(String),
+    Int(i64),
+    Float(f64),
+    Paren(Rc<Vec<CStage>>),
+    Name(String),
+    Path(String),
+}
+
+const TEMPLATE_CACHE_CAP: usize = 4096;
+
+thread_local! {
+    static TEMPLATES: RefCell<HashMap<String, Rc<Vec<Part>>>> = RefCell::new(HashMap::new());
+}
+
+/// Classify an atom exactly as `eval_interp_atom` does, in the same order.
+fn compile_atom(s: &str) -> CAtom {
+    if s.is_empty() {
+        return CAtom::Empty;
+    }
+    let b = s.as_bytes();
+    if b.len() >= 2 && b[0] == b'"' && b[b.len() - 1] == b'"' {
+        return CAtom::Str(unescape_string_lit_inner(&unescape_string_lit_inner(&s[1..s.len() - 1])));
+    }
+    if let Ok(v) = s.parse::<i64>() {
+        return CAtom::Int(v);
+    }
+    if let Ok(v) = s.parse::<f64>() {
+        return CAtom::Float(v);
+    }
+    if b.len() >= 2 && b[0] == b'(' && b[b.len() - 1] == b')' {
+        return CAtom::Paren(Rc::new(compile_interp(&s[1..s.len() - 1])));
+    }
+    if !s.contains('.') && !s.contains('[') {
+        CAtom::Name(s.to_string())
+    } else {
+        CAtom::Path(s.to_string())
+    }
+}
+
+fn compile_interp(expr: &str) -> Vec<CStage> {
+    split_interp_pipe_runtime(expr)
+        .iter()
+        .map(|stage| {
+            let atoms = tokenise_interp_runtime(stage.trim());
+            CStage { head: atoms.first().cloned().unwrap_or_default(), atoms: atoms.iter().map(|a| compile_atom(a)).collect() }
+        })
+        .collect()
+}
+
+/// Scan a template once. `None` means the scan itself failed (an unterminated
+/// `${`), in which case the caller keeps the original implementation.
+pub(crate) fn compile_template(s: &str) -> Option<Vec<Part>> {
+    let b = s.as_bytes();
+    let mut parts: Vec<Part> = Vec::new();
+    let mut buf: Vec<u8> = Vec::new();
+    let flush = |buf: &mut Vec<u8>, parts: &mut Vec<Part>| {
+        if !buf.is_empty() {
+            parts.push(Part::Static(String::from_utf8_lossy(buf).into_owned()));
+            buf.clear();
+        }
+    };
+    let mut i = 0usize;
+    while i < b.len() {
+        if i + 1 < b.len() && b[i] == b'$' && b[i + 1] == b'{' {
+            let mut j = i + 2;
+            let mut depth = 1i64;
+            while j < b.len() && depth > 0 {
+                if b[j] == b'{' {
+                    depth += 1;
+                } else if b[j] == b'}' {
+                    depth -= 1;
+                    if depth == 0 {
+                        break;
+                    }
+                }
+                j += 1;
+            }
+            if j >= b.len() {
+                return None;
+            }
+            let expr = s[i + 2..j].trim();
+            flush(&mut buf, &mut parts);
+            parts.push(Part::Interp(Rc::new(compile_interp(expr))));
+            i = j + 1;
+        } else if b[i] == b'\\' && i + 1 < b.len() {
+            // Go-style escape, as in `interpolate_render_slow`.
+            match b[i + 1] {
+                b'n' => buf.push(b'\n'),
+                b't' => buf.push(b'\t'),
+                b'r' => buf.push(b'\r'),
+                b'`' => buf.push(b'`'),
+                b'\\' => buf.push(b'\\'),
+                other => buf.push(other),
+            }
+            i += 2;
+        } else {
+            buf.push(b[i]);
+            i += 1;
+        }
+    }
+    flush(&mut buf, &mut parts);
+    Some(parts)
 }
 
 /// Port of `splitInterpPipeRuntime` — splits on top-level `|`.

@@ -7,3 +7,4 @@ pub mod helpers;
 pub mod os_host;
 pub mod preprocessor;
 pub mod raw_library;
+pub mod regex_cache;

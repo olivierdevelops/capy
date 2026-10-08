@@ -32,7 +32,7 @@ use crate::domain::host::{Host, NoOpHost};
 use crate::domain::library::Library as DomainLibrary;
 use crate::infra::{define_extractor, preprocessor};
 use crate::orchestrator::features::{
-    make_evaluator, make_lexer, make_library_loader, make_parser,
+    fast_path, make_evaluator, make_lexer, make_library_loader, make_parser,
 };
 use std::collections::BTreeMap;
 use std::sync::Arc;
@@ -79,6 +79,8 @@ impl ParseResult {
 pub struct Library {
     lib: DomainLibrary,
     host: Arc<dyn Host + Send + Sync>,
+    /// Candidate list, sorted once per library (PROP-2026-0007 E4a). Private: not API.
+    cands: Arc<make_parser::Candidates>,
 }
 
 impl std::fmt::Debug for Library {
@@ -106,14 +108,16 @@ impl Library {
     /// Port of `NewLibraryFromFile`.
     pub fn from_file(path: &str) -> Result<Library, CapyError> {
         let dl = make_library_loader::load_library(path, make_lexer::tokenize)?;
-        Ok(Library { lib: dl, host: Arc::new(NoOpHost) })
+        let cands = Arc::new(make_parser::Candidates::build(&dl));
+        Ok(Library { lib: dl, host: Arc::new(NoOpHost), cands })
     }
 
     /// Port of `newFromBytes`.
     pub fn from_bytes(format: &str, src: &[u8]) -> Result<Library, CapyError> {
         let dl =
             make_library_loader::load_library_from_bytes(format, src, make_lexer::tokenize)?;
-        Ok(Library { lib: dl, host: Arc::new(NoOpHost) })
+        let cands = Arc::new(make_parser::Candidates::build(&dl));
+        Ok(Library { lib: dl, host: Arc::new(NoOpHost), cands })
     }
 
     /// Port of `SetHost`.
@@ -161,7 +165,7 @@ impl Library {
             }
         };
         let (tree, diagnostics) =
-            make_parser::parse_recovering(toks, script_src, &self.lib);
+            make_parser::parse_recovering_with(toks, script_src, &self.lib, Some(self.cands.clone()));
         ParseResult { tree, diagnostics }
     }
 
@@ -196,8 +200,12 @@ impl Library {
         // copy of the library.
         let (cleaned, define_lib_src) =
             define_extractor::extract_defines(&expanded).map_err(CapyError::msg)?;
-        let mut lib_to_use = self.lib.clone();
-        if !define_lib_src.is_empty() {
+        // E4a: the library is copied per run only when the script defines something; otherwise
+        // it is used as is, with the candidate list sorted once at load.
+        let merged: Option<DomainLibrary> = if define_lib_src.is_empty() {
+            None
+        } else {
+            let mut l = self.lib.clone();
             let define_lib = make_library_loader::load_library_from_bytes(
                 "capy",
                 define_lib_src.as_bytes(),
@@ -205,13 +213,31 @@ impl Library {
             )?;
             // Source defines WIN on conflict (matches CLI behavior).
             for (k, v) in define_lib.functions {
-                lib_to_use.functions.insert(k, v);
+                l.functions.insert(k, v);
             }
-        }
+            Some(l)
+        };
+        let lib_to_use: &DomainLibrary = merged.as_ref().unwrap_or(&self.lib);
         // R27 — the user-script path retains comments; the parser strips them.
+        if merged.is_none() {
+            // E13/E14: the scanner decides the leading run of lines; the general path takes the rest.
+            // The rest is lexed and parsed BEFORE anything is rendered, so a parse error anywhere in
+            // the script still wins over an evaluation error earlier in it, as it always did.
+            let sc = fast_path::scan(&self.cands, &lib_to_use.comments, &cleaned, true);
+            let rest = match sc.resume_line {
+                None => DomainBlock::default(),
+                Some(line) => {
+                    let off = line_offset(&cleaned, line);
+                    let toks = make_lexer::tokenize_with_trivia_from(&cleaned[off..], &lib_to_use.comments, line)?;
+                    make_parser::parse_with(toks, &cleaned, lib_to_use, &self.cands)?
+                }
+            };
+            let pre = make_evaluator::Prefix { scan: &sc, cands: &self.cands, src: &cleaned };
+            return make_evaluator::run_multi_inner(&rest, lib_to_use, self.host.clone(), Some(self.cands.funcs()), Some(pre));
+        }
         let toks = make_lexer::tokenize_with_trivia(&cleaned, &lib_to_use.comments)?;
-        let prog = make_parser::parse(toks, &cleaned, &lib_to_use)?;
-        make_evaluator::run_multi(&prog, &lib_to_use, self.host.clone())
+        let prog = make_parser::parse(toks, &cleaned, lib_to_use)?;
+        make_evaluator::run_multi_with(&prog, lib_to_use, self.host.clone(), None)
     }
 
     /// Port of `Extension` — the library's declared `extension` field.
@@ -340,4 +366,13 @@ pub struct FunctionInfo {
     /// `open:X close:Y`, `dedent`, `verbatim:NAME`, `sections:… closer:NAME`.
     pub block: String,
     pub priority: i64,
+}
+
+/// Byte offset at which 1-based `line` starts in `s` (`s.len()` if there is no such line).
+fn line_offset(s: &str, line: usize) -> usize {
+    if line <= 1 {
+        0
+    } else {
+        s.match_indices('\n').nth(line - 2).map(|(i, _)| i + 1).unwrap_or(s.len())
+    }
 }

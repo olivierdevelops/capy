@@ -21,7 +21,6 @@ use crate::domain::host::{Host, NoOpHost};
 use crate::domain::library::{Library, TypeDef};
 use crate::domain::val::Val;
 use crate::gofmt;
-use regex::Regex;
 use std::collections::BTreeMap;
 use std::sync::Arc;
 
@@ -33,7 +32,7 @@ pub struct OuterEval<'a> {
     depth: usize,
     /// Function table as shared handles, so resolving a call's definition is a
     /// refcount bump rather than a deep clone of the whole `FuncDef`.
-    fns: BTreeMap<String, Arc<crate::domain::library::FuncDef>>,
+    fns: &'a BTreeMap<String, Arc<crate::domain::library::FuncDef>>,
 }
 
 /// Port of `MakeEvaluator` — uses [`NoOpHost`].
@@ -57,6 +56,34 @@ pub fn run_multi(
     lib: &Library,
     host: Arc<dyn Host + Send + Sync>,
 ) -> Result<(String, BTreeMap<String, String>), CapyError> {
+    run_multi_with(program, lib, host, None)
+}
+
+/// As [`run_multi`], borrowing a prebuilt name → definition map instead of deep-cloning every
+/// function definition on every run (PROP-2026-0007 E4a).
+pub(crate) fn run_multi_with(
+    program: &Block,
+    lib: &Library,
+    host: Arc<dyn Host + Send + Sync>,
+    shared: Option<&BTreeMap<String, Arc<crate::domain::library::FuncDef>>>,
+) -> Result<(String, BTreeMap<String, String>), CapyError> {
+    run_multi_inner(program, lib, host, shared, None)
+}
+
+/// A scanned prefix to render before `program` (PROP-2026-0007 E13/E14).
+pub(crate) struct Prefix<'p> {
+    pub scan: &'p super::fast_path::Scan,
+    pub cands: &'p super::make_parser::Candidates,
+    pub src: &'p str,
+}
+
+pub(crate) fn run_multi_inner(
+    program: &Block,
+    lib: &Library,
+    host: Arc<dyn Host + Send + Sync>,
+    shared: Option<&BTreeMap<String, Arc<crate::domain::library::FuncDef>>>,
+    pre: Option<Prefix<'_>>,
+) -> Result<(String, BTreeMap<String, String>), CapyError> {
     // PLAN-2026-0002 R23 — never emit output from a tree that has unparsed
     // regions. Rendering a partial parse would produce target code that silently
     // omits whatever failed, which is worse than producing nothing.
@@ -72,11 +99,20 @@ pub fn run_multi(
         ));
     }
     let ctx = deep_copy_map(&lib.context);
-    let fns: BTreeMap<String, Arc<crate::domain::library::FuncDef>> =
-        lib.functions.iter().map(|(k, v)| (k.clone(), Arc::new(v.clone()))).collect();
+    let owned: BTreeMap<String, Arc<crate::domain::library::FuncDef>>;
+    let fns: &BTreeMap<String, Arc<crate::domain::library::FuncDef>> = match shared {
+        Some(f) => f,
+        None => {
+            owned = lib.functions.iter().map(|(k, v)| (k.clone(), Arc::new(v.clone()))).collect();
+            &owned
+        }
+    };
     let mut ev =
         OuterEval { lib, inner: InnerEvaluator::new(ctx, host), depth: 0, fns };
-    let body = ev.render_block(program)?;
+    let body = match &pre {
+        None => ev.render_block(program)?,
+        Some(p) => super::fast_path::render(p.scan, &mut ev, p.cands, p.src, program)?,
+    };
 
     // Render the top-level file_template via the AST walker. Libraries with no
     // file_template emit `body` verbatim.
@@ -108,7 +144,17 @@ pub fn run_multi(
 }
 
 impl<'a> OuterEval<'a> {
-    fn render_block(&mut self, b: &Block) -> Result<String, CapyError> {
+    /// E14 hooks (PROP-2026-0007): the scanner renders directly, but argument validation and the
+    /// remaining statements must be the evaluator's own.
+    pub(crate) fn check_arg(&self, t: &str, text: &str) -> Result<(), CapyError> {
+        self.check_type(t, text)
+    }
+
+    pub(crate) fn render_call(&mut self, c: &FuncCall) -> Result<String, CapyError> {
+        self.render_func_call_at(c, 0)
+    }
+
+    pub(crate) fn render_block(&mut self, b: &Block) -> Result<String, CapyError> {
         let d = self.depth;
         self.render_block_at(b, d)
     }
@@ -389,7 +435,7 @@ impl<'a> OuterEval<'a> {
             }
         }
         if !td.pattern.is_empty() {
-            let rx = Regex::new(&td.pattern).map_err(|e| {
+            let rx = crate::infra::regex_cache::compiled(&td.pattern).map_err(|e| {
                 CapyError::msg(format!(
                     "type {} has bad regex: {}",
                     gofmt::quote(&td.name),

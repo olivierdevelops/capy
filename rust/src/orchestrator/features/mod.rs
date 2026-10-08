@@ -1,6 +1,7 @@
 //! Port of the Go `orchestrator/features` package.
 
 pub mod expr_to_text;
+pub mod fast_path;
 pub mod inner_evaluator;
 pub mod inner_parser;
 pub mod make_library_loader;

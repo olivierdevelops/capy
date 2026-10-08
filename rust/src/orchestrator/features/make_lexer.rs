@@ -27,14 +27,14 @@ pub const DEFAULT_COMMENT_MARKERS: &[&str] = &["#"];
 /// not by accident of the lexer.
 const PUNCT_CHARS: &str = "=<>!+-*/%&|^~?:,.;@$#\\";
 
-fn is_punct(b: u8) -> bool {
+pub(crate) fn is_punct(b: u8) -> bool {
     PUNCT_CHARS.as_bytes().contains(&b)
 }
 
 /// Go's `unicode.IsDigit` tests category Nd. Rust exposes no Nd-only predicate;
 /// `is_numeric` (category N) is the closest and agrees on every ASCII digit and
 /// on every character the engine realistically sees.
-fn is_digit(c: char) -> bool {
+pub(crate) fn is_digit(c: char) -> bool {
     if c.is_ascii() {
         c.is_ascii_digit()
     } else {
@@ -50,7 +50,7 @@ pub fn tokenize(source: &str) -> Result<Vec<Token>, CapyError> {
 
 /// Port of `tokenizeWith`.
 pub fn tokenize_with(source: &str, comment_markers: &[String]) -> Result<Vec<Token>, CapyError> {
-    tokenize_impl(source, comment_markers, false)
+    tokenize_impl(source, comment_markers, false, 1)
 }
 
 /// PLAN-2026-0001 R27 — like [`tokenize_with`], but retains comments as
@@ -64,19 +64,38 @@ pub fn tokenize_with_trivia(
     source: &str,
     comment_markers: &[String],
 ) -> Result<Vec<Token>, CapyError> {
-    tokenize_impl(source, comment_markers, true)
+    tokenize_impl(source, comment_markers, true, 1)
+}
+
+/// As [`tokenize_with_trivia`] for a SUFFIX of a script: the first line of `source` is line
+/// `line_base` of the whole script, so tokens carry absolute line numbers (PROP-2026-0007 E13
+/// prefix handoff — the general path continues from the first line the scanner did not decide).
+pub(crate) fn tokenize_with_trivia_from(
+    source: &str,
+    comment_markers: &[String],
+    line_base: usize,
+) -> Result<Vec<Token>, CapyError> {
+    tokenize_impl(source, comment_markers, true, line_base)
 }
 
 fn tokenize_impl(
     source: &str,
     comment_markers: &[String],
     keep_comments: bool,
+    line_base: usize,
 ) -> Result<Vec<Token>, CapyError> {
     let mut toks: Vec<Token> = Vec::new();
     let mut indents: Vec<usize> = vec![0];
     let mut bracket: i64 = 0;
 
-    let lines = merge_backtick_lines(&split_lines(source));
+    // PROP-2026-0007 E5 (first part): borrow the source's lines instead of copying each
+    // into its own String; only normalise CRLF (one copy) when the source has any.
+    let norm: std::borrow::Cow<str> = if source.contains("\r\n") {
+        std::borrow::Cow::Owned(source.replace("\r\n", "\n"))
+    } else {
+        std::borrow::Cow::Borrowed(source)
+    };
+    let lines = merge_backtick_lines(&split_lines(&norm));
     for (li, raw) in lines.iter().enumerate() {
         let mut line: &str = raw;
         // `start_col` carries the source-absolute column at which `line`'s
@@ -113,7 +132,7 @@ fn tokenize_impl(
                     toks.push(Token {
                         kind: TokenKind::Comment,
                         text: rest.to_string(),
-                        line: li + 1,
+                        line: li + line_base,
                         col: i + 1,
                         width: rest.len(),
                     });
@@ -133,7 +152,7 @@ fn tokenize_impl(
                 toks.push(Token {
                     kind: TokenKind::Indent,
                     text: String::new(),
-                    line: li + 1,
+                    line: li + line_base,
                     col: 0,
                     width: 0,
                 });
@@ -143,7 +162,7 @@ fn tokenize_impl(
                     toks.push(Token {
                         kind: TokenKind::Dedent,
                         text: String::new(),
-                        line: li + 1,
+                        line: li + line_base,
                         col: 0,
                         width: 0,
                     });
@@ -156,7 +175,7 @@ fn tokenize_impl(
                     toks.push(Token {
                         kind: TokenKind::Indent,
                         text: String::new(),
-                        line: li + 1,
+                        line: li + line_base,
                         col: 0,
                         width: 0,
                     });
@@ -166,12 +185,11 @@ fn tokenize_impl(
             line = &line[i..];
         }
 
-        let (new_toks, open_delta) =
-            tokenize_line(keep_comments, line, li + 1, comment_markers, start_col)?;
-        toks.extend(new_toks);
+        let open_delta =
+            tokenize_line(keep_comments, line, li + line_base, comment_markers, start_col, &mut toks)?;
         bracket += open_delta;
         if bracket < 0 {
-            return Err(CapyError::msg(format!("line {}: unmatched closing bracket", li + 1)));
+            return Err(CapyError::msg(format!("line {}: unmatched closing bracket", li + line_base)));
         }
         // Always emit NEWLINE at end of a logical line. Inside brackets the
         // value parsers (parse_obj_lit / parse_list_lit / paren sub-call) skip
@@ -180,7 +198,7 @@ fn tokenize_impl(
         toks.push(Token {
             kind: TokenKind::Newline,
             text: String::new(),
-            line: li + 1,
+            line: li + line_base,
             col: 0,
             width: 0,
         });
@@ -199,8 +217,8 @@ fn tokenize_impl(
     Ok(toks)
 }
 
-fn split_lines(s: &str) -> Vec<String> {
-    s.replace("\r\n", "\n").split('\n').map(|x| x.to_string()).collect()
+fn split_lines(s: &str) -> Vec<&str> {
+    s.split('\n').collect()
 }
 
 /// Port of `mergeBacktickLines`.
@@ -213,15 +231,21 @@ fn split_lines(s: &str) -> Vec<String> {
 /// The merged form is byte-equivalent to writing the original on a single line
 /// with `\n` escape sequences in place of real newlines. `${decoded x}`
 /// recovers the original newlines at render time.
-fn merge_backtick_lines(lines: &[String]) -> Vec<String> {
-    let mut out: Vec<String> = Vec::new();
+fn merge_backtick_lines<'a>(lines: &[&'a str]) -> Vec<std::borrow::Cow<'a, str>> {
+    let mut out: Vec<std::borrow::Cow<'a, str>> = Vec::with_capacity(lines.len());
     let mut cur = String::new();
     let mut in_backtick = false;
     for ln in lines {
+        // A line with no backtick, outside any backtick literal, passes through unchanged
+        // (the byte loop below would copy it verbatim): borrow it.
+        if !in_backtick && cur.is_empty() && !ln.contains('`') {
+            out.push(std::borrow::Cow::Borrowed(*ln));
+            continue;
+        }
         if in_backtick {
             cur.push_str("\\n");
         } else if !cur.is_empty() {
-            out.push(std::mem::take(&mut cur));
+            out.push(std::borrow::Cow::Owned(std::mem::take(&mut cur)));
         }
         let b = ln.as_bytes();
         let mut i = 0usize;
@@ -242,17 +266,17 @@ fn merge_backtick_lines(lines: &[String]) -> Vec<String> {
             i += 1;
         }
         if !in_backtick {
-            out.push(std::mem::take(&mut cur));
+            out.push(std::borrow::Cow::Owned(std::mem::take(&mut cur)));
         }
     }
     if !cur.is_empty() {
-        out.push(cur);
+        out.push(std::borrow::Cow::Owned(cur));
     }
     out
 }
 
 /// Port of `hasCommentPrefix`. Empty markers list → never a comment.
-fn has_comment_prefix(s: &str, markers: &[String]) -> bool {
+pub(crate) fn has_comment_prefix(s: &str, markers: &[String]) -> bool {
     markers.iter().any(|m| !m.is_empty() && s.starts_with(m.as_str()))
 }
 
@@ -263,8 +287,8 @@ fn tokenize_line(
     line_no: usize,
     comment_markers: &[String],
     start_col: usize,
-) -> Result<(Vec<Token>, i64), CapyError> {
-    let mut toks: Vec<Token> = Vec::new();
+    toks: &mut Vec<Token>,
+) -> Result<i64, CapyError> {
     let mut open: i64 = 0;
     let mut i = 0usize;
     let mut col = start_col;
@@ -315,32 +339,32 @@ fn tokenize_line(
             i += n;
             col += n;
         } else if r == '(' {
-            push_delim(&mut toks, TokenKind::LParen, "(");
+            push_delim(toks, TokenKind::LParen, "(");
             i += 1;
             col += 1;
             open += 1;
         } else if r == ')' {
-            push_delim(&mut toks, TokenKind::RParen, ")");
+            push_delim(toks, TokenKind::RParen, ")");
             i += 1;
             col += 1;
             open -= 1;
         } else if r == '[' {
-            push_delim(&mut toks, TokenKind::LBrack, "[");
+            push_delim(toks, TokenKind::LBrack, "[");
             i += 1;
             col += 1;
             open += 1;
         } else if r == ']' {
-            push_delim(&mut toks, TokenKind::RBrack, "]");
+            push_delim(toks, TokenKind::RBrack, "]");
             i += 1;
             col += 1;
             open -= 1;
         } else if r == '{' {
-            push_delim(&mut toks, TokenKind::LBrace, "{");
+            push_delim(toks, TokenKind::LBrace, "{");
             i += 1;
             col += 1;
             open += 1;
         } else if r == '}' {
-            push_delim(&mut toks, TokenKind::RBrace, "}");
+            push_delim(toks, TokenKind::RBrace, "}");
             i += 1;
             col += 1;
             open -= 1;
@@ -393,7 +417,7 @@ fn tokenize_line(
             )));
         }
     }
-    Ok((toks, open))
+    Ok(open)
 }
 
 /// Port of `readString`. Returns the content with quotes stripped (escape
@@ -424,7 +448,7 @@ fn read_string(s: &str, quote: u8) -> Result<(String, usize), String> {
 
 /// Port of `readNumber`. Go tests each byte with `unicode.IsDigit(rune(c))`, so
 /// only ASCII digits are consumed.
-fn read_number(s: &str) -> usize {
+pub(crate) fn read_number(s: &str) -> usize {
     let b = s.as_bytes();
     let mut i = 0usize;
     if !b.is_empty() && b[0] == b'-' {
@@ -451,7 +475,7 @@ fn read_number(s: &str) -> usize {
 }
 
 /// Port of `readPunct`.
-fn read_punct(s: &str) -> usize {
+pub(crate) fn read_punct(s: &str) -> usize {
     let b = s.as_bytes();
     let mut i = 0usize;
     while i < b.len() && is_punct(b[i]) {
@@ -467,19 +491,19 @@ fn read_punct(s: &str) -> usize {
 /// em-dashes, smart quotes, accented Latin, CJK, and emoji must all flow
 /// through bare-prose positions without erroring. ASCII punctuation that
 /// participates in literal matches is checked separately BEFORE this predicate.
-fn is_ident_start(r: char) -> bool {
+pub(crate) fn is_ident_start(r: char) -> bool {
     r == '_' || r.is_alphabetic() || (r as u32) >= 0x80
 }
 
 /// Port of `isIdentPart`.
-fn is_ident_part(r: char) -> bool {
+pub(crate) fn is_ident_part(r: char) -> bool {
     r == '_' || r.is_alphabetic() || is_digit(r) || (r as u32) >= 0x80
 }
 
 /// Port of `readIdent`. Walks runes (not bytes) so a multi-byte sequence like
 /// `é` is consumed as one rune and the returned byte length covers the whole
 /// encoded form.
-fn read_ident(s: &str) -> usize {
+pub(crate) fn read_ident(s: &str) -> usize {
     let mut i = 0usize;
     for c in s.chars() {
         if !is_ident_part(c) {

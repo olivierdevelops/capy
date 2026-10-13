@@ -34,14 +34,14 @@ A C interface (`PROP-2026-0008`, measured in `TEST-2026-0015`), and the speed an
 
 ### Fixed
 
-- **Deeply nested expressions aborted the process** (`INC-2026-0002`). The value-expression parser had no depth bound: about 20 000 nested parentheses overflowed an 8 MiB stack (about 1 000 in a debug build, fewer on a smaller thread) — a crash no embedder can catch as `Err`, in breach of `ARCH-003`. Expression nesting is now bounded at 64 levels — 63 nested pairs of parentheses parse, the 64th is refused (likewise brackets, braces, `not` chains, `**` chains, prefix calls); a deeper statement gets an ordinary diagnostic. Nothing nested less deeply changes. The diagnostic is the generic `E0001`; naming the bound in the message is follow-up work.
+- **Deeply nested expressions aborted the process** (`INC-2026-0002`). The value-expression parser had no depth bound: about 20 000 nested parentheses overflowed an 8 MiB stack (about 1 000 in a debug build, fewer on a smaller thread) — a crash no embedder can catch as `Err`, in breach of `ARCH-003`. Expression nesting is now bounded at 64 levels — 63 nested pairs of parentheses parse, the 64th is refused (likewise brackets, braces, `not` chains, `**` chains, prefix calls); a deeper statement is refused with `E0003` and a message that names the limit (`expression nesting too deep (limit about 63 nested parentheses) — …`), pointing at the column where the parser stopped. Nothing nested less deeply changes.
 - A rule that failed after splitting a merged punctuation token (`><`, `=>`) left the remainder in the token stream, so later rules saw
   corrupted tokens: a `tail` capture could hold `> -> =>` for `=> -> =>`. `ErrorNode.tokens` in `capy ast --json` now holds the real source
   tokens (two shipped samples' JSON changed). Regression test: `tests/cursor_split.rs`.
 
 ### Size
 
-- The wasm module grows by about 40 KB (+2.8 %) from the `PROP-2026-0007` work; the C ABI adds nothing to it (`capy-ffi` is not part of the wasm build).
+- The wasm module grows by about 40 KB (+2.8 %) from the `PROP-2026-0007` work and by about 2 KB (+0.14 %) from the expression nesting bound and its error report; the C ABI adds nothing to it (`capy-ffi` is not part of the wasm build).
 
 ## [0.25.0] — 2026-10-08
 

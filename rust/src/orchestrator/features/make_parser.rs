@@ -5,7 +5,7 @@
 //! the first complete match wins.
 
 use super::expr_to_text::expr_to_text;
-use super::value_parser::{parse_value, TokReader};
+use super::value_parser::{clear_depth_error, parse_value, take_depth_error, TokReader};
 use crate::domain::ast::{ErrorNode, Span, Block, CaptureValue, FuncCall};
 use crate::domain::errors::{codes, suggest_closest, CapyError, ContextFrame, Diagnostic};
 use crate::domain::library::{CloseSegment, FuncDef, Library, PatternElement, TypeDef};
@@ -1728,7 +1728,22 @@ the source nests further than the parser will follow",
         // BOTH the parsed Expr and the source-text rendering are stored — the
         // latter is what shows up in templates so a `cond:any` in `if x > 0`
         // emits the literal text "x > 0".
-        let x = parse_value(self, stop)?;
+        //
+        // INC-2026-0002 — if the expression parser hit its nesting bound, remember that error for the
+        // statement exactly as `capture_func_type` remembers the capture bound, so the statement is
+        // reported as `E0003` instead of a generic "no match" (the grouping rule discards the inner error).
+        clear_depth_error();
+        let x = match parse_value(self, stop) {
+            Ok(x) => x,
+            Err(e) => {
+                if let Some(de) = take_depth_error() {
+                    if self.depth_err.is_none() {
+                        self.depth_err = Some(de);
+                    }
+                }
+                return Err(e);
+            }
+        };
         let text = expr_to_text(&x);
         Ok(CaptureValue { is_expr: true, expr: Some(x), text, sub: Vec::new(), span: Span::default() })
     }

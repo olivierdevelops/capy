@@ -299,11 +299,18 @@ fn deeply_nested_expressions_error_instead_of_aborting() {
             ("object braces", format!("let x = {}1{}\n", "{a: ".repeat(n), "}".repeat(n))),
         ];
         for (name, src) in shapes {
-            let clean = parse_clean(src.clone());
-            assert!(!clean, "{name} x{n}: expected a diagnostic, got a clean parse");
-            // and `run` reports an error rather than aborting
-            let r = on_small_stack(move || Library::new(EXPR_LIB).unwrap().run(&src).is_err());
-            assert!(r, "{name} x{n}: run should fail with an error");
+            // `parse` reports the bound by name, with its own code, not a generic "no match"
+            let s2 = src.clone();
+            let (code, msg) = on_small_stack(move || {
+                let r = Library::new(EXPR_LIB).unwrap().parse(&s2);
+                assert!(!r.is_clean(), "{name} x{n}: expected a diagnostic, got a clean parse");
+                (r.diagnostics[0].code, r.diagnostics[0].msg.clone())
+            });
+            assert_eq!(code, "E0003", "{name} x{n}: {msg}");
+            assert!(msg.contains("nesting too deep"), "{name} x{n}: {msg}");
+            // and `run` reports the same error rather than aborting
+            let e = on_small_stack(move || Library::new(EXPR_LIB).unwrap().run(&src).unwrap_err().to_string());
+            assert!(e.contains("nesting too deep"), "{name} x{n}: run said: {e}");
         }
     }
 }
@@ -317,7 +324,7 @@ fn the_depth_counter_is_released_between_statements() {
         let r = Library::new(EXPR_LIB).unwrap().parse(&src);
         (r.diagnostics.len(), r.tree.stmts.len())
     });
-    assert!(diags >= 1, "the deep statement is reported");
+    assert_eq!(diags, 1, "only the deep statement is reported: the bound error must not leak into the next ones");
     assert_eq!(stmts, 2, "the two ordinary statements after it still parse");
 }
 

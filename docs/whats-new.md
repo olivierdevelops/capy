@@ -22,7 +22,7 @@ member to every capture. Without the flag the output is byte-identical to 0.25.0
 
 **Deeply nested expressions no longer abort the process.** About 20 000 nested parentheses used to
 overflow the stack (far fewer on a small thread stack) — a crash no embedder can catch. Expression
-nesting is now bounded at 64 levels (63 nested pairs of parentheses parse, the 64th does not); beyond that the statement gets a diagnostic. Anything nested less
+nesting is now bounded at 64 levels (63 nested pairs of parentheses parse, the 64th does not); beyond that the statement is refused with `E0003`, which names the limit. Anything nested less
 deeply parses exactly as before.
 
 **Faster, leaner `run`** (carried from the unreleased work of `PROP-2026-0007`): the leading run of flat

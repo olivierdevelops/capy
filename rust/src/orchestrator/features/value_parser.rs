@@ -45,6 +45,21 @@ const MAX_EXPR_DEPTH: u32 = 3 * 64;
 
 thread_local! {
     static EXPR_DEPTH: std::cell::Cell<u32> = const { std::cell::Cell::new(0) };
+    /// The first (innermost-reached) bound error since the last [`clear_depth_error`]. The parenthesis
+    /// rule tries a grouping first and discards the inner error before falling back to the call form,
+    /// so the error cannot simply be returned; the statement matcher collects it from here instead
+    /// (the same job `OuterP.depth_err` does for the capture bound).
+    static EXPR_DEPTH_ERR: std::cell::RefCell<Option<CapyError>> = const { std::cell::RefCell::new(None) };
+}
+
+/// Forget any recorded bound error. Called before each outer expression parse.
+pub fn clear_depth_error() {
+    EXPR_DEPTH_ERR.with(|e| *e.borrow_mut() = None);
+}
+
+/// Take the bound error recorded by the expression parser, if it hit the bound since the last clear.
+pub fn take_depth_error() -> Option<CapyError> {
+    EXPR_DEPTH_ERR.with(|e| e.borrow_mut().take())
 }
 
 /// Counts one level of expression recursion; the level is released when the guard drops, including
@@ -52,13 +67,26 @@ thread_local! {
 struct DepthGuard;
 
 impl DepthGuard {
-    fn enter() -> Result<DepthGuard, CapyError> {
+    fn enter<R: TokReader + ?Sized>(r: &R) -> Result<DepthGuard, CapyError> {
         EXPR_DEPTH.with(|d| {
             if d.get() >= MAX_EXPR_DEPTH {
-                return Err(CapyError::msg(format!(
-                    "expression nests too deeply (limit {} levels)",
-                    MAX_EXPR_DEPTH / 3
-                )));
+                let t = r.peek();
+                let err = CapyError::new(
+                    t.line,
+                    t.col,
+                    format!(
+                        "expression nesting too deep (limit about {} nested parentheses) — \
+the source nests further than the parser will follow",
+                        MAX_EXPR_DEPTH / 3 - 1
+                    ),
+                );
+                EXPR_DEPTH_ERR.with(|e| {
+                    let mut e = e.borrow_mut();
+                    if e.is_none() {
+                        *e = Some(err.clone());
+                    }
+                });
+                return Err(err);
             }
             d.set(d.get() + 1);
             Ok(DepthGuard)
@@ -127,7 +155,7 @@ fn parse_binary<R: TokReader + ?Sized>(
     stop: &[String],
     min_bp: u8,
 ) -> Result<Expr, CapyError> {
-    let _depth = DepthGuard::enter()?;
+    let _depth = DepthGuard::enter(&*r)?;
     let mut left = parse_unary(r, stop)?;
     loop {
         let t = r.peek();
@@ -154,7 +182,7 @@ pub fn parse_unary<R: TokReader + ?Sized>(
     r: &mut R,
     stop: &[String],
 ) -> Result<Expr, CapyError> {
-    let _depth = DepthGuard::enter()?;
+    let _depth = DepthGuard::enter(&*r)?;
     let t = r.peek();
     if t.kind == TokenKind::Ident && t.text == "not" && !contains(stop, "not") {
         r.advance();
@@ -176,7 +204,7 @@ pub fn parse_primary<R: TokReader + ?Sized>(
     r: &mut R,
     stop: &[String],
 ) -> Result<Expr, CapyError> {
-    let _depth = DepthGuard::enter()?;
+    let _depth = DepthGuard::enter(&*r)?;
     let t = r.peek();
     match t.kind {
         TokenKind::Number => {

@@ -142,7 +142,7 @@ As frozen in `PLAN-2026-0005` §Measurable Claims and §Test and Validation Chec
 | T-08 | R9 | **PASS** | `arena::tests::panic_is_caught_and_poisons_the_handle` and `tests::panics_in_load_and_parse_become_status_codes` (forced panic in `capy_library_new` and `capy_parse` → `CAPY_E_PANIC`, no unwind, next call unaffected) |
 | T-09 | R11 | **PASS** | `rust/ffi/check_header.sh`: `capy.h is up to date` (75 functions) |
 | T-10 | R12, R15 | **PASS** | `ast_json_compat.sh`: **133 scripts, 0 differences** against the `69fb4ac` binary; 3 CLI tests (`--with-expr` adds the member and only that; refused without `--json`) |
-| T-11 | R9, `ARCH-003` | **PASS** | 4 new `recursion_guard` tests (including one that pins the boundary: 63 pairs of parentheses parse, the 64th is refused); 6 nesting shapes × 200 / 5 000 / 200 000 levels on a 2 MiB stack, parse and run |
+| T-11 | R9, `ARCH-003` | **PASS** | 4 new `recursion_guard` tests (including one that pins the boundary: 63 pairs of parentheses parse, the 64th is refused); 6 nesting shapes × 200 / 5 000 / 200 000 levels on a 2 MiB stack, parse and run; every shape is reported as `E0003` with "nesting too deep" in both `parse` and `run`, and the diagnostic does not leak into the statements after it |
 | T-12 | R1, R15, R17 | **PARTIAL** | Cross-build of the static library for `aarch64-unknown-linux-gnu`: builds (9,374,018 B); not linked or run. Wasm size: **not equal** (M-04 FAIL) |
 | T-13 | `GATE-001` | **PASS** | build exit 0; clippy clean (workspace and `--profile ffi`); `cargo test --workspace` **174 passed, 0 failed** (baseline 153); `mkdocs build --strict` exit 0 |
 | T-14 | `GATE-002` | **PARTIAL** | `capy check`: 122 of 123 libraries ok — the one rejection is `left-recursion-rejected`, a sample that exists to demonstrate a rejection; golden: ok; `wasm_check.sh`: **FAIL**, one case, **identical on the baseline** (`INC-2026-0003`) |
@@ -162,6 +162,7 @@ Test counts: workspace 153 → 174 (+21): `capy-ffi` 5 unit + 4 differential + 4
 | M6 `catch_unwind` removed from `capy_parse` | `panics_in_load_and_parse_become_status_codes` aborts | caught |
 | M7 expression depth limit removed | `recursion_guard` aborts with a stack overflow | caught |
 | M8 `publish = true` on `capy-ffi` | `check_publishable.py` exit 1 | caught |
+| M9 expression bound error not picked up by the statement matcher | `deeply_nested_expressions_error_instead_of_aborting` (`parentheses x200: no library function matches token "let"`) | caught |
 
 ### Measurements
 
@@ -173,7 +174,7 @@ the plan (archive size, from the consumer's measurement of `capy-core`).
 | M-01 | static archive size | 5,154,280 B (`capy-core` alone, no exports) | ≤ 5.5 MB | 5.2 – 5.4 MB | **31,225,392 B** (`--profile ffi`) | **FAIL** |
 | M-02 | arena overhead over `Library::parse` | `Library::parse` over 132 scripts × 20 passes, 15 interleaved samples | ≤ +25 % | +8 % … +18 % | median **+7.1 / +7.8 / +8.1 %** (and +8.0 % in an earlier session) | **PASS** (one session just below the predicted range) |
 | M-03 | `capy_node_func` per call | none | recorded only | 2 – 6 ns | **4.63 – 4.68 ns** (best of 5, 10^7 calls, four sessions) | recorded; inside prediction |
-| M-04 | wasm module size | **1,434,097 B** (`69fb4ac`, rebuilt from a clean worktree, reproducible) | exactly equal | 0 bytes | **1,435,313 B (+1,216)** | **FAIL** |
+| M-04 | wasm module size | **1,434,097 B** (`69fb4ac`, rebuilt from a clean worktree, reproducible) | exactly equal | 0 bytes | **1,436,047 B (+1,950)** | **FAIL** |
 | M-05 | direct dependencies of `capy-core` | 1 | exactly 1 | 1 | 1 (`regex`) | **PASS** |
 
 #### M-01 — the prediction was wrong, and why
@@ -211,9 +212,12 @@ large file was not measured.
 
 #### M-04 — attribution
 
-The +1,216 bytes were isolated by experiment: with the three `DepthGuard::enter()` calls removed from
-`value_parser.rs`, the wasm module is **exactly 1,434,097 bytes**. The `expr` writer in `ast_json.rs` costs nothing
-in wasm (dead code); `capy-ffi` is not part of the wasm build. The growth is the price of `INC-2026-0002`.
+The +1,950 bytes were isolated by experiment. With the three `DepthGuard::enter()` calls removed from `value_parser.rs`
+the module is **1,434,414 B** (+317 B: the code that records the bound error and hands it to the statement matcher); the guard
+calls and the error they construct account for the remaining **1,633 B**. With neither (the first measurement, before the
+named `E0003` report existed) the module was exactly 1,434,097 B. The `expr` writer in `ast_json.rs` costs nothing in wasm
+(dead code); `capy-ffi` is not part of the wasm build. The growth is the price of `INC-2026-0002` and of reporting it by name.
+(The first version of this release, with the generic `E0001` message, measured 1,435,313 B / +1,216 B.)
 
 ### Raw evidence (abridged outputs)
 

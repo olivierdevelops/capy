@@ -232,18 +232,18 @@ With `jq`: `… --json --with-expr | jq -c '.tree.stmts[0].captures.value.expr'`
 python3 -c "n=20000; print('let x = '+'('*n+'1'+')'*n)" > $D/deep.capy
 "$D_BASE/rust/target/release/capy" ast $D/lib.capy $D/deep.capy 2>&1 | head -2 ; echo "rc=${PIPESTATUS[0]}"   # the 0.25.0 binary
 cargo build --release -p capy-cli --manifest-path rust/Cargo.toml
-rust/target/release/capy ast $D/lib.capy $D/deep.capy >/dev/null 2>$D/err; echo "rc=$?"; grep -m1 E0001 $D/err
+rust/target/release/capy ast $D/lib.capy $D/deep.capy >/dev/null 2>$D/err; echo "rc=$?"; grep -m1 E0003 $D/err
 ```
 
 ```text
 thread 'main' has overflowed its stack
 rc=134                                                              <- 0.25.0
 rc=1                                                                <- 0.26.0
-error[E0001] 1:1: no library function matches token "let"
+error[E0003] 1:1: expression nesting too deep (limit about 63 nested parentheses) — the source nests further than the parser will follow
 ```
 
-The boundary: `n=63` pairs of parentheses exits 0; `n=64` exits 1. The message is the generic `E0001`
-(a named message is follow-up work; see Limitations).
+The boundary: `n=63` pairs of parentheses exits 0; `n=64` exits 1, with the same `E0003` message.
+`capy run` prints the message with a caret under the column where the parser stopped.
 
 ### U-07 — misuse and hostile input
 
@@ -319,7 +319,7 @@ Executed 2026-10-13 against the release tree on macOS 26.4.1 arm64. Output is as
 | U-03 | PASS | output exactly as shown |
 | U-04 | PASS | output exactly as shown |
 | U-05 | PASS | `0`, `2`, `--with-expr needs --json`, `rc=1`; jq output as shown |
-| U-06 | PASS | baseline rc=134 (stack overflow); 0.26.0 rc=1; 61, 62, 63 pairs rc=0; 64 and 65 rc=1 |
+| U-06 | PASS | baseline rc=134 (stack overflow); 0.26.0 rc=1 with `E0003`; 61, 62, 63 pairs rc=0; 64 and 65 rc=1 |
 | U-07 | PASS | 76 and 30 checks, 0 failed |
 | U-08 | PASS | 133 scripts, 0 differences |
 | U-09 | PASS | `capy.h is up to date` |
@@ -329,7 +329,6 @@ Executed 2026-10-13 against the release tree on macOS 26.4.1 arm64. Output is as
 ## Limitations
 
 - Only macOS arm64 was run. The Linux static library was cross-built, not linked or run.
-- The over-deep expression message is the generic `E0001`.
 - U-11 is a performance change measured in `TEST-2026-0014`, not exercised here.
 
 ## Actual Verification Status

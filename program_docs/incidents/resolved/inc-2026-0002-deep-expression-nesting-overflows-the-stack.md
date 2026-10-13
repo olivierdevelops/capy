@@ -176,7 +176,9 @@ guard in only one function would have left holes.
 A thread-local counter with an RAII guard (`DepthGuard`) entered at the top of all three functions; limit
 `3 * 64` entries: an expression may nest 64 levels counting its own outermost one, so 63 nested pairs of
 parentheses parse and the 64th is refused (measured: 63 → exit 0, 64 → exit 1). Beyond it the function returns a `CapyError`, and the
-statement is reported as unparseable. Behaviour for any input nested less deeply is unchanged (all 131
+statement is reported as unparseable. The grouping rule for `(` discards the inner error, so the guard also
+records its error in a thread-local that the statement matcher moves into `OuterP.depth_err`; the statement is
+then reported as `E0003` with a message that names the limit and a caret at the column where the parser stopped. Behaviour for any input nested less deeply is unchanged (all 131
 goldens and the 133-script default-JSON comparison are byte-identical).
 
 ## Verifying Tests
@@ -201,9 +203,6 @@ Capy Engine.
 
 ## Remaining Risks
 
-- **The message is the generic `E0001`**, not a named bound: the parenthesis rule tries a grouping first and
-  discards the inner error before falling back to the call form. Naming the bound (as `E0003` does for
-  captures) is follow-up work.
 - Other recursive consumers of `Expr` (the evaluator, `expr_to_text`, the JSON writer) are bounded by the
   parser's limit but have no independent test at the limit beyond the shapes above.
 - 64 levels is a new limit: source nested between 64 and about 5 000 pairs of parentheses parsed before and is now refused.

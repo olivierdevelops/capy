@@ -231,7 +231,7 @@ A result far better than predicted is investigated before it is believed.
 | `rust/cli/src/cmd_ast.rs` | UPDATE | `--with-expr` | R12 |
 | `rust/cli/tests/ast_with_expr.rs` | CREATE | T-10 CLI | R12 |
 | `rust/tests/recursion_guard.rs` | UPDATE | expression-nesting cases (`INC-2026-0002`) | R9 |
-| `rust/src/orchestrator/features/value_parser.rs` | UPDATE | **added in execution:** the expression depth bound | R9 |
+| `rust/src/orchestrator/features/value_parser.rs`, `rust/src/orchestrator/features/make_parser.rs` | UPDATE | **added in execution:** the expression depth bound and its named `E0003` report | R9 |
 | `examples/c/diagnose.c`, `examples/c/exprs.c` | CREATE | **added in execution:** demo programs for `DEMO-2026-0005` | R16 |
 | `rust/devtools/check_publishable.py` | UPDATE | `capy-core` one dependency; `capy-ffi` unpublishable | R1 |
 | `docs/c-abi.md`, `docs/embedding.md`, `docs/ast-json.md`, `docs/cli.md`, `docs/whats-new.md`, `mkdocs.yml`, `CHANGELOG.md` | CREATE / UPDATE | R16 | R16 |
@@ -285,8 +285,9 @@ A result far better than predicted is investigated before it is believed.
 |---|---|---|
 | 2026-10-13 | Deviation | Six deviations from the proposal are frozen in `ADR-0005` (`CAPY_E_LOAD`, `CAPY_E_LIMIT`, `rlib`, best-effort foreign-id tag, T-12 platform, diagnostic message composition) |
 | 2026-10-13 | Finding | `ARCH-003` was marked `PASS` in the proposal on the belief that `MAX_PARSE_DEPTH` bounded expressions; it did not. ~20 000 nested parentheses abort the process on 0.25.0. Fixed in scope (`INC-2026-0002`); this is a `capy-core` behaviour change the plan did not list |
+| 2026-10-13 | Deviation | After validation the over-deep expression message was changed from the generic `E0001` to a named `E0003`: `make_parser.rs` (value branch of capture parsing) and `value_parser.rs` carry the bound error to `OuterP.depth_err`. Message text only; boundary unchanged. Release re-validated and re-tagged locally (nothing had been pushed) |
 | 2026-10-13 | Finding | `wasm_check.sh` fails on `parse-recovery/broken.capy` identically at `69fb4ac` (`INC-2026-0003`); not caused by this release |
-| 2026-10-13 | Result | `M-01` (31,225,392 B vs ≤ 5.5 MB) and `M-04` (+1,216 B vs equal) missed their frozen thresholds; reported unchanged in `TEST-2026-0015` |
+| 2026-10-13 | Result | `M-01` (31,225,392 B vs ≤ 5.5 MB) and `M-04` (+1,950 B vs equal) missed their frozen thresholds; reported unchanged in `TEST-2026-0015` |
 | 2026-10-13 | Finding | The 2026-10-08 wasm build is 1,434,097 bytes, not the 1.34 MB quoted in the consumer's research; M-04 uses the measured figure |
 
 ## Rollback Strategy

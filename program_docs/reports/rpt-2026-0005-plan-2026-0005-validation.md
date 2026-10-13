@@ -113,7 +113,7 @@ Observations are from the commands in `TEST-2026-0015` §Procedure.
 | R12 opt-in `expr` JSON | **PASS** | T-10: 133 scripts byte-identical by default |
 | R13 differential equivalence | **PASS** | T-02 |
 | R14 memory safety verified | **PASS** | T-07; each unsafe dereference carries a SAFETY note. Limitation: the **Rust** side is not run under a sanitizer or Miri (nightly), only the C side |
-| R15 nothing existing changes | **PARTIAL** | `GATE-001` PASS; golden PASS; default JSON identical; **but** wasm +1,216 B (M-04) and `wasm_check.sh` FAIL — the latter identical on the baseline (`INC-2026-0003`) |
+| R15 nothing existing changes | **PARTIAL** | `GATE-001` PASS; golden PASS; default JSON identical; **but** wasm +1,950 B (M-04) and `wasm_check.sh` FAIL — the latter identical on the baseline (`INC-2026-0003`) |
 | R16 docs true | **PASS** | `mkdocs build --strict` exit 0; every export appears in `docs/c-abi.md` |
 | R17 measurements predeclared and run | **PASS** | M-01…M-05 recorded; two predictions missed and reported as such |
 
@@ -136,7 +136,7 @@ Observations are from the commands in `TEST-2026-0015` §Procedure.
 | M-01 archive ≤ 5.5 MB | **FAIL** | 31,225,392 B. The prediction used a no-export baseline. A linked program is 1.3 MB with dead-stripping; the docs say so |
 | M-02 overhead ≤ +25 % | PASS | +7.1 … +8.1 % median; one session just below the predicted range |
 | M-03 accessor cost | recorded | 4.63 – 4.68 ns |
-| M-04 wasm equal | **FAIL** | +1,216 B, all from the depth guard (`INC-2026-0002`) |
+| M-04 wasm equal | **FAIL** | +1,950 B, all from the expression depth bound and its error report (`INC-2026-0002`) |
 | M-05 one dependency | PASS | |
 
 ## Deviations From the Plan
@@ -152,11 +152,12 @@ Observations are from the commands in `TEST-2026-0015` §Procedure.
 | D-7 | Two tests were too weak (M1, M3b) and were strengthened after mutation | none; recorded in `TEST-2026-0015` | none |
 | D-8 | M-01 and M-04 missed their frozen thresholds | reported, not edited | none |
 | D-9 | No push to a remote | the owner asked for a release, not a push | `REL-0.26.0` |
+| D-11 | After the first validation, the over-deep expression message was changed from the generic `E0001` to a named `E0003` (the bound error is carried from the expression parser to the statement matcher through a thread-local and `OuterP.depth_err`). Message text only, for input that is already refused; the 63-pair boundary is unchanged | none for accepted input | recorded in `INC-2026-0002`, `SYS-2026-0001` |
 | D-10 | The previous wasm ceiling (1,410,035 B, `PLAN-2026-0004`) was already exceeded at the baseline (1,434,097 B) by the `PROP-2026-0007` work (its OQ-03, unanswered); this release adds 1,216 B more | owner decision pending | follow-up |
 
 ## Unintended Behaviour
 
-None found beyond the two measurement misses and the generic `E0001` message for over-deep expressions (below).
+None found beyond the two measurement misses.
 
 ## Unresolved Incidents
 
@@ -165,19 +166,17 @@ None found beyond the two measurement misses and the generic `E0001` message for
 ## Remaining Limitations
 
 1. The static archive is large (31 MB on macOS); link with dead-stripping.
-2. Over-deep expressions are reported with the generic `E0001`, not a named bound.
-3. Foreign-id detection is best effort; use after free and double free are undetectable.
-4. Only macOS arm64 was run. Linux is built, not run; Windows is untested.
-5. Rust-side `unsafe` is not sanitizer-instrumented.
-6. No byte offsets in spans; no spans on `Expr`; parsing only (no `run`, `introspect`, `set_host`).
-7. `Call` is not produced by any grammar today.
-8. `ParseResult` equality of the C walker covers the AST JSON's information; `Token.kind` and per-token `width` are not exposed (JSON omits them too).
+2. Foreign-id detection is best effort; use after free and double free are undetectable.
+3. Only macOS arm64 was run. Linux is built, not run; Windows is untested.
+4. Rust-side `unsafe` is not sanitizer-instrumented.
+5. No byte offsets in spans; no spans on `Expr`; parsing only (no `run`, `introspect`, `set_host`).
+6. `Call` is not produced by any grammar today.
+7. `ParseResult` equality of the C walker covers the AST JSON's information; `Token.kind` and per-token `width` are not exposed (JSON omits them too).
 
 ## Required Follow-Up
 
 | Item | Destination |
 |---|---|
-| Name the bound in the over-deep expression message (`E0003`-style) | next release touching the parser |
 | Fix or explain the `wasm_check.sh` case (`INC-2026-0003`) | a defect proposal |
 | Owner decision on the wasm size ceiling (`PROP-2026-0007` OQ-03) | owner |
 | Explain the 3x macOS/Linux archive size difference | optional |
@@ -192,7 +191,7 @@ None found beyond the two measurement misses and the generic `E0001` message for
 | Does it behave as expected? | Yes, by differential comparison over 132 scripts and 76 + 30 C checks; see limitations |
 | Were all expected files and components modified? | Yes; the plan's file checklist was followed. Extra: `value_parser.rs` (D-2), `check_publishable.py` |
 | Did implementation introduce unintended behaviour? | One deliberate behaviour change (D-2); nothing unintended found |
-| Are there remaining limitations? | Yes, eight, listed above |
+| Are there remaining limitations? | Yes, seven, listed above |
 | Are there unresolved incidents? | `INC-2026-0003` (pre-existing) |
 | Are follow-up changes required? | Yes, listed above |
 

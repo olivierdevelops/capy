@@ -186,9 +186,14 @@ releases on drop, so an early `?` return or an unwind restores the count.
 ```
 
 Because `(` first tries grouping and falls back to the call form, the inner bound error
-is discarded and the statement reports the generic `E0001`; the bound is not named in
-the message (known limitation). This bound is independent of `MAX_PARSE_DEPTH`, which
-limits nonterminal (capture) descent.
+is discarded on the way up. The guard therefore also records its first error (with the
+position of the token where it stopped) in a thread-local, `EXPR_DEPTH_ERR`;
+`capture`'s value branch in `make_parser.rs` clears it before each outer expression
+parse and, when `parse_value` fails, moves it into `OuterP.depth_err`. From there the
+existing path applies: `parse_stmt` reports it as `E0003` ("expression nesting too deep
+(limit about 63 nested parentheses)") when every candidate has failed, and resets it at
+the next statement. This bound is independent of `MAX_PARSE_DEPTH`, which limits
+nonterminal (capture) descent.
 
 ## Ordered choice (0.23.0)
 
@@ -341,7 +346,7 @@ on 2026-10-07 and were not re-read for this release.
 ## Known limitations
 
 - No byte offsets on `Span`.
-- The expression bound (63 nested pairs of parentheses) is fixed and its violation is reported as the generic `E0001`.
+- The expression bound (63 nested pairs of parentheses) is fixed; `not` and `**` chains are bounded by the same counter, so their limit is a different number of operators.
 - The C ABI exposes parsing only; `run`, `introspect` and `set_host` are not exposed.
 - `E0002` (an unclosed delimiter) is still reserved and unemitted.
 - The nesting bound is fixed at 64 captures and is not configurable.

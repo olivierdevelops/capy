@@ -716,7 +716,7 @@ Implemented as 0.26.0 under `PLAN-2026-0005`; validated in `RPT-2026-0005` (R1�
 |---|---|
 | D1 – D7 | all taken as recommended (`ADR-0005`) |
 | Deviations | six frozen in `ADR-0005` before code; two more in `RPT-2026-0005` (the `capy-core` expression bound, and hand-built `Call` tests) |
-| Frozen predictions | archive size ≤ 5.5 MB **missed** (31,225,392 B); wasm unchanged **missed** (+1,216 B, the depth guard); arena overhead and accessor cost within their predictions |
+| Frozen predictions | archive size ≤ 5.5 MB **missed** (31,225,392 B); wasm unchanged **missed** (+1,950 B, the depth bound and its error report); arena overhead and accessor cost within their predictions |
 | Open questions | OQ-01 (canonical repository) unanswered; OQ-02 – OQ-05 still open as follow-up |
 | API size | 75 functions (the proposal said "roughly 70") |
 

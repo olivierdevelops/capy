@@ -151,7 +151,7 @@ this document.
 | R9 | no panic or stack overflow crosses the boundary | U-06 | PASS |
 | R10, R11, R13 | deterministic, versioned, equal to the Rust view | U-08, U-09 | PASS |
 | R12 / UC-06 | the typed expression must be reachable | U-05 | PASS |
-| R15 | nothing existing changes | U-08 | **PARTIAL** (wasm +1,216 B; `INC-2026-0003`) |
+| R15 | nothing existing changes | U-08 | **PARTIAL** (wasm +1,950 B; `INC-2026-0003`) |
 | R16 | docs true | U-10 | PASS |
 | R17 | predeclared measurements | `TEST-2026-0015` | PASS (two predictions missed) |
 | "plan implement validate and release, follow documentation.md" | Owner, 2026-10-13 | all | PASS |
@@ -178,7 +178,7 @@ this document.
 ## Fixed
 
 - **Deeply nested expressions aborted the process** (`INC-2026-0002`): bounded at 64 levels; 63 nested pairs of parentheses
-  parse, the 64th is refused with a diagnostic. This is a **behaviour change in `capy-core`** that the plan did not list: source nested
+  parse, the 64th is refused with `E0003` and a message that names the limit. This is a **behaviour change in `capy-core`** that the plan did not list: source nested
   between 64 and about 5 000 levels parsed before and is now refused.
 - The punctuation-split token corruption (`PROP-2026-0007` E8), carried from *Unreleased*.
 
@@ -212,7 +212,7 @@ Nothing.
 
 Gate summary on the tagged tree: `cargo test --workspace` **174 passed, 0 failed** · `cargo clippy --workspace --all-targets -- -D warnings`
 and `--profile ffi` clean · golden ok · `capy check`: 122 of 123 sample libraries ok (the one rejection is the sample that demonstrates a
-rejection) · `mkdocs build --strict` exit 0 · C suites 76 + 30 checks under ASan + UBSan · header up to date. Nine mutation checks; two tests were
+rejection) · `mkdocs build --strict` exit 0 · C suites 76 + 30 checks under ASan + UBSan · header up to date. Ten mutation checks; two tests were
 too weak and were strengthened (`TEST-2026-0015`).
 
 ## Validation
@@ -227,7 +227,7 @@ case.
 | U-01 | PLAN-2026-0005 M-01 | static archive size | 5,154,280 B (`capy-core`, no exports) | ≤ 5.5 MB | **31,225,392 B** (linked program 1.3 MB with dead-strip) | **FAIL** | TEST-2026-0015, `stat` |
 | U-02 | M-02 | arena overhead over `Library::parse` | 132 scripts × 20 passes, 15 interleaved | ≤ +25 % | median +7.1 … +8.1 % | PASS | TEST-2026-0015, `ffi/examples/bench.rs` |
 | U-04 | M-03 | per-accessor cost | none | recorded | 4.63 – 4.68 ns | recorded | TEST-2026-0015 |
-| U-06 | M-04 | wasm size | 1,434,097 B | equal | **1,435,313 B (+1,216)** — all from the depth guard | **FAIL** | TEST-2026-0015, `ls -l` |
+| U-06 | M-04 | wasm size | 1,434,097 B | equal | **1,436,047 B (+1,950)** — all from the expression depth bound and its error report | **FAIL** | TEST-2026-0015, `ls -l` |
 | U-01 | M-05 | `capy-core` direct dependencies | 1 | exactly 1 | 1 (`regex`) | PASS | TEST-2026-0015, `cargo tree` |
 
 The release makes **no claim** that the archive is small or that the wasm module is unchanged.
@@ -284,13 +284,12 @@ No new `TRBL` document. `TRBL-2026-0001` (stale `capy` on PATH) applies unchange
 
 1. **`INC-2026-0003`**: `rust/devtools/wasm_check.sh` fails on one case; identical on the previous release. `GATE-002` therefore does not read PASS.
 2. **The static archive is 31 MB** on macOS arm64 (9.4 MB for the Linux cross-build; the difference is unexplained). Linked programs are about 1.3 MB with dead-stripping.
-3. **The wasm module is 1,435,313 B**, over the 1,410,035 B ceiling recorded in `PLAN-2026-0004`; it was already over it (1,434,097 B) before this release because of the `PROP-2026-0007` work (its OQ-03, unanswered).
+3. **The wasm module is 1,436,047 B**, over the 1,410,035 B ceiling recorded in `PLAN-2026-0004`; it was already over it (1,434,097 B) before this release because of the `PROP-2026-0007` work (its OQ-03, unanswered).
 
 ## Limitations
 
 - Only macOS arm64 was run; Linux was cross-built only; Windows is untested.
 - Parsing only: `run`, `introspect` and `set_host` are not exposed; no byte offsets; no spans on expressions.
-- Over-deep expressions are reported as the generic `E0001`, not by name.
 - Foreign-id detection is best effort (an 8-bit tag); use after free and double free cannot be detected.
 - Rust-side `unsafe` is not run under a sanitizer or Miri.
 - `Call` expressions are not produced by any grammar today; they are tested through hand-built trees.
@@ -299,7 +298,6 @@ No new `TRBL` document. `TRBL-2026-0001` (stale `capy` on PATH) applies unchange
 
 | Item | Destination |
 |---|---|
-| Name the expression bound in the diagnostic | next parser release |
 | Fix or explain `wasm_check.sh` (`INC-2026-0003`) | a defect proposal |
 | Owner decision on the wasm size ceiling and on the 64-level expression bound | owner |
 | Explain the macOS/Linux archive size difference | optional |

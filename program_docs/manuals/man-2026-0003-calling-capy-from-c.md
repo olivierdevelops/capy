@@ -243,7 +243,7 @@ bump the ABI version only for a breaking change.
 ## Edge Cases
 
 - **Deep nesting.** 63 nested pairs of parentheses (or brackets, `not` chains, …) parse; the 64th is refused with
-  a diagnostic. Before 0.26.0 about 20 000 aborted the process (`INC-2026-0002`).
+  an `E0003` diagnostic that names the limit. Before 0.26.0 about 20 000 aborted the process (`INC-2026-0002`).
 - **Invalid UTF-8 in source** is replaced, not rejected; in a grammar it is `CAPY_E_UTF8`.
 - **Empty source** is a clean parse of zero statements.
 - **An optional capture that took its default** has an unset span (`start_line == 0`).
@@ -262,7 +262,7 @@ Compatibility: additive within ABI 1; the default `capy ast --json` is unchanged
 ## Limitations
 
 macOS arm64 verified; Linux cross-built only. Parsing only. No byte offsets. The archive is 31 MB (link with
-dead-stripping). The over-deep expression message is the generic `E0001`.
+dead-stripping).
 
 ## Troubleshooting References
 

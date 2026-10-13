@@ -60,6 +60,8 @@ Lookup by software version, per `DOCUMENTATION.md` §17.
 
 | Version | Tag | Release Document | Plan | Validation | Demo | Status |
 |---|---|---|---|---|---|---|
+| 0.26.0 | `v0.26.0` | REL-0.26.0 | PLAN-2026-0005 | RPT-2026-0005 | DEMO-2026-0005 | released locally — commit `8e81cdd` (not pushed) |
+| 0.25.0 | `v0.25.0` | — | — | — | — | released — commit `75a9f68`; operators for Ambit; predates its release document |
 | 0.24.0 | `v0.24.0` | REL-0.24.0 | PLAN-2026-0004 | RPT-2026-0004 | DEMO-2026-0004 | released — commit `54f1a5e` |
 | 0.23.0 | `v0.23.0` | REL-0.23.0 | PLAN-2026-0003 | RPT-2026-0003 | DEMO-2026-0003 | released — commit `8f10723` |
 | 0.22.0 | `v0.22.0` | REL-0.22.0 | PLAN-2026-0002 | RPT-2026-0002 | DEMO-2026-0002 | released — commit `f72fa3d` |
@@ -70,7 +72,7 @@ Lookup by software version, per `DOCUMENTATION.md` §17.
 
 | Version | Plan | Scope |
 |---|---|---|
-| — | — | **PROP-2026-0001 is complete** (0.21.0, 0.22.0). **PROP-2026-0004 is complete** (0.23.0). **PROP-2026-0005 is complete** (0.24.0). `PROP-2026-0003` is a draft with no plan. |
+| — | — | **PROP-2026-0001 is complete** (0.21.0, 0.22.0). **PROP-2026-0004 is complete** (0.23.0). **PROP-2026-0005 is complete** (0.24.0). **PROP-2026-0008 is complete** (0.26.0). `PROP-2026-0003`, `PROP-2026-0006` and `PROP-2026-0007` are drafts with no plan. |
 
 ## Change History
 
@@ -79,3 +81,4 @@ Lookup by software version, per `DOCUMENTATION.md` §17.
 | 1 | 2026-09-16 | Olivier | Initial index |
 | 2 | 2026-10-07 | Olivier | Added 0.23.0 |
 | 3 | 2026-10-07 | Olivier | Added 0.24.0 |
+| 4 | 2026-10-13 | Olivier, Claude | Added 0.26.0 (and 0.25.0, which had no release document) |

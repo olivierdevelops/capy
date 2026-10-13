@@ -14,14 +14,14 @@ use capy_core::domain::ast_json;
 use capy_core::domain::ast_text;
 use capy_core::gopath;
 
-const AST_SPEC: Spec = Spec { bools: &["json"], strings: &[] };
+const AST_SPEC: Spec = Spec { bools: &["json", "with-expr"], strings: &[] };
 
 pub fn cmd_ast(args: &[String]) -> Result<i32, String> {
     let args = reorder_flags_first(args);
     let fs = flags::parse(&AST_SPEC, &args)?;
     let pos = &fs.positionals;
     if pos.len() != 2 {
-        return Err("usage: capy ast <library> <script> [--json]".to_string());
+        return Err("usage: capy ast <library> <script> [--json [--with-expr]]".to_string());
     }
     let (lib_path, script_path) = (&pos[0], &pos[1]);
 
@@ -31,8 +31,11 @@ pub fn cmd_ast(args: &[String]) -> Result<i32, String> {
 
     let result = lib.parse(&src);
 
+    if fs.bool("with-expr") && !fs.bool("json") {
+        return Err("--with-expr needs --json".to_string());
+    }
     if fs.bool("json") {
-        println!("{}", ast_json::to_json_pretty(&result));
+        println!("{}", ast_json::to_json_pretty_with(&result, fs.bool("with-expr")));
     } else {
         // One renderer, shared with `rust/tests/golden.rs` — see
         // `capy_core::domain::ast_text`. The tree goes to stdout so it stays

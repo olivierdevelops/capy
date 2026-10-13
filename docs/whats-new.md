@@ -4,6 +4,31 @@ title: What's new — engine primitives shipped in this release
 
 # What's new
 
+## 0.26.0 — Capy from C
+
+**A C interface to the parse tree.** The new `capy-ffi` crate builds a static and shared library plus
+a header. Compile a grammar once, parse many files, and read statements, captures, typed expressions,
+spans, error regions and diagnostics from C, Zig or anything else that speaks the C ABI. See
+[Calling Capy from C](c-abi.md).
+
+```text
+$ examples/c/run.sh walk
+walk: PASS (greet(who=world))
+```
+
+**Typed expressions in the AST JSON, on request.** `capy ast --json --with-expr` adds an `expr`
+member to every capture. Without the flag the output is byte-identical to 0.25.0 (checked against all
+133 shipped sample scripts). See [AST JSON](ast-json.md#expr-the-typed-expression-opt-in).
+
+**Deeply nested expressions no longer abort the process.** About 20 000 nested parentheses used to
+overflow the stack (far fewer on a small thread stack) — a crash no embedder can catch. Expression
+nesting is now bounded at 64 levels; beyond that the statement gets a diagnostic. Anything nested less
+deeply parses exactly as before.
+
+**Faster, leaner `run`** (carried from the unreleased work of `PROP-2026-0007`): the leading run of flat
+statements is rendered straight from the source bytes, candidate functions are sorted once per library,
+and the parser allocates far less on rejected candidates. Output is unchanged.
+
 ## 0.24.0 — the nesting limit has a name
 
 **Too deep is no longer reported as malformed.** Source nested past the parser's bound

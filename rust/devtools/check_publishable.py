@@ -44,6 +44,22 @@ for pkg in meta["packages"]:
                 f"— cargo will refuse to publish this crate"
             )
 
+# ARCH-002: capy-core keeps exactly one dependency (regex). PROP-2026-0008 R1: capy-ffi is an artefact
+# crate that is never published and depends on capy-core alone.
+by_name = {p["name"]: p for p in meta["packages"]}
+core = by_name.get("capy-core")
+if core is not None:
+    normal = [d["name"] for d in core["dependencies"] if d.get("kind") in (None, "normal")]
+    if normal != ["regex"]:
+        failures.append(f"capy-core: ARCH-002 requires exactly one dependency (regex), found {normal}")
+ffi = by_name.get("capy-ffi")
+if ffi is not None:
+    if ffi.get("publish") != []:
+        failures.append("capy-ffi: must be `publish = false`")
+    deps = [d["name"] for d in ffi["dependencies"] if d.get("kind") in (None, "normal")]
+    if deps != ["capy-core"]:
+        failures.append(f"capy-ffi: must depend on capy-core alone, found {deps}")
+
 for name in checked:
     print(f"  checked   {name}")
 if failures:

@@ -260,3 +260,63 @@ end
     let out = lib.run(&src).expect("30 nested blocks must parse");
     assert!(out.contains('L'), "the leaf must render: {out}");
 }
+
+
+// ---------------------------------------------------------------------------------------------------
+// INC-2026-0002 / PLAN-2026-0005 T-11 — the value-expression parser is bounded too.
+//
+// Found while writing the C ABI (PROP-2026-0008): 1 000 nested parentheses overflowed the stack in a
+// debug build and about 20 000 in release; the same on 0.25.0. A host cannot catch that, so every
+// shape of nesting below must come back as a diagnostic, on the 2 MiB stack a Rust test thread gets.
+
+const EXPR_LIB: &str = "extension txt\nfunction let\n    arg literal \"let\"\n    arg capture name ident\n    arg literal \"=\"\n    arg capture value any\n    write `${name}`\nend\n";
+
+fn on_small_stack<T: Send + 'static>(f: impl FnOnce() -> T + Send + 'static) -> T {
+    std::thread::Builder::new().stack_size(2 * 1024 * 1024).spawn(f).unwrap().join().expect("must not overflow or panic")
+}
+
+fn parse_clean(src: String) -> bool {
+    on_small_stack(move || Library::new(EXPR_LIB).unwrap().parse(&src).is_clean())
+}
+
+#[test]
+fn expression_nesting_inside_the_bound_still_parses() {
+    let n = 60;
+    assert!(parse_clean(format!("let x = {}1{}\n", "(".repeat(n), ")".repeat(n))));
+    assert!(parse_clean(format!("let x = {}1{}\n", "[".repeat(n), "]".repeat(n))));
+    assert!(parse_clean(format!("let x = {}1\n", "not ".repeat(n))));
+}
+
+#[test]
+fn deeply_nested_expressions_error_instead_of_aborting() {
+    for n in [200usize, 5_000, 200_000] {
+        let shapes = [
+            ("parentheses", format!("let x = {}1{}\n", "(".repeat(n), ")".repeat(n))),
+            ("list brackets", format!("let x = {}1{}\n", "[".repeat(n), "]".repeat(n))),
+            ("not chain", format!("let x = {}1\n", "not ".repeat(n))),
+            ("power chain", format!("let x = 1{}\n", " ** 1".repeat(n))),
+            ("prefix-call chain", format!("let x = {}f{}\n", "(g ".repeat(n), ")".repeat(n))),
+            ("object braces", format!("let x = {}1{}\n", "{a: ".repeat(n), "}".repeat(n))),
+        ];
+        for (name, src) in shapes {
+            let clean = parse_clean(src.clone());
+            assert!(!clean, "{name} x{n}: expected a diagnostic, got a clean parse");
+            // and `run` reports an error rather than aborting
+            let r = on_small_stack(move || Library::new(EXPR_LIB).unwrap().run(&src).is_err());
+            assert!(r, "{name} x{n}: run should fail with an error");
+        }
+    }
+}
+
+#[test]
+fn the_depth_counter_is_released_between_statements() {
+    // A rejected deep statement must not leave the counter raised for the next, ordinary one.
+    let deep = format!("let x = {}1{}\n", "(".repeat(500), ")".repeat(500));
+    let src = format!("{deep}let y = (1 + 2)\nlet z = ((3))\n");
+    let (diags, stmts) = on_small_stack(move || {
+        let r = Library::new(EXPR_LIB).unwrap().parse(&src);
+        (r.diagnostics.len(), r.tree.stmts.len())
+    });
+    assert!(diags >= 1, "the deep statement is reported");
+    assert_eq!(stmts, 2, "the two ordinary statements after it still parse");
+}

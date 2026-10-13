@@ -241,3 +241,10 @@ for the full statement.
 Source-visible for reading, building, and personal evaluation.
 Commercial use, redistribution, and derivative works require prior
 written permission.
+
+### Embed from C (or anything with a C FFI)
+
+The `capy-ffi` crate exposes the parse tree — statements, captures, typed expressions, spans and
+diagnostics — through a C ABI: compile a grammar once, parse many files, read the tree by id.
+See [Calling Capy from C](docs/c-abi.md); `examples/c/run.sh walk` builds and runs a complete program.
+

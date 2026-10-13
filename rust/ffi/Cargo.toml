@@ -1,0 +1,20 @@
+[package]
+name = "capy-ffi"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+# Not published to crates.io: the artefacts are libcapy_ffi.a / libcapy_ffi.{dylib,so} and capy.h, consumed
+# by C hosts. A Rust caller wants capy-core.
+publish = false
+description = "C ABI for the Capy engine — handles, ids and borrowed strings over the parse tree"
+
+[lib]
+name = "capy_ffi"
+path = "src/lib.rs"
+# staticlib/cdylib are the C artefacts. rlib exists only so tests/ and examples/ can import the crate
+# (ADR-0005 deviation 3). The symbols live here rather than in capy-core so that a normal Rust dependency
+# inherits no C symbols — the same reason capy-wasm-abi is a separate crate.
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[dependencies]
+capy-core = { path = "..", version = "0.25.0" }

@@ -32,6 +32,45 @@ pub fn parse_value<R: TokReader + ?Sized>(
     parse_binary(r, stop, 0)
 }
 
+/// INC-2026-0002 — the value-expression parser is recursive descent and had no bound: about 20 000
+/// nested parentheses overflowed an 8 MiB stack (far fewer on a smaller thread), and a stack overflow
+/// cannot be caught as `Err`. `ARCH-003` requires every recursive descent to be bounded.
+///
+/// One unit is one entry into `parse_binary`, `parse_unary` or `parse_primary`; a parenthesised
+/// level costs three, so the limit is 64 levels of nesting — the same bound the capture matcher uses
+/// (`MAX_PARSE_DEPTH`) and for the same reason: far beyond hand-written source, and inside the 2 MiB a
+/// Rust test thread gets in a debug build.
+const MAX_EXPR_DEPTH: u32 = 3 * 64;
+
+thread_local! {
+    static EXPR_DEPTH: std::cell::Cell<u32> = const { std::cell::Cell::new(0) };
+}
+
+/// Counts one level of expression recursion; the level is released when the guard drops, including
+/// on an early `?` return or an unwind.
+struct DepthGuard;
+
+impl DepthGuard {
+    fn enter() -> Result<DepthGuard, CapyError> {
+        EXPR_DEPTH.with(|d| {
+            if d.get() >= MAX_EXPR_DEPTH {
+                return Err(CapyError::msg(format!(
+                    "expression nests too deeply (limit {} levels)",
+                    MAX_EXPR_DEPTH / 3
+                )));
+            }
+            d.set(d.get() + 1);
+            Ok(DepthGuard)
+        })
+    }
+}
+
+impl Drop for DepthGuard {
+    fn drop(&mut self) {
+        EXPR_DEPTH.with(|d| d.set(d.get().saturating_sub(1)));
+    }
+}
+
 /// PLAN-2026-0002 R10/R11 — precedence climbing.
 ///
 /// Binding power, loosest first. All operators are LEFT-associative, so
@@ -87,6 +126,7 @@ fn parse_binary<R: TokReader + ?Sized>(
     stop: &[String],
     min_bp: u8,
 ) -> Result<Expr, CapyError> {
+    let _depth = DepthGuard::enter()?;
     let mut left = parse_unary(r, stop)?;
     loop {
         let t = r.peek();
@@ -113,6 +153,7 @@ pub fn parse_unary<R: TokReader + ?Sized>(
     r: &mut R,
     stop: &[String],
 ) -> Result<Expr, CapyError> {
+    let _depth = DepthGuard::enter()?;
     let t = r.peek();
     if t.kind == TokenKind::Ident && t.text == "not" && !contains(stop, "not") {
         r.advance();
@@ -134,6 +175,7 @@ pub fn parse_primary<R: TokReader + ?Sized>(
     r: &mut R,
     stop: &[String],
 ) -> Result<Expr, CapyError> {
+    let _depth = DepthGuard::enter()?;
     let t = r.peek();
     match t.kind {
         TokenKind::Number => {

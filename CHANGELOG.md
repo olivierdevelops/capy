@@ -8,7 +8,17 @@ may break between minor versions**.
 
 ## [Unreleased]
 
-Speed and memory (`PROP-2026-0007`, measured in `TEST-2026-0014`). Output is unchanged except for the one fix under *Fixed*.
+## [0.26.0] — 2026-10-13
+
+A C interface (`PROP-2026-0008`, measured in `TEST-2026-0015`), and the speed and memory work of `PROP-2026-0007` (`TEST-2026-0014`). Output is unchanged except for the two items under *Fixed*.
+
+### Added
+
+- **`capy-ffi`**, a new workspace crate (not published to crates.io) that builds `libcapy_ffi.{a,dylib,so}` and a generated header, `rust/ffi/include/capy.h`. It exposes the parse tree to C hosts through opaque handles, `u32` ids and borrowed UTF-8 strings: compile a grammar once, parse many files, read statements, captures, typed expressions, spans, error regions, diagnostics and grammar-load errors. 75 functions, ABI version 1, additive-only within a version. Parsing only: `run`, `introspect` and `set_host` are not exposed. Build with `cargo build --profile ffi -p capy-ffi`. See `docs/c-abi.md`.
+- **`[profile.ffi]`**, `release` with `panic = "unwind"`, so the C ABI can turn a Rust panic into an error code (`capy_panics_are_caught()` reports whether a build can).
+- `capy ast --json --with-expr` adds each capture's typed `expr` to the AST JSON. Without the flag the output is byte-identical to 0.25.0.
+- `ast_json::expr_val`, `to_json_with`, `to_json_pretty_with` and `parse_result_val_with` in `capy-core`.
+- `examples/c/` (a complete program, a 76-check misuse suite and a hostile-input suite, run under ASan and UBSan by `run.sh`), `rust/ffi/check_header.sh` (header drift), `rust/devtools/ast_json_compat.sh` (default JSON against a baseline binary).
 
 ### Changed
 
@@ -20,16 +30,18 @@ Speed and memory (`PROP-2026-0007`, measured in `TEST-2026-0014`). Output is unc
   definition on each run. A 15-line script against a 1 000-function library: 5.7 ms to 0.03 ms.
 - The parser allocates far less on rejected candidates; the lexer borrows its lines; templates are parsed once; `regex_match` and `pattern`
   types cache compiled regexes (bounded, 64 entries).
+- `rust/devtools/check_publishable.py` also enforces that `capy-core` has exactly one dependency and that `capy-ffi` is never published.
 
 ### Fixed
 
+- **Deeply nested expressions aborted the process** (`INC-2026-0002`). The value-expression parser had no depth bound: about 20 000 nested parentheses overflowed an 8 MiB stack (about 1 000 in a debug build, fewer on a smaller thread) — a crash no embedder can catch as `Err`, in breach of `ARCH-003`. Expression nesting is now bounded at 64 levels (parentheses, brackets, braces, `not` chains, `**` chains, prefix calls); a deeper statement gets an ordinary diagnostic. Nothing nested less deeply changes. The diagnostic is the generic `E0001`; naming the bound in the message is follow-up work.
 - A rule that failed after splitting a merged punctuation token (`><`, `=>`) left the remainder in the token stream, so later rules saw
   corrupted tokens: a `tail` capture could hold `> -> =>` for `=> -> =>`. `ErrorNode.tokens` in `capy ast --json` now holds the real source
   tokens (two shipped samples' JSON changed). Regression test: `tests/cursor_split.rs`.
 
 ### Size
 
-- The wasm module grows by about 40 KB (+2.8 %).
+- The wasm module grows by about 40 KB (+2.8 %) from the `PROP-2026-0007` work; the C ABI adds nothing to it (`capy-ffi` is not part of the wasm build).
 
 ## [0.25.0] — 2026-10-08
 

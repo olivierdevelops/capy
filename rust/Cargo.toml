@@ -1,5 +1,5 @@
 [workspace]
-members = ["cli", "devtools", "mcp", "playground", "wasm"]
+members = ["cli", "devtools", "ffi", "mcp", "playground", "wasm"]
 
 # Shared metadata, inherited by every member via `foo.workspace = true`. Keeps
 # the version numbers from drifting apart and gives each publishable crate the
@@ -57,3 +57,11 @@ lto = true
 codegen-units = 1
 panic = "abort"
 strip = true
+
+# PROP-2026-0008 D3 — the C ABI is built under its own profile so that a Rust panic can be caught at the
+# boundary (`catch_unwind`) instead of aborting the embedding host. Cargo ignores `panic` in member
+# manifests, so it has to live here. `capy-cli` and the wasm module keep `panic = "abort"` above.
+#   cargo build --profile ffi -p capy-ffi
+[profile.ffi]
+inherits = "release"
+panic = "unwind"

@@ -70,9 +70,33 @@ the regions that did not in the other. Interleaving is recoverable from spans.
 | Field | Type | Meaning |
 |---|---|---|
 | `text` | string | The captured source text |
-| `is_expr` | bool | Whether it carries a parsed expression. The expression **tree itself is not serialized** — you get `text`. In Rust, `CaptureValue.expr` has the tree; see [host your language's frontend](language-frontend.md). |
+| `is_expr` | bool | Whether it carries a parsed expression. The expression tree is **not serialized by default** — you get `text`. Pass `--with-expr` (or `CAPY_JSON_EXPR` from [C](c-abi.md)) to add the `expr` member below. In Rust, `CaptureValue.expr` has the tree; see [host your language's frontend](language-frontend.md). |
 | `span` | span or null | Exactly the tokens this value came from |
 | `sub` | array of node | Sub-matches, when the capture's type names a function |
+
+## `expr` — the typed expression (opt-in)
+
+Only present with `capy ast --json --with-expr`. Every capture then has an `expr` member: `null`, or
+an object whose `kind` selects its other members. Without the flag the document is byte-identical to
+what it was before the option existed.
+
+| `kind` | Other members |
+|---|---|
+| `number` | `is_int`, then `int` (an integer) or `float` |
+| `str` | `value` |
+| `bool` | `value` |
+| `null` | — |
+| `var` | `path`: array of `{"field": name}` or `{"index": expr}` (an index step with no expression has `"index": null`) |
+| `call` | `name` (array of strings), `args` (array of expr) |
+| `compare`, `binary` | `op`, `left`, `right` |
+| `unary` | `op`, `operand` |
+| `not` | `operand` |
+| `list` | `items` |
+| `obj` | `keys`, `values` |
+
+```sh
+capy ast lib.capy script.capy --json --with-expr | jq '.tree.stmts[0].captures.value.expr'
+```
 
 ## Span
 

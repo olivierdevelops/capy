@@ -51,7 +51,7 @@ repo's `rust/` subdirectory on its own:
 capy-core = { git = "https://github.com/olivierdevelops/capy" }
 ```
 
-One dependency (`regex`), no C symbols, no build script. Minimum supported Rust
+One dependency (`regex`), no C symbols in `capy-core` itself (the C interface is the separate [`capy-ffi`](c-abi.md) crate), no build script. Minimum supported Rust
 version is 1.74.
 
 ## The full API
@@ -89,6 +89,11 @@ pub fn render_library_docs(lib: &Library) -> String;
 ```
 
 That's the whole module. Everything else is convention.
+
+## From C and other languages
+
+A program that is not Rust can link `capy-ffi` and read the parse tree — statements, captures, typed
+expressions, spans and diagnostics — through opaque handles and ids. See [Calling Capy from C](c-abi.md).
 
 ## Reuse and threads
 

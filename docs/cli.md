@@ -122,6 +122,7 @@ Print a script's parse tree.
 ```sh
 capy ast <library> <script>          # indented tree, for reading
 capy ast <library> <script> --json   # machine-readable, for piping
+capy ast <library> <script> --json --with-expr   # ... plus each capture's typed expression
 ```
 
 ```text

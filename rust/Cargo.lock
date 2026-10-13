@@ -55,6 +55,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "capy-ffi"
+version = "0.25.0"
+dependencies = [
+ "capy-core",
+]
+
+[[package]]
 name = "capy-mcp"
 version = "0.25.0"
 dependencies = [

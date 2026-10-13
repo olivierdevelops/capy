@@ -5,8 +5,8 @@ document_type: reference
 status: active
 
 created_date: 2026-09-16
-last_updated: 2026-10-07
-document_revision: 3
+last_updated: 2026-10-13
+document_revision: 4
 
 authors:
   - Olivier
@@ -53,7 +53,7 @@ next_review_date: 2027-03-16
 
 > **Status:** Active
 > **Created:** 2026-09-16
-> **Last Updated:** 2026-10-07
+> **Last Updated:** 2026-10-13
 > **Owner:** Engineering Documentation Team
 
 Lookup by decision, per `DOCUMENTATION.md` §17.
@@ -64,6 +64,7 @@ Lookup by decision, per `DOCUMENTATION.md` §17.
 | ADR-0002 | Consolidate PLAN-B through PLAN-E into one plan and one release | approved | 2026-09-16 | — | PROP-2026-0001, PLAN-2026-0002 |
 | ADR-0003 | Approve PROP-2026-0004: ordered alternation, additive `alts` representation, alternatives are library functions | approved | 2026-10-07 | — | PROP-2026-0004, PLAN-2026-0003 |
 | ADR-0004 | Approve PROP-2026-0005: name the nesting bound (E0003), `alts` in the browser JSON, the crate version in `capy version` | approved | 2026-10-07 | — | PROP-2026-0005, PLAN-2026-0004 |
+| ADR-0005 | Approve PROP-2026-0008: a C ABI for Capy (`capy-ffi`), opt-in `expr` JSON, `[profile.ffi]` panic policy, parsing only | approved | 2026-10-13 | — | PROP-2026-0008, PLAN-2026-0005 |
 
 ## Contracts frozen by ADR-0001
 
@@ -99,6 +100,17 @@ Lookup by decision, per `DOCUMENTATION.md` §17.
 | Version string | unstamped builds print the crate version; a stamped `CAPY_VERSION` wins |
 | Process | thresholds frozen before any engine change was re-applied (§21.3) |
 
+## Contracts frozen by ADR-0005
+
+| Contract | Decision |
+|---|---|
+| Crate | `capy-ffi` in this workspace; `capy-core` unchanged and keeps one dependency |
+| Interface | opaque handles, `u32` ids, borrowed `(ptr, len)` UTF-8; ABI version 1, additive within a version |
+| Panic policy | `[profile.ffi]` with `panic = "unwind"`; every export under `catch_unwind` |
+| JSON | `expr` is opt-in (`--with-expr`, `CAPY_JSON_EXPR`); default output byte-identical |
+| Scope | parsing only; byte offsets and `run` are separate proposals |
+| Statuses | `CAPY_E_LOAD` added; `CAPY_E_LIMIT` replaces `CAPY_E_OOM` |
+
 ## Change History
 
 | Revision | Date | Author | Change |
@@ -106,3 +118,4 @@ Lookup by decision, per `DOCUMENTATION.md` §17.
 | 1 | 2026-09-16 | Olivier | Initial index |
 | 2 | 2026-10-07 | Olivier | Added ADR-0003 and its frozen contracts |
 | 3 | 2026-10-07 | Olivier | Added ADR-0004 and its frozen contracts |
+| 4 | 2026-10-13 | Olivier, Claude | Added ADR-0005 and its frozen contracts |

@@ -2,11 +2,11 @@
 document_id: PLAN-2026-0005
 title: Implementation Plan — A C ABI for Capy (0.26.0)
 document_type: plan
-status: approved
+status: completed
 
 created_date: 2026-10-13
 last_updated: 2026-10-13
-document_revision: 1
+document_revision: 2
 
 approval:
   approved_by:
@@ -67,7 +67,7 @@ next_review_date: 2027-04-13
 
 # Implementation Plan — A C ABI for Capy (0.26.0)
 
-> **Status:** Approved
+> **Status:** Completed
 > **Created:** 2026-10-13
 > **Last Updated:** 2026-10-13
 > **Affected Versions:** 0.26.0
@@ -103,39 +103,39 @@ Baseline commit: `69fb4ac98033af4bb2a8ea8afdc4c5977898a29e`.
 
 | State | Count | Notes |
 |---|---:|---|
-| NOT STARTED | 16 | W-02 … W-17 |
+| NOT STARTED | 0 | |
 | IN PROGRESS | 0 | |
 | BLOCKED | 0 | |
-| DONE | 1 | W-01 (ADR, plan, baselines) |
+| DONE | 17 | W-01 … W-17 |
 | FAILED | 0 | |
 | DEFERRED | 0 | |
 
-- **Current phase:** P0 (this plan being committed before code).
-- **Next action:** commit `ADR-0005` and this plan, then W-02.
-- **Blockers:** none.
-- **Release target:** 0.26.0.
+- **Current phase:** **COMPLETE.** P0–P6 exited; `RPT-2026-0005` validated: R1–R17 16 PASS, 1 PARTIAL (R15); no FAIL.
+- **Next action:** push, if the owner wants it (not authorized by this plan).
+- **Blockers:** none. Open: `INC-2026-0003` (pre-existing).
+- **Release target:** 0.26.0 — released locally (`v0.26.0`); see the Version table.
 
 ## Requirements and Use Cases
 
 | Req / UC | Planned Outcome | Acceptance Criterion | Phase | Status |
 |---|---|---|---|---|
-| R1 / UC-01 | `capy-ffi` crate, one dependency | `cargo tree -p capy-core --depth 1` = 1; `-p capy-ffi` = `capy-core` only | P1 | NOT STARTED |
-| R2 / UC-01 | library handle, shared read-only | two threads parse one library, TSan/run clean | P1, P4 | NOT STARTED |
-| R3 / UC-02 | parse never fails to return a handle | hostile inputs return handle + diagnostics | P1 | NOT STARTED |
-| R4 / UC-03 | full statement/capture/error-node access | C-view JSON = Rust JSON | P1 | NOT STARTED |
-| R5 / UC-04 | all 12 `Expr` kinds | property test equal | P2 | NOT STARTED |
-| R6 / UC-05 | diagnostics incl. labels and context | equal to JSON `diagnostics` | P1 | NOT STARTED |
-| R7 / UC-01 | load error msg/hint/line/col/file | equals CLI text fields | P1 | NOT STARTED |
-| R8 | ids and handles validated | ≥ 40 misuse cases, sanitizers silent | P4 | NOT STARTED |
-| R9 | no panic crosses | forced panic returns `CAPY_E_PANIC` | P4 | NOT STARTED |
-| R10 | deterministic order | equals `BTreeMap` / source order | P1 | NOT STARTED |
-| R11 / UC-07 | ABI version + header drift test | `check_header.sh` exit 0 | P4 | NOT STARTED |
-| R12 / UC-06 | opt-in `expr` JSON | default output byte-identical | P3 | NOT STARTED |
-| R13 | differential equivalence | 0 differences over `samples/*` | P3 | NOT STARTED |
-| R14 | memory safety verified | ASan+UBSan C runs | P4 | NOT STARTED |
-| R15 | nothing existing changes | GATE-001, GATE-002, wasm size equal | P5 | NOT STARTED |
-| R16 | docs true | `mkdocs build --strict` exit 0 | P5 | NOT STARTED |
-| R17 | measurements predeclared and run | M-01 … M-05 recorded | P5 | NOT STARTED |
+| R1 / UC-01 | `capy-ffi` crate, one dependency | `cargo tree -p capy-core --depth 1` = 1; `-p capy-ffi` = `capy-core` only | P1 | **PASS** |
+| R2 / UC-01 | library handle, shared read-only | two threads parse one library, TSan/run clean | P1, P4 | **PASS** |
+| R3 / UC-02 | parse never fails to return a handle | hostile inputs return handle + diagnostics | P1 | **PASS** |
+| R4 / UC-03 | full statement/capture/error-node access | C-view JSON = Rust JSON | P1 | **PASS** |
+| R5 / UC-04 | all 12 `Expr` kinds | property test equal | P2 | **PASS** |
+| R6 / UC-05 | diagnostics incl. labels and context | equal to JSON `diagnostics` | P1 | **PASS** |
+| R7 / UC-01 | load error msg/hint/line/col/file | equals CLI text fields | P1 | **PASS** |
+| R8 | ids and handles validated | ≥ 40 misuse cases, sanitizers silent | P4 | **PASS** |
+| R9 | no panic crosses | forced panic returns `CAPY_E_PANIC` | P4 | **PASS** |
+| R10 | deterministic order | equals `BTreeMap` / source order | P1 | **PASS** |
+| R11 / UC-07 | ABI version + header drift test | `check_header.sh` exit 0 | P4 | **PASS** |
+| R12 / UC-06 | opt-in `expr` JSON | default output byte-identical | P3 | **PASS** |
+| R13 | differential equivalence | 0 differences over `samples/*` | P3 | **PASS** |
+| R14 | memory safety verified | ASan+UBSan C runs | P4 | **PASS** |
+| R15 | nothing existing changes | GATE-001, GATE-002, wasm size equal | P5 | **PARTIAL** |
+| R16 | docs true | `mkdocs build --strict` exit 0 | P5 | **PASS** |
+| R17 | measurements predeclared and run | M-01 … M-05 recorded | P5 | **PASS** |
 
 ## Applicable Project Standards
 
@@ -198,22 +198,22 @@ A result far better than predicted is investigated before it is believed.
 | ID | Task | Phase | Req / Change | Files | Status | Evidence |
 |---|---|---|---|---|---|---|
 | W-01 | ADR, plan, baselines | P0 | — | `program_docs/decisions/adr-0005-*.md`, this file | DONE | wasm 1,434,097 B; 153 tests pass at `69fb4ac` |
-| W-02 | workspace member, profile, crate skeleton | P1 | R1 / C-01 | `rust/Cargo.toml`, `rust/ffi/Cargo.toml`, `rust/ffi/src/lib.rs` | NOT STARTED | |
-| W-03 | arena, ids, guard | P1 | R3, R8, R9, R10 / C-02 | `rust/ffi/src/arena.rs` | NOT STARTED | |
-| W-04 | library, error, parse, block, node, capture, error-node, diagnostics exports | P1 | R2, R3, R4, R6, R7 / C-03, C-05 | `rust/ffi/src/lib.rs`, `diag.rs` | NOT STARTED | |
-| W-05 | expression exports | P2 | R5 / C-04 | `rust/ffi/src/expr.rs` | NOT STARTED | |
-| W-06 | `expr` JSON writer, CLI flag | P3 | R12 / C-06 | `rust/src/domain/ast_json.rs`, `rust/cli/src/cmd_ast.rs` | NOT STARTED | |
-| W-07 | `capy_parse_to_json`, `capy_buf_free` | P3 | R12 / C-06 | `rust/ffi/src/json.rs` | NOT STARTED | |
-| W-08 | differential + expression property + thread tests | P3, P4 | R2, R5, R13 / C-08 | `rust/ffi/tests/*.rs` | NOT STARTED | |
-| W-09 | panic test and `capy_panics_are_caught` | P4 | R9 / C-02 | `rust/ffi/src/arena.rs` (`#[cfg(test)]`) | NOT STARTED | |
-| W-10 | header, `check_header.sh`, `cbindgen.toml` | P4 | R11 / C-07 | `rust/ffi/cbindgen.toml`, `rust/ffi/include/capy.h`, `rust/ffi/check_header.sh` | NOT STARTED | |
-| W-11 | C smoke, misuse, hostile, sanitizer script | P4 | R8, R14 / C-08 | `examples/c/walk.c`, `misuse.c`, `run.sh` | NOT STARTED | |
-| W-12 | recursion-guard case; `check_publishable.py` | P4 | R1, R9 / C-01 | `rust/tests/recursion_guard.rs`, `rust/devtools/check_publishable.py` | NOT STARTED | |
-| W-13 | docs | P5 | R16 / C-09 | see File Checklist | NOT STARTED | |
-| W-14 | gates GATE-001, GATE-002; cross build | P5 | R15 | — | NOT STARTED | |
-| W-15 | measurements, `TEST-2026-0015` | P5 | R17 / C-10 | `program_docs/testing/test-2026-0015-*.md`, `rust/ffi/examples/bench.rs` | NOT STARTED | |
-| W-16 | validation report, demo, manual, system, architecture | P6 | — | `RPT-2026-0005`, `DEMO-2026-0005`, `MAN-2026-0003`, `SYS-2026-0001`, `ARCH-2026-0002` | NOT STARTED | |
-| W-17 | version bump, commits, tag, `REL-0.26.0` | P6 | — | see Version checklist | NOT STARTED | |
+| W-02 | workspace member, profile, crate skeleton | P1 | R1 / C-01 | `rust/Cargo.toml`, `rust/ffi/Cargo.toml`, `rust/ffi/src/lib.rs` | DONE | `rust/Cargo.toml` member + `[profile.ffi]`; `rust/ffi/Cargo.toml`; `cargo tree` shows one dependency each |
+| W-03 | arena, ids, guard | P1 | R3, R8, R9, R10 / C-02 | `rust/ffi/src/arena.rs` | DONE | `arena.rs`: iterative flatten, tagged ids, `with` guard; 5 unit tests |
+| W-04 | library, error, parse, block, node, capture, error-node, diagnostics exports | P1 | R2, R3, R4, R6, R7 / C-03, C-05 | `rust/ffi/src/lib.rs`, `diag.rs` | DONE | `lib.rs` (75 exports with `diag.rs`, `expr.rs`, `json.rs`); T-02, T-05, T-06 |
+| W-05 | expression exports | P2 | R5 / C-04 | `rust/ffi/src/expr.rs` | DONE | `expr.rs`; T-03 (4 tests, 3 000 random trees) |
+| W-06 | `expr` JSON writer, CLI flag | P3 | R12 / C-06 | `rust/src/domain/ast_json.rs`, `rust/cli/src/cmd_ast.rs` | DONE | `ast_json.rs` `expr_val` + `include_expr`; `cmd_ast.rs` `--with-expr`; T-10 |
+| W-07 | `capy_parse_to_json`, `capy_buf_free` | P3 | R12 / C-06 | `rust/ffi/src/json.rs` | DONE | `json.rs`; `differential` compares `capy_parse_to_json` with the Rust writer |
+| W-08 | differential + expression property + thread tests | P3, P4 | R2, R5, R13 / C-08 | `rust/ffi/tests/*.rs` | DONE | `differential.rs`, `expr.rs`, `threads.rs`: 9 tests; mutations M1–M5 caught after two tests were strengthened |
+| W-09 | panic test and `capy_panics_are_caught` | P4 | R9 / C-02 | `rust/ffi/src/arena.rs` (`#[cfg(test)]`) | DONE | forced-panic tests for `with`, `capy_library_new`, `capy_parse`; mutation M6 |
+| W-10 | header, `check_header.sh`, `cbindgen.toml` | P4 | R11 / C-07 | `rust/ffi/cbindgen.toml`, `rust/ffi/include/capy.h`, `rust/ffi/check_header.sh` | DONE | `capy.h` (75 functions) + `check_header.sh`: `capy.h is up to date` |
+| W-11 | C smoke, misuse, hostile, sanitizer script | P4 | R8, R14 / C-08 | `examples/c/walk.c`, `misuse.c`, `run.sh` | DONE | `examples/c/`: `walk`, `diagnose`, `exprs`, `hostile` (30), `misuse` (76) under ASan + UBSan |
+| W-12 | recursion-guard case; `check_publishable.py` | P4 | R1, R9 / C-01 | `rust/tests/recursion_guard.rs`, `rust/devtools/check_publishable.py` | DONE | `recursion_guard.rs` +4 tests (**scope grew**: `INC-2026-0002` fix in `value_parser.rs`); `check_publishable.py` enforces both rules |
+| W-13 | docs | P5 | R16 / C-09 | see File Checklist | DONE | `docs/c-abi.md` + 5 pages, `mkdocs.yml`, `CHANGELOG.md`, `README.md`; `mkdocs build --strict` rc=0 |
+| W-14 | gates GATE-001, GATE-002; cross build | P5 | R15 | — | DONE | build, clippy, 174 tests, golden, header, publishable all pass; `wasm_check.sh` fails identically on the baseline (`INC-2026-0003`) |
+| W-15 | measurements, `TEST-2026-0015` | P5 | R17 / C-10 | `program_docs/testing/test-2026-0015-*.md`, `rust/ffi/examples/bench.rs` | DONE | `TEST-2026-0015`: M-02, M-03, M-05 pass; **M-01 and M-04 fail their frozen thresholds**, reported |
+| W-16 | validation report, demo, manual, system, architecture | P6 | — | `RPT-2026-0005`, `DEMO-2026-0005`, `MAN-2026-0003`, `SYS-2026-0001`, `ARCH-2026-0002` | DONE | `RPT-2026-0005`, `DEMO-2026-0005`, `MAN-2026-0003`, `SYS-2026-0001` rev 5, `ARCH-2026-0002` |
+| W-17 | version bump, commits, tag, `REL-0.26.0` | P6 | — | see Version checklist | DONE | see the Version table |
 
 ## File and Artifact Checklist
 
@@ -230,7 +230,9 @@ A result far better than predicted is investigated before it is believed.
 | `rust/src/domain/ast_json.rs` | UPDATE | `expr` writer behind a flag | R12 |
 | `rust/cli/src/cmd_ast.rs` | UPDATE | `--with-expr` | R12 |
 | `rust/cli/tests/ast_with_expr.rs` | CREATE | T-10 CLI | R12 |
-| `rust/tests/recursion_guard.rs` | UPDATE | depth case for JSON | R9 |
+| `rust/tests/recursion_guard.rs` | UPDATE | expression-nesting cases (`INC-2026-0002`) | R9 |
+| `rust/src/orchestrator/features/value_parser.rs` | UPDATE | **added in execution:** the expression depth bound | R9 |
+| `examples/c/diagnose.c`, `examples/c/exprs.c` | CREATE | **added in execution:** demo programs for `DEMO-2026-0005` | R16 |
 | `rust/devtools/check_publishable.py` | UPDATE | `capy-core` one dependency; `capy-ffi` unpublishable | R1 |
 | `docs/c-abi.md`, `docs/embedding.md`, `docs/ast-json.md`, `docs/cli.md`, `docs/whats-new.md`, `mkdocs.yml`, `CHANGELOG.md` | CREATE / UPDATE | R16 | R16 |
 | `rust/{cli,devtools,mcp,playground,wasm}/Cargo.toml` | UPDATE | version `0.26.0`, wasm path dependency version | release |
@@ -240,20 +242,20 @@ A result far better than predicted is investigated before it is believed.
 
 | ID | Validates | Procedure | Expected | Status |
 |---|---|---|---|---|
-| T-01 | R1–R4, UC-01–03 | `examples/c/run.sh walk` | prints `greet(who=world)`, exit 0 | NOT STARTED |
-| T-02 | R4, R6, R10, R13 | `cargo test -p capy-ffi --profile ffi --test differential` over every `samples/*/lib.capy` and scripts | 0 differences | NOT STARTED |
-| T-03 | R5 | `--test expr`: all 12 kinds, int edges, nested paths | equal | NOT STARTED |
-| T-04 | R2 | `--test threads`: 4 threads × 500 parses of one library | all equal | NOT STARTED |
-| T-05 | R3 | `run.sh hostile` | handle + diagnostics, no crash | NOT STARTED |
-| T-06 | R7 | broken grammar via C vs `CapyError` | five fields equal | NOT STARTED |
-| T-07 | R8, R14 | `run.sh misuse` (ASan+UBSan) | ≥ 40 cases pass | NOT STARTED |
-| T-08 | R9 | unit test forces a panic through `guard` | `CAPY_E_PANIC`, handle poisoned | NOT STARTED |
-| T-09 | R11 | `rust/ffi/check_header.sh` | exit 0 | NOT STARTED |
-| T-10 | R12, R15 | `capy ast --json` byte-identical to the `69fb4ac` binary over all samples; `--with-expr` adds `expr` | 0 diffs; field present | NOT STARTED |
-| T-11 | R9, ARCH-003 | recursion-guard case for the JSON dump | no abort | NOT STARTED |
-| T-12 | R1, R15, R17 | cross build of the staticlib for `aarch64-unknown-linux-gnu`; wasm size | builds; wasm 1,434,097 B | NOT STARTED |
-| T-13 | GATE-001 | `cargo build --workspace`, `cargo clippy --workspace --all-targets -- -D warnings`, `cargo test --workspace`, `mkdocs build --strict` | exit 0 | NOT STARTED |
-| T-14 | GATE-002 | `capy check` all samples; `cargo test --test golden`; `wasm_check.sh` if `deno` is present | 0 failed | NOT STARTED |
+| T-01 | R1–R4, UC-01–03 | `examples/c/run.sh walk` | prints `greet(who=world)`, exit 0 | **PASS** |
+| T-02 | R4, R6, R10, R13 | `cargo test -p capy-ffi --profile ffi --test differential` over every `samples/*/lib.capy` and scripts | 0 differences | **PASS** |
+| T-03 | R5 | `--test expr`: all 12 kinds, int edges, nested paths | equal | **PASS** |
+| T-04 | R2 | `--test threads`: 4 threads × 500 parses of one library | all equal | **PASS** |
+| T-05 | R3 | `run.sh hostile` | handle + diagnostics, no crash | **PASS** |
+| T-06 | R7 | broken grammar via C vs `CapyError` | five fields equal | **PASS** |
+| T-07 | R8, R14 | `run.sh misuse` (ASan+UBSan) | ≥ 40 cases pass | **PASS** |
+| T-08 | R9 | unit test forces a panic through `guard` | `CAPY_E_PANIC`, handle poisoned | **PASS** |
+| T-09 | R11 | `rust/ffi/check_header.sh` | exit 0 | **PASS** |
+| T-10 | R12, R15 | `capy ast --json` byte-identical to the `69fb4ac` binary over all samples; `--with-expr` adds `expr` | 0 diffs; field present | **PASS** |
+| T-11 | R9, ARCH-003 | recursion-guard case for the JSON dump | no abort | **PASS** |
+| T-12 | R1, R15, R17 | cross build of the staticlib for `aarch64-unknown-linux-gnu`; wasm size | builds; wasm 1,434,097 B | **PARTIAL** |
+| T-13 | GATE-001 | `cargo build --workspace`, `cargo clippy --workspace --all-targets -- -D warnings`, `cargo test --workspace`, `mkdocs build --strict` | exit 0 | **PASS** |
+| T-14 | GATE-002 | `capy check` all samples; `cargo test --test golden`; `wasm_check.sh` if `deno` is present | 0 failed | **PARTIAL** |
 
 ## Section 31 Documentation-Impact Decision
 
@@ -271,17 +273,20 @@ A result far better than predicted is investigated before it is believed.
 
 | Step | Detail | Status |
 |---|---|---|
-| Version source | `rust/Cargo.toml` `[workspace.package]`; member manifests and the `capy-wasm-abi` path dependency version; `Cargo.lock` | NOT STARTED |
-| Commits | plan; implementation; `chore(release)`; `docs(program)` (tagged); finalize | NOT STARTED |
-| Tag | `v0.26.0`; `git rev-list -n 1 v0.26.0` equals the recorded SHA | NOT STARTED |
-| Push | **not authorized** — the owner asked for a release, not a push; local commit and tag only, push is offered afterwards | NOT STARTED |
-| Release document | `REL-0.26.0`, after the tag | NOT STARTED |
+| Version source | `rust/Cargo.toml` `[workspace.package]`; six member manifests' `capy-core` pins; `Cargo.lock` (7 files) | DONE — `d1cf161` |
+| Commits | `79dae85` plan (before code) · `114525b` feature · `d1cf161` chore(release) · `docs(program)` **tagged** · finalize | DONE (hashes in `REL-0.26.0`) |
+| Tag | `v0.26.0`; `git rev-list -n 1 v0.26.0` equals the recorded SHA | DONE (see `REL-0.26.0`) |
+| Push | **not authorized** — the owner asked for a release, not a push; local commit and tag only, push is offered afterwards | NOT APPLICABLE (not performed) |
+| Release document | `REL-0.26.0`, after the tag | DONE |
 
 ## Decisions, Findings, Deviations and Blockers
 
 | Date | Kind | Entry |
 |---|---|---|
 | 2026-10-13 | Deviation | Six deviations from the proposal are frozen in `ADR-0005` (`CAPY_E_LOAD`, `CAPY_E_LIMIT`, `rlib`, best-effort foreign-id tag, T-12 platform, diagnostic message composition) |
+| 2026-10-13 | Finding | `ARCH-003` was marked `PASS` in the proposal on the belief that `MAX_PARSE_DEPTH` bounded expressions; it did not. ~20 000 nested parentheses abort the process on 0.25.0. Fixed in scope (`INC-2026-0002`); this is a `capy-core` behaviour change the plan did not list |
+| 2026-10-13 | Finding | `wasm_check.sh` fails on `parse-recovery/broken.capy` identically at `69fb4ac` (`INC-2026-0003`); not caused by this release |
+| 2026-10-13 | Result | `M-01` (31,225,392 B vs ≤ 5.5 MB) and `M-04` (+1,216 B vs equal) missed their frozen thresholds; reported unchanged in `TEST-2026-0015` |
 | 2026-10-13 | Finding | The 2026-10-08 wasm build is 1,434,097 bytes, not the 1.34 MB quoted in the consumer's research; M-04 uses the measured figure |
 
 ## Rollback Strategy
@@ -306,4 +311,5 @@ none blocks this release; all recorded as follow-up.
 
 | Revision | Date | Author | Change |
 |---|---|---|---|
-| 1 | 2026-10-13 | Olivier, Claude | Initial approved plan, committed before any code |
+| 1 | 2026-10-13 | Olivier, Claude | Initial approved plan, committed before any code (`79dae85`) |
+| 2 | 2026-10-13 | Olivier, Claude | Closed: all phases DONE; two scope additions and two missed predictions recorded; release in `REL-0.26.0` |

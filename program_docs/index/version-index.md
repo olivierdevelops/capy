@@ -5,8 +5,8 @@ document_type: reference
 status: active
 
 created_date: 2026-09-16
-last_updated: 2026-10-07
-document_revision: 3
+last_updated: 2026-10-13
+document_revision: 4
 
 authors:
   - Olivier
@@ -53,7 +53,7 @@ next_review_date: 2027-03-16
 
 > **Status:** Active
 > **Created:** 2026-09-16
-> **Last Updated:** 2026-10-07
+> **Last Updated:** 2026-10-13
 > **Owner:** Engineering Documentation Team
 
 Lookup by software version, per `DOCUMENTATION.md` §17.

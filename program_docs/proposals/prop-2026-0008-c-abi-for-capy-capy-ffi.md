@@ -2,11 +2,11 @@
 document_id: PROP-2026-0008
 title: A C ABI for Capy — a `capy-ffi` Crate That Exposes Handles, the Parse Tree, Expressions and Diagnostics
 document_type: proposal
-status: draft
+status: implemented
 
 created_date: 2026-10-13
 last_updated: 2026-10-13
-document_revision: 1
+document_revision: 2
 
 authors:
   - Olivier
@@ -46,6 +46,12 @@ dependencies:
   - Owner decision D1 to D7 below
 
 related_documents:
+  - ADR-0005
+  - PLAN-2026-0005
+  - TEST-2026-0015
+  - RPT-2026-0005
+  - INC-2026-0002
+  - REL-0.26.0
   - PROP-2026-0001
   - PROP-2026-0007
   - STD-2026-0004
@@ -69,7 +75,7 @@ next_review_date: 2027-04-13
 
 # A C ABI for Capy — a `capy-ffi` Crate That Exposes Handles, the Parse Tree, Expressions and Diagnostics
 
-> **Status:** Draft
+> **Status:** Implemented
 > **Created:** 2026-10-13
 > **Last Updated:** 2026-10-13
 > **Affected Versions:** 0.25.0 →
@@ -377,7 +383,7 @@ JSON sample, the new opt-in field only (everything else is the schema in `docs/a
 | CODE-002 / CODE-003 | Applies | No helper, directive or capture type is added | NOT APPLICABLE | none |
 | ARCH-001 | Applies | New information goes in new accessors and a new JSON field; no existing field changes type | PASS | none |
 | ARCH-002 | Applies | R1: `capy-core` keeps `regex` only; `capy-ffi` has no dependency beyond `capy-core` | PASS | `cbindgen` is a tool, not a dependency |
-| ARCH-003 | Applies | R9 and D3: panics are caught at the boundary; recursion depth is already bounded (`MAX_PARSE_DEPTH = 64`) and the tree walk in `capy_parse_to_json` must be iterative or depth-bounded | PASS | add a depth case to `recursion_guard` (T-11) |
+| ARCH-003 | Applies | R9 and D3: panics are caught at the boundary; recursion depth is already bounded (`MAX_PARSE_DEPTH = 64`) and the tree walk in `capy_parse_to_json` must be iterative or depth-bounded | ~~PASS~~ **FAIL, found in execution (revision 2)** | `MAX_PARSE_DEPTH` bounds capture nesting only; the expression parser had no bound and ~20 000 nested parentheses aborted the process (`INC-2026-0002`). Fixed in 0.26.0; see `RPT-2026-0005` D-2 |
 | QUAL-001 | Applies | R13, R15 | PASS | none |
 | QUAL-002 | Applies | R17 and §Frozen Predictions | PASS | freezes at approval |
 | QUAL-003 | Applies | Each test names the defect it detects (§Test and Validation Design) | PASS | none |
@@ -699,7 +705,20 @@ not a measurement).
 
 ## Approval
 
-Not approved. Agent validation above is not approval.
+Approved by the owner on 2026-10-13 ("plan implement validate and release", recorded in `ADR-0005`). Agent
+validation above is not approval.
+
+## Outcome (revision 2)
+
+Implemented as 0.26.0 under `PLAN-2026-0005`; validated in `RPT-2026-0005` (R1–R17: 16 PASS, 1 PARTIAL).
+
+| Item | Outcome |
+|---|---|
+| D1 – D7 | all taken as recommended (`ADR-0005`) |
+| Deviations | six frozen in `ADR-0005` before code; two more in `RPT-2026-0005` (the `capy-core` expression bound, and hand-built `Call` tests) |
+| Frozen predictions | archive size ≤ 5.5 MB **missed** (31,225,392 B); wasm unchanged **missed** (+1,216 B, the depth guard); arena overhead and accessor cost within their predictions |
+| Open questions | OQ-01 (canonical repository) unanswered; OQ-02 – OQ-05 still open as follow-up |
+| API size | 75 functions (the proposal said "roughly 70") |
 
 ## Related Documents
 
@@ -713,3 +732,4 @@ Not approved. Agent validation above is not approval.
 | Revision | Date | Author | Change |
 |---|---|---|---|
 | 1 | 2026-10-13 | Olivier, Claude | Initial draft from the Capylar consumer proposal and a read of `rust/src`, `rust/wasm`, `docs/ast-json.md` and the standards |
+| 2 | 2026-10-13 | Olivier, Claude | Approved (`ADR-0005`) and implemented (0.26.0); `ARCH-003` row corrected; outcome recorded |

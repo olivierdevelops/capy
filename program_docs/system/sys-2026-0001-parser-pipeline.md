@@ -5,8 +5,8 @@ document_type: system
 status: active
 
 created_date: 2026-09-16
-last_updated: 2026-10-07
-document_revision: 4
+last_updated: 2026-10-13
+document_revision: 5
 
 authors:
   - Olivier
@@ -64,14 +64,14 @@ next_review_date: 2027-03-16
 
 > **Status:** Active
 > **Created:** 2026-09-16
-> **Last Updated:** 2026-10-07
-> **Affected Versions:** 0.22.0 and later (current through 0.24.0)
+> **Last Updated:** 2026-10-13
+> **Affected Versions:** 0.22.0 and later (current through 0.26.0)
 > **Owner:** Capy Engine
 > **Affected Components:** capy-core
 
 ## Summary
 
-This describes what the code does through 0.24.0, not what was intended.
+This describes what the code does through 0.26.0, not what was intended.
 
 ## Pipeline
 
@@ -171,6 +171,24 @@ changed. Arithmetic and boolean operators produce `Expr::Binary`.
 `(` remains the prefix-call form; grouping applies only when the contents parse
 as a complete expression that is not a bare identifier, which leaves `(upper n)`
 and `(foo)` exactly as they were.
+
+### The expression recursion bound (0.26.0)
+
+Until 0.25.0 `parse_binary`, `parse_unary` and `parse_primary` recursed without a
+bound; about 20 000 nested parentheses aborted the process (`INC-2026-0002`). Each
+function now enters a thread-local `DepthGuard` (`EXPR_DEPTH`); at `MAX_EXPR_DEPTH =
+3 * 64` entries it returns a `CapyError` ("expression nests too deeply"). The guard
+releases on drop, so an early `?` return or an unwind restores the count.
+
+```text
+  let x = ( ( ( … 1 … ) ) )          63 pairs  -> parses          64 pairs -> refused
+  parse_binary ─► parse_unary ─► parse_primary ─► '(' ─► parse_binary …     3 entries per level
+```
+
+Because `(` first tries grouping and falls back to the call form, the inner bound error
+is discarded and the statement reports the generic `E0001`; the bound is not named in
+the message (known limitation). This bound is independent of `MAX_PARSE_DEPTH`, which
+limits nonterminal (capture) descent.
 
 ## Ordered choice (0.23.0)
 
@@ -292,15 +310,39 @@ print `capy <VERSION>`; an unstamped build therefore prints `capy 0.24.0`, no lo
 `capy dev`. The wasm `capy_version` export already used the same fallback (it also
 ignores an empty `CAPY_VERSION`).
 
+## The C ABI layer (0.26.0)
+
+`rust/ffi` (`capy-ffi`) wraps `Library::new`, `Library::from_file` and `Library::parse`
+for C hosts. It adds no parsing logic. See `ARCH-2026-0002` for the ownership and id
+model and `MAN-2026-0003` for use.
+
+| Piece | File | Responsibility |
+|---|---|---|
+| Handles and ids | `rust/ffi/src/arena.rs` | `CapyParse` owns a boxed `ParseResult`; a breadth-first flatten (no recursion) assigns ids; `with` guards every accessor (null, poisoned, panic) |
+| Library, parse, tree, errors | `rust/ffi/src/lib.rs` | `capy_library_*`, `capy_parse*`, block / statement / capture accessors, load errors; `catch_unwind` around library load and parse |
+| Diagnostics, error nodes | `rust/ffi/src/diag.rs` | `capy_diag_*`, `capy_err_*` |
+| Expressions | `rust/ffi/src/expr.rs` | `capy_expr_*`, `capy_var_step_*`, `capy_obj_key*` |
+| JSON | `rust/ffi/src/json.rs`, `rust/src/domain/ast_json.rs` | `capy_parse_to_json`; the `expr` writer (`expr_val`) behind `include_expr` |
+| Header | `rust/ffi/include/capy.h`, `rust/ffi/cbindgen.toml`, `rust/ffi/check_header.sh` | generated and checked in; drift fails the check |
+| Build | `rust/Cargo.toml` `[profile.ffi]` | `release` with `panic = "unwind"`; `capy-cli` and the wasm module keep `panic = "abort"` |
+
+`capy ast --json --with-expr` (`rust/cli/src/cmd_ast.rs`) passes `include_expr` to
+`to_json_pretty_with`. With the flag absent the writer's output is byte-identical to
+0.25.0.
+
 ## Last Verified Version
 
-0.24.0, `main` at `cb23972`, 2026-10-07; `cargo test --workspace`: 135 passed,
-0 failed (`DEMO-2026-0004` U-07). Each statement in the 0.24.0 sections above was
-checked against `make_parser.rs`, `rust/wasm/src/lib.rs` and `rust/cli/src/main.rs`.
+0.26.0, `main` at `d1cf161` plus documentation, 2026-10-13; `cargo test --workspace`:
+174 passed, 0 failed (`TEST-2026-0015`). The 0.26.0 sections were checked against
+`value_parser.rs`, `rust/ffi/src/*.rs` and `ast_json.rs`; the 0.24.0 sections were
+last checked against `make_parser.rs`, `rust/wasm/src/lib.rs` and `rust/cli/src/main.rs`
+on 2026-10-07 and were not re-read for this release.
 
 ## Known limitations
 
 - No byte offsets on `Span`.
+- The expression bound (63 nested pairs of parentheses) is fixed and its violation is reported as the generic `E0001`.
+- The C ABI exposes parsing only; `run`, `introspect` and `set_host` are not exposed.
 - `E0002` (an unclosed delimiter) is still reserved and unemitted.
 - The nesting bound is fixed at 64 captures and is not configurable.
 - Only leading comments are attached; trailing and interior are retained but
@@ -316,3 +358,4 @@ checked against `make_parser.rs`, `rust/wasm/src/lib.rs` and `rust/cli/src/main.
 | 2 | 2026-09-16 | Olivier | Added the 0.22.0 diagnostics, recovery and value-expression sections |
 | 3 | 2026-10-07 | Olivier | Added ordered choice (0.23.0): lib-parser, loader validation and guard, matcher `match_alt`, public surfaces; refreshed scope and component table |
 | 4 | 2026-10-07 | Olivier | 0.24.0: documented `depth_err` / `fail_code` and `E0003`, the wasm `alts` field and the version fallback; removed the statements that became false (bound message consumed by the rewind; generic "no library function matches" at the bound; browser JSON without `alts`); last verified 0.24.0 |
+| 5 | 2026-10-13 | Olivier, Claude | 0.26.0: the expression recursion bound (`INC-2026-0002`) and the C ABI layer (`rust/ffi`); refreshed scope, last verified version and limitations |

@@ -5,8 +5,8 @@ document_type: reference
 status: active
 
 created_date: 2026-09-16
-last_updated: 2026-10-08
-document_revision: 10
+last_updated: 2026-10-13
+document_revision: 11
 
 authors:
   - Olivier
@@ -105,6 +105,7 @@ Lookup by ID, type, status, component and owner, per `DOCUMENTATION.md` §17.
 | PROP-2026-0006 | Scaling and Incremental Parsing — Remove the Quadratic State Cost, Establish a Scaling Baseline, Decide on Incremental Reparse | proposal | draft | capy-core, capy-cli, capy-wasm-abi, docs | Capy Engine | 2026-10-07 | [`proposals/prop-2026-0006-scaling-and-incremental-parsing.md`](../proposals/prop-2026-0006-scaling-and-incremental-parsing.md) |
 | PROP-2026-0007 | Parser and Pipeline Speed Experiments — Measure Candidate Speed-Ups and Three Architectures Before Building Any of Them | proposal | draft | capy-core, capy-wasm-abi, docs | Capy Engine | 2026-10-08 | [`proposals/prop-2026-0007-parser-and-pipeline-speed-experiments.md`](../proposals/prop-2026-0007-parser-and-pipeline-speed-experiments.md) |
 | TEST-2026-0014 | Test — Parser and Pipeline Speed Experiments (PROP-2026-0007) | test | completed | capy-core, capy-wasm-abi | Capy Engine | 2026-10-08 | [`testing/test-2026-0014-parser-speed-experiments.md`](../testing/test-2026-0014-parser-speed-experiments.md) |
+| PROP-2026-0008 | A C ABI for Capy — a `capy-ffi` Crate That Exposes Handles, the Parse Tree, Expressions and Diagnostics | proposal | draft | capy-ffi, capy-core, capy-cli, docs | Capy Engine | 2026-10-13 | [`proposals/prop-2026-0008-c-abi-for-capy-capy-ffi.md`](../proposals/prop-2026-0008-c-abi-for-capy-capy-ffi.md) |
 | ADR-0004 | Approve PROP-2026-0005 — Ordered-Choice Follow-Ups | decision | approved | capy-core, capy-cli, capy-wasm-abi, docs | Capy Engine | 2026-10-07 | [`decisions/adr-0004-approve-ordered-choice-follow-ups.md`](../decisions/adr-0004-approve-ordered-choice-follow-ups.md) |
 | PLAN-2026-0004 | Implementation Plan — Ordered-Choice Follow-Ups (0.24.0) | plan | completed | capy-core, capy-cli, capy-wasm-abi, docs | Capy Engine | 2026-10-07 | [`plans/plan-2026-0004-ordered-choice-follow-ups.md`](../plans/plan-2026-0004-ordered-choice-follow-ups.md) |
 | TEST-2026-0012 | Test — Nesting Bound, Browser alts and Build Identity | test | completed | capy-core, capy-cli, capy-wasm-abi, docs | Capy Engine | 2026-10-07 | [`testing/test-2026-0012-nesting-bound-wasm-alts-version.md`](../testing/test-2026-0012-nesting-bound-wasm-alts-version.md) |
@@ -126,7 +127,7 @@ Lookup by ID, type, status, component and owner, per `DOCUMENTATION.md` §17.
 | Status | Documents |
 |---|---|
 | active | REF-2026-0001, STD-2026-0000…0006, DEMO-2026-0001…0004, MAN-2026-0001, MAN-2026-0002, SYS-2026-0001, ARCH-2026-0001, TRBL-2026-0001 |
-| draft | PROP-2026-0003, PROP-2026-0006, PROP-2026-0007 |
+| draft | PROP-2026-0003, PROP-2026-0006, PROP-2026-0007, PROP-2026-0008 |
 | approved | ADR-0001, ADR-0002, ADR-0003, ADR-0004 |
 | completed | TEST-2026-0001…0014, RPT-2026-0001…0004, PLAN-2026-0001…0004, REL-0.21.0, REL-0.22.0, REL-0.23.0, REL-0.24.0 |
 | implemented | PROP-2026-0001, PROP-2026-0002, PROP-2026-0004, PROP-2026-0005 |
@@ -136,16 +137,17 @@ Lookup by ID, type, status, component and owner, per `DOCUMENTATION.md` §17.
 
 | Component | Documents |
 |---|---|
-| capy-core | PROP-2026-0001, PROP-2026-0003, PROP-2026-0004, INC-2026-0001, REL-0.23.0, PLAN-2026-0001, PLAN-2026-0003, PLAN-2026-0004, PROP-2026-0005, ADR-0004, TEST-2026-0012, TEST-2026-0013, RPT-2026-0004, DEMO-2026-0004, ADR-0003, TEST-2026-0009…0011, RPT-2026-0003, DEMO-2026-0003, MAN-2026-0002, PROP-2026-0007 |
-| capy-cli | PROP-2026-0001, PROP-2026-0002, PLAN-2026-0001 |
+| capy-core | PROP-2026-0001, PROP-2026-0003, PROP-2026-0004, INC-2026-0001, REL-0.23.0, PLAN-2026-0001, PLAN-2026-0003, PLAN-2026-0004, PROP-2026-0005, ADR-0004, TEST-2026-0012, TEST-2026-0013, RPT-2026-0004, DEMO-2026-0004, ADR-0003, TEST-2026-0009…0011, RPT-2026-0003, DEMO-2026-0003, MAN-2026-0002, PROP-2026-0007, PROP-2026-0008 |
+| capy-cli | PROP-2026-0001, PROP-2026-0002, PLAN-2026-0001, PROP-2026-0008 |
+| capy-ffi | PROP-2026-0008 |
 | capy-wasm-abi | PROP-2026-0001, PROP-2026-0007 |
-| docs | REF-2026-0001, PROP-2026-0001, PROP-2026-0002, PROP-2026-0003, PROP-2026-0004, PLAN-2026-0001, PLAN-2026-0003, ADR-0003, PROP-2026-0007 |
+| docs | REF-2026-0001, PROP-2026-0001, PROP-2026-0002, PROP-2026-0003, PROP-2026-0004, PLAN-2026-0001, PLAN-2026-0003, ADR-0003, PROP-2026-0007, PROP-2026-0008 |
 
 ## Next available IDs
 
 | Prefix | Next |
 |---|---|
-| `PROP` | PROP-2026-0008 |
+| `PROP` | PROP-2026-0009 |
 | `STD` | STD-2026-0007 |
 | `PLAN` | PLAN-2026-0005 |
 | `TEST` | TEST-2026-0015 |
@@ -172,3 +174,4 @@ Lookup by ID, type, status, component and owner, per `DOCUMENTATION.md` §17.
 | 8 | 2026-10-08 | Olivier | PROP-2026-0007 revised to revision 2 (title updated: three architectures added) |
 | 9 | 2026-10-08 | Olivier | PROP-2026-0007 revised to revision 3 (ordering, exclusion proof, prefix handoff, AST compatibility, adoption rule) |
 | 10 | 2026-10-08 | Olivier | Added TEST-2026-0014 (PROP-2026-0007 experiment results); next `TEST` advanced to 0015 |
+| 11 | 2026-10-13 | Olivier, Claude | Added draft PROP-2026-0008 (C ABI for Capy); next `PROP` advanced to 0009 |

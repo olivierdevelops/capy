@@ -17,4 +17,4 @@ path = "src/lib.rs"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [dependencies]
-capy-core = { path = "..", version = "0.25.0" }
+capy-core = { path = "..", version = "0.26.0" }

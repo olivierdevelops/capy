@@ -27,7 +27,7 @@ components:
 
 version: "0.26.0"
 git_tag: v0.26.0
-git_commit: 8e81cdd6489614a4a45ada791e1a29363decea9b
+git_commit: 05ae277798183abf79b038c3716c817ed485c1a8
 release_date: 2026-10-13
 source_branch: main
 previous_version: "0.25.0"
@@ -107,7 +107,7 @@ that had been committed under *Unreleased*, and fixes a crash found along the wa
 |---|---|
 | Release Version | 0.26.0 |
 | Git Tag | `v0.26.0` (annotated) |
-| Git Commit | `8e81cdd6489614a4a45ada791e1a29363decea9b` |
+| Git Commit | `05ae277798183abf79b038c3716c817ed485c1a8` |
 | Release Date | 2026-10-13 |
 | Source Branch | `main` |
 | Previous Version | 0.25.0 |
@@ -120,16 +120,17 @@ that had been committed under *Unreleased*, and fixes a crash found along the wa
    REL-0.26.0
       │ version = 0.26.0
       │ tag     = v0.26.0
-      │ commit  = 8e81cdd6489614a4a45ada791e1a29363decea9b
+      │ commit  = 05ae277798183abf79b038c3716c817ed485c1a8
       ▼
-   Git Tag v0.26.0 ─► Git Commit 8e81cdd ─► exact source state
+   Git Tag v0.26.0 ─► Git Commit 05ae277 ─► exact source state
    (git rev-list -n 1 v0.26.0 == git rev-parse HEAD at tagging; a fresh worktree of the tag: 174 tests pass, `capy 0.26.0`,
     `examples/c/run.sh walk` PASS, `capy.h` up to date)
 ```
 
 Commits, in order: `79dae85` proposal + ADR + plan (**before** the code), `114525b` feature, `d1cf161` chore(release),
-`bb7c951` demo programs and the exact bound, `8e81cdd` docs(program) **← tagged**, then the finalize commit that adds
-this document.
+`bb7c951` demo programs and the exact bound, `8e81cdd` docs(program) and `85b708b` first release document (both
+**superseded**: the tag was moved before anything was pushed), `e096ba2` fix: over-deep expressions are reported by name
+(`E0003`), `05ae277` docs(program) **← tagged**, then the finalize commit that updates this document.
 
 ## Plan
 

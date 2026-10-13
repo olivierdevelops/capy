@@ -37,7 +37,8 @@ pub fn parse_value<R: TokReader + ?Sized>(
 /// cannot be caught as `Err`. `ARCH-003` requires every recursive descent to be bounded.
 ///
 /// One unit is one entry into `parse_binary`, `parse_unary` or `parse_primary`; a parenthesised
-/// level costs three, so the limit is 64 levels of nesting — the same bound the capture matcher uses
+/// level costs three, so an expression may nest 64 levels counting its own outermost one (63 pairs of
+/// parentheses parse, the 64th is refused) — the same bound the capture matcher uses
 /// (`MAX_PARSE_DEPTH`) and for the same reason: far beyond hand-written source, and inside the 2 MiB a
 /// Rust test thread gets in a debug build.
 const MAX_EXPR_DEPTH: u32 = 3 * 64;

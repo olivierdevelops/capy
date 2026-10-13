@@ -2,6 +2,8 @@
 # Builds the C ABI under the ffi profile and runs the C programs.
 #
 #   examples/c/run.sh walk      # the PROP-2026-0008 sample, built with zig cc if present, else $CC
+#   examples/c/run.sh diagnose  # error and diagnostic paths
+#   examples/c/run.sh exprs     # typed expression tree and JSON dump
 #   examples/c/run.sh hostile   # hostile inputs, ASan + UBSan
 #   examples/c/run.sh misuse    # misuse suite, ASan + UBSan
 #   examples/c/run.sh all
@@ -33,10 +35,14 @@ run_walk() {
 }
 run_san() { build "$1" -fsanitize=address,undefined -fno-sanitize-recover=undefined -fno-omit-frame-pointer; "$OUT/$1"; }
 
+run_show() { build "$1" -O2 $DEAD; "$OUT/$1"; }
+
 case "${1:-all}" in
   walk) run_walk ;;
+  diagnose) run_show diagnose ;;
+  exprs) run_show exprs ;;
   hostile) run_san hostile ;;
   misuse) run_san misuse ;;
   all) run_walk; run_san hostile; run_san misuse ;;
-  *) echo "usage: $0 walk|hostile|misuse|all" >&2; exit 2 ;;
+  *) echo "usage: $0 walk|diagnose|exprs|hostile|misuse|all" >&2; exit 2 ;;
 esac

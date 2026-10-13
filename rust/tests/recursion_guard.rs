@@ -320,3 +320,11 @@ fn the_depth_counter_is_released_between_statements() {
     assert!(diags >= 1, "the deep statement is reported");
     assert_eq!(stmts, 2, "the two ordinary statements after it still parse");
 }
+
+#[test]
+fn the_bound_is_exactly_63_pairs_of_parentheses() {
+    // Pins the documented limit: an expression may nest 64 levels counting its own outermost one.
+    let src = |n: usize| format!("let x = {}1{}\n", "(".repeat(n), ")".repeat(n));
+    assert!(parse_clean(src(63)), "63 pairs must parse");
+    assert!(!parse_clean(src(64)), "64 pairs must be refused");
+}

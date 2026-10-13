@@ -34,7 +34,7 @@ A C interface (`PROP-2026-0008`, measured in `TEST-2026-0015`), and the speed an
 
 ### Fixed
 
-- **Deeply nested expressions aborted the process** (`INC-2026-0002`). The value-expression parser had no depth bound: about 20 000 nested parentheses overflowed an 8 MiB stack (about 1 000 in a debug build, fewer on a smaller thread) — a crash no embedder can catch as `Err`, in breach of `ARCH-003`. Expression nesting is now bounded at 64 levels (parentheses, brackets, braces, `not` chains, `**` chains, prefix calls); a deeper statement gets an ordinary diagnostic. Nothing nested less deeply changes. The diagnostic is the generic `E0001`; naming the bound in the message is follow-up work.
+- **Deeply nested expressions aborted the process** (`INC-2026-0002`). The value-expression parser had no depth bound: about 20 000 nested parentheses overflowed an 8 MiB stack (about 1 000 in a debug build, fewer on a smaller thread) — a crash no embedder can catch as `Err`, in breach of `ARCH-003`. Expression nesting is now bounded at 64 levels — 63 nested pairs of parentheses parse, the 64th is refused (likewise brackets, braces, `not` chains, `**` chains, prefix calls); a deeper statement gets an ordinary diagnostic. Nothing nested less deeply changes. The diagnostic is the generic `E0001`; naming the bound in the message is follow-up work.
 - A rule that failed after splitting a merged punctuation token (`><`, `=>`) left the remainder in the token stream, so later rules saw
   corrupted tokens: a `tail` capture could hold `> -> =>` for `=> -> =>`. `ErrorNode.tokens` in `capy ast --json` now holds the real source
   tokens (two shipped samples' JSON changed). Regression test: `tests/cursor_split.rs`.

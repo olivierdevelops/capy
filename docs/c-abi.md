@@ -201,7 +201,7 @@ if (capy_parse_to_json(p, CAPY_JSON_EXPR | CAPY_JSON_PRETTY, &buf, &len) == CAPY
 
 | Item | Behaviour |
 |---|---|
-| Expression nesting | beyond 64 levels (parentheses, brackets, `not`, `**` chains, braces) the statement is refused with a diagnostic instead of overflowing the stack. Before 0.26.0 about 20 000 nested parentheses aborted the process. |
+| Expression nesting | 63 nested pairs of parentheses parse and the 64th is refused (likewise brackets, braces, `not` and `**` chains); the statement is refused with a diagnostic instead of overflowing the stack. Before 0.26.0 about 20 000 nested parentheses aborted the process. |
 | Capture nesting | the existing bound of 64 captures still applies (`E0003`) |
 | Tree size | more than 2^24 − 2 nodes in one parse is `CAPY_E_LIMIT` |
 | Ids from another parse | detected with high probability (an 8-bit tag), not with certainty; do not mix ids across parses |

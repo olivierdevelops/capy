@@ -8,6 +8,20 @@ may break between minor versions**.
 
 ## [Unreleased]
 
+### Added
+
+- A call written `f(args)`, with the `(` touching the name, is an operand of an expression when an
+  operator is next to it or it sits in another call's arguments. `n * fact(n - 1)` is now a tree
+  whose right child is the call, instead of the flat chain of `return_ar`. A bare `f(x)` keeps the
+  tree the grammar rules give it today. Tests: `rust/tests/call_operand.rs`.
+
+### Fixed
+
+- `a-1`, `f(x)-1`, `xs[0]-1` and `"s"-1` now parse as subtraction. Before, the lexer read
+  `-1` as a signed literal right after a value, so `a-1` was a syntax error. A `-` after a
+  space is still a sign, so space-separated arguments (`player -4 0`, `[1 -1]`) and
+  `-9223372036854775808` keep their meaning. Tests: `rust/tests/minus_sign.rs`.
+
 ## [0.26.0] — 2026-10-13
 
 A C interface (`PROP-2026-0008`, measured in `TEST-2026-0015`), and the speed and memory work of `PROP-2026-0007` (`TEST-2026-0014`). Output is unchanged except for the two items under *Fixed*.

@@ -151,6 +151,10 @@ Infix operators inside `${ … }` and the inner DSL, loosest to tightest. All
 zero-argument call — parentheses group only where that is unambiguous. Full
 rules: [language-reference.md](language-reference.md#operator-precedence).
 
+`a-1` subtracts (the `-` touches `a`); `a -1` is two values, `a` and `-1`, so
+`player -4 0` keeps its three arguments. `n * fact(n - 1)` is a call as an operand: write the
+`(` against the name, with comma-separated arguments.
+
 ## Built-in template helpers
 
 Callable inside `${…}` interpolation. The authoritative list lives in

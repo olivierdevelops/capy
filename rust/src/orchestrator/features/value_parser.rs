@@ -100,6 +100,26 @@ impl Drop for DepthGuard {
     }
 }
 
+thread_local! {
+    /// Non-zero while a primary is parsed as an operand of an operator or as a call argument.
+    static OPERAND_POSITION: std::cell::Cell<u32> = const { std::cell::Cell::new(0) };
+}
+
+struct OperandPosition;
+
+impl OperandPosition {
+    fn enter() -> OperandPosition {
+        OPERAND_POSITION.with(|c| c.set(c.get() + 1));
+        OperandPosition
+    }
+}
+
+impl Drop for OperandPosition {
+    fn drop(&mut self) {
+        OPERAND_POSITION.with(|c| c.set(c.get() - 1));
+    }
+}
+
 /// PLAN-2026-0002 R10/R11 — precedence climbing.
 ///
 /// Binding power, loosest first. All operators are LEFT-associative, so
@@ -167,7 +187,10 @@ fn parse_binary<R: TokReader + ?Sized>(
         r.advance();
         // Left-associative: the right operand binds tighter than this level.
         // `**` is right-associative: its right operand binds at the SAME level.
-        let right = parse_binary(r, stop, if op == "**" { bp } else { bp + 1 })?;
+        let right = {
+            let _operand = OperandPosition::enter();
+            parse_binary(r, stop, if op == "**" { bp } else { bp + 1 })?
+        };
         left = if kind == "cmp" {
             Expr::Compare(Box::new(CompareExpr { op, left, right }))
         } else {
@@ -186,6 +209,7 @@ pub fn parse_unary<R: TokReader + ?Sized>(
     let t = r.peek();
     if t.kind == TokenKind::Ident && t.text == "not" && !contains(stop, "not") {
         r.advance();
+        let _operand = OperandPosition::enter();
         let x = parse_unary(r, stop)?;
         return Ok(Expr::Not(Box::new(x)));
     }
@@ -193,10 +217,60 @@ pub fn parse_unary<R: TokReader + ?Sized>(
     // still the literal.
     if t.kind == TokenKind::Punct && (t.text == "-" || t.text == "~") && !contains(stop, &t.text) {
         r.advance();
+        let _operand = OperandPosition::enter();
         let operand = parse_binary(r, stop, 11)?;
         return Ok(Expr::Unary(Box::new(crate::domain::ast::UnaryExpr { op: t.text.clone(), operand })));
     }
     parse_primary(r, stop)
+}
+
+/// A number literal from its source text, sign included. Go tries ParseInt first; ANY error
+/// (syntax or range) falls through to ParseFloat, so an i64-overflowing literal becomes a float.
+fn number_literal(text: &str) -> Result<Expr, CapyError> {
+    if let Ok(i) = text.parse::<i64>() {
+        return Ok(Expr::Number(NumberLit { is_int: true, i, f: 0.0 }));
+    }
+    match text.parse::<f64>() {
+        Ok(f) => Ok(Expr::Number(NumberLit { is_int: false, i: 0, f })),
+        Err(_) => Err(CapyError::msg(format!("bad number {}", gofmt::quote(text)))),
+    }
+}
+
+/// When the current token is `-` and the next is a number starting in the very next column
+/// of the same line, returns that number token. The reader is left where it was.
+fn touching_number<R: TokReader + ?Sized>(r: &mut R) -> Option<crate::domain::token::Token> {
+    let minus = r.peek();
+    if minus.kind != TokenKind::Punct || minus.text != "-" {
+        return None;
+    }
+    let saved = r.save();
+    r.advance();
+    let n = r.peek();
+    r.restore(saved);
+    (n.kind == TokenKind::Number && n.line == minus.line && n.col == minus.col + 1).then_some(n)
+}
+
+/// The arguments of `name(` ... `)`: values separated by commas (newlines inside the brackets are
+/// skipped), each a full expression, so `fact(n - 1)` and `add(1 + 2, 3)` nest.
+fn parse_touching_call<R: TokReader + ?Sized>(r: &mut R, name: String) -> Result<Expr, CapyError> {
+    r.advance();
+    let mut args: Vec<Expr> = Vec::new();
+    loop {
+        skip_newlines(r);
+        if r.peek().kind == TokenKind::RParen {
+            r.advance();
+            return Ok(Expr::Call(CallExpr { name: vec![name], args }));
+        }
+        let _operand = OperandPosition::enter();
+        args.push(parse_binary(r, &[], 0)?);
+        skip_newlines(r);
+        let next = r.peek();
+        if next.kind == TokenKind::Punct && next.text == "," {
+            r.advance();
+        } else if next.kind != TokenKind::RParen {
+            return Err(CapyError::msg("expected , or ) in call arguments"));
+        }
+    }
 }
 
 /// Port of `parsePrimary`.
@@ -206,20 +280,17 @@ pub fn parse_primary<R: TokReader + ?Sized>(
 ) -> Result<Expr, CapyError> {
     let _depth = DepthGuard::enter(&*r)?;
     let t = r.peek();
+    // In argument and list position (`(f a-1)`, `[a-1]`) the lexer's split `-` is still the
+    // literal's sign, as it was before `a-1` became subtraction in expressions.
+    if let Some(n) = touching_number(r) {
+        r.advance();
+        r.advance();
+        return number_literal(&format!("-{}", n.text));
+    }
     match t.kind {
         TokenKind::Number => {
             r.advance();
-            // Go tries ParseInt first; ANY error (syntax or range) falls through
-            // to ParseFloat, so an i64-overflowing literal becomes a float.
-            if let Ok(i) = t.text.parse::<i64>() {
-                return Ok(Expr::Number(NumberLit { is_int: true, i, f: 0.0 }));
-            }
-            match t.text.parse::<f64>() {
-                Ok(f) => Ok(Expr::Number(NumberLit { is_int: false, i: 0, f })),
-                Err(_) => {
-                    Err(CapyError::msg(format!("bad number {}", gofmt::quote(&t.text))))
-                }
-            }
+            number_literal(&t.text)
         }
         TokenKind::Str | TokenKind::Template => {
             r.advance();
@@ -242,6 +313,25 @@ pub fn parse_primary<R: TokReader + ?Sized>(
                 _ => {}
             }
             r.advance();
+            // `f(a, b)` with the `(` touching the name is a call OPERAND when an operator is on
+            // either side of it, or it sits in another call's arguments: `n * fact(n - 1)` is a
+            // tree with the call as the right child. A bare `f(x)` (a statement, a value, a
+            // `case Config(cfg)` pattern) is left to the grammar rules that read it today.
+            let open = r.peek();
+            if open.kind == TokenKind::LParen
+                && open.line == t.line
+                && open.col == t.col + t.text.chars().count()
+            {
+                let after_name = r.save();
+                let operand_position = OPERAND_POSITION.with(|c| c.get() > 0);
+                if let Ok(call) = parse_touching_call(r, t.text.clone()) {
+                    let operator_follows = binding_power(&r.peek()).is_some();
+                    if operand_position || operator_follows {
+                        return Ok(call);
+                    }
+                }
+                r.restore(after_name);
+            }
             // steps[0] is the root name; subsequent `.field` and `[expr]` steps
             // alternate freely so `context.rows[i].name[j]` parses.
             let mut steps: Vec<PathStep> = vec![PathStep::field(t.text.clone())];

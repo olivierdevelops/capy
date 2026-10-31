@@ -117,6 +117,25 @@ a and b or c       →  (a and b) or c
 
 `not` is a prefix operator and binds tighter than all of them.
 
+**Calls in expressions.** `f(args)` with the `(` touching the name is an operand wherever an
+operator is next to it, or inside another call's arguments. Its arguments are full expressions
+separated by commas, so `n * fact(n - 1)` and `add(1 + 2, 3) * 2` are trees with the call as a child.
+A bare `f(x)`, a `case Config(cfg)` pattern and the prefix form `(f x)` are unchanged; a space
+before the bracket (`one (2)`) is not this form.
+
+**Minus sign.** A `-` that touches the value before it is subtraction; a `-` that follows a
+space and touches a number is that number's sign. Space-separated arguments therefore keep
+their meaning:
+
+```
+a-1        →  a - 1          (touches `a`: subtraction)
+a - 1      →  a - 1
+f(x)-1     →  f(x) - 1       (also after `)` `]`, a number or a string)
+a -1       →  a,  -1         (space before, none after: two values)
+player -4 0  →  player, -4, 0
+-9223372036854775808   one literal, the smallest int
+```
+
 **Grouping.** `(` is primarily the *prefix-call* form — `(upper name)` calls a
 helper — so parentheses group only where that is unambiguous: when the contents
 parse as a complete expression that is not a bare identifier. `(a + b) * c`

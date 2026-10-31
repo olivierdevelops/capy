@@ -371,10 +371,17 @@ fn tokenize_line(
         } else if is_digit(r)
             // NOTE: the Go guard ends in `|| true`, which makes the entire
             // trailing parenthesised group dead. The effective condition is
-            // just "a digit, or a '-' immediately followed by a digit".
+            // "a digit, or a '-' immediately followed by a digit".
             // Go casts `line[i+1]` (a byte) to a rune, so only ASCII digits
             // qualify for the lookahead.
-            || (r == '-' && i + 1 < b.len() && (b[i + 1] as char).is_ascii_digit())
+            //
+            // A '-' that touches the value before it (`a-1`, `f(x)-1`, `xs[0]-1`) is
+            // subtraction, so it stays punctuation. A '-' after a space (`player -4 0`)
+            // is still a sign: space-separated arguments keep their meaning.
+            || (r == '-'
+                && i + 1 < b.len()
+                && (b[i + 1] as char).is_ascii_digit()
+                && !touches_value(toks.last(), line_no, col))
         {
             let n = read_number(&line[i..]);
             toks.push(Token {
@@ -448,6 +455,23 @@ fn read_string(s: &str, quote: u8) -> Result<(String, usize), String> {
 
 /// Port of `readNumber`. Go tests each byte with `unicode.IsDigit(rune(c))`, so
 /// only ASCII digits are consumed.
+/// Whether `last` is a value (a name, number, string, or closing `)` or `]`) that ends
+/// exactly at column `col` of line `line`, with no space before the token that starts there.
+fn touches_value(last: Option<&Token>, line: usize, col: usize) -> bool {
+    let Some(t) = last else { return false };
+    let is_value = matches!(
+        t.kind,
+        TokenKind::Ident
+            | TokenKind::Number
+            | TokenKind::Str
+            | TokenKind::Template
+            | TokenKind::RParen
+            | TokenKind::RBrack
+    );
+    let width = if t.width == 0 { t.text.len() } else { t.width };
+    is_value && t.line == line && t.col + width == col
+}
+
 pub(crate) fn read_number(s: &str) -> usize {
     let b = s.as_bytes();
     let mut i = 0usize;

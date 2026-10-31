@@ -34,3 +34,6 @@ examples/*/Cargo.lock
 
 # Gradle build cache, if someone runs gradle inside a sample expected/ tree.
 .gradle/
+
+# rustc probe output (crate named "stdin"); never a build input
+/rust/libstdin.a

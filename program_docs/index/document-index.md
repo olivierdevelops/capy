@@ -107,6 +107,7 @@ Lookup by ID, type, status, component and owner, per `DOCUMENTATION.md` §17.
 | TEST-2026-0014 | Test — Parser and Pipeline Speed Experiments (PROP-2026-0007) | test | completed | capy-core, capy-wasm-abi | Capy Engine | 2026-10-08 | [`testing/test-2026-0014-parser-speed-experiments.md`](../testing/test-2026-0014-parser-speed-experiments.md) |
 | PROP-2026-0008 | A C ABI for Capy — a `capy-ffi` Crate That Exposes Handles, the Parse Tree, Expressions and Diagnostics | proposal | implemented | capy-ffi, capy-core, capy-cli, docs | Capy Engine | 2026-10-13 | [`proposals/prop-2026-0008-c-abi-for-capy-capy-ffi.md`](../proposals/prop-2026-0008-c-abi-for-capy-capy-ffi.md) |
 | ADR-0005 | Approve PROP-2026-0008 — A C ABI for Capy | decision | approved | capy-ffi, capy-core, capy-cli, docs | Capy Engine | 2026-10-13 | [`decisions/adr-0005-approve-c-abi-for-capy.md`](../decisions/adr-0005-approve-c-abi-for-capy.md) |
+| PLAN-2026-0006 | Implementation Plan — Statement continuation after a delimiter block close (0.27.0) | plan | completed | capy-core, docs | Capy Engine | 2026-11-16 | [`plans/plan-2026-0006-block-close-continuation.md`](../plans/plan-2026-0006-block-close-continuation.md) |
 | PLAN-2026-0005 | Implementation Plan — A C ABI for Capy (0.26.0) | plan | completed | capy-ffi, capy-core, capy-cli, docs | Capy Engine | 2026-10-13 | [`plans/plan-2026-0005-c-abi-for-capy.md`](../plans/plan-2026-0005-c-abi-for-capy.md) |
 | INC-2026-0002 | Incident — Deeply Nested Expressions Overflow the Stack | incident | resolved | capy-core | Capy Engine | 2026-10-13 | [`incidents/resolved/inc-2026-0002-deep-expression-nesting-overflows-the-stack.md`](../incidents/resolved/inc-2026-0002-deep-expression-nesting-overflows-the-stack.md) |
 | INC-2026-0003 | Incident — wasm_check.sh Fails on parse-recovery/broken.capy (Pre-Existing) | incident | active | capy-wasm-abi | Capy Engine | 2026-10-13 | [`incidents/active/inc-2026-0003-wasm-check-parse-recovery-mismatch.md`](../incidents/active/inc-2026-0003-wasm-check-parse-recovery-mismatch.md) |
@@ -115,6 +116,7 @@ Lookup by ID, type, status, component and owner, per `DOCUMENTATION.md` §17.
 | DEMO-2026-0005 | Release Verification Guide — 0.26.0 | demo | active | capy-ffi, capy-core, capy-cli, docs | Capy Engine | 2026-10-13 | [`demos/demo-2026-0005-release-verification-0.26.0.md`](../demos/demo-2026-0005-release-verification-0.26.0.md) |
 | MAN-2026-0003 | Manual — Calling Capy from C | manual | active | capy-ffi, capy-cli, docs | Capy Engine | 2026-10-13 | [`manuals/man-2026-0003-calling-capy-from-c.md`](../manuals/man-2026-0003-calling-capy-from-c.md) |
 | ARCH-2026-0002 | Architecture — The C ABI: Handles, Ids and Borrowed Strings | architecture | active | capy-ffi, capy-core | Capy Engine | 2026-10-13 | [`architecture/components/arch-2026-0002-c-abi-handles-ids-and-borrowed-strings.md`](../architecture/components/arch-2026-0002-c-abi-handles-ids-and-borrowed-strings.md) |
+| REL-0.27.0 | Release 0.27.0 — } else { on one line | release | completed | capy-core, docs | Release Management | 2026-11-16 | [`releases/rel-0.27.0-release-notes.md`](../releases/rel-0.27.0-release-notes.md) |
 | REL-0.26.0 | Release 0.26.0 — Capy from C | release | completed | capy-ffi, capy-core, capy-cli, docs | Release Management | 2026-10-13 | [`releases/rel-0.26.0-release-notes.md`](../releases/rel-0.26.0-release-notes.md) |
 | ADR-0004 | Approve PROP-2026-0005 — Ordered-Choice Follow-Ups | decision | approved | capy-core, capy-cli, capy-wasm-abi, docs | Capy Engine | 2026-10-07 | [`decisions/adr-0004-approve-ordered-choice-follow-ups.md`](../decisions/adr-0004-approve-ordered-choice-follow-ups.md) |
 | PLAN-2026-0004 | Implementation Plan — Ordered-Choice Follow-Ups (0.24.0) | plan | completed | capy-core, capy-cli, capy-wasm-abi, docs | Capy Engine | 2026-10-07 | [`plans/plan-2026-0004-ordered-choice-follow-ups.md`](../plans/plan-2026-0004-ordered-choice-follow-ups.md) |
@@ -139,7 +141,7 @@ Lookup by ID, type, status, component and owner, per `DOCUMENTATION.md` §17.
 | active | REF-2026-0001, STD-2026-0000…0006, DEMO-2026-0001…0005, MAN-2026-0001…0003, SYS-2026-0001, ARCH-2026-0001, ARCH-2026-0002, TRBL-2026-0001, INC-2026-0003 |
 | draft | PROP-2026-0003, PROP-2026-0006, PROP-2026-0007 |
 | approved | ADR-0001, ADR-0002, ADR-0003, ADR-0004, ADR-0005 |
-| completed | TEST-2026-0001…0015, RPT-2026-0001…0005, PLAN-2026-0001…0005, REL-0.21.0, REL-0.22.0, REL-0.23.0, REL-0.24.0, REL-0.26.0 |
+| completed | TEST-2026-0001…0015, RPT-2026-0001…0005, PLAN-2026-0001…0006, REL-0.21.0, REL-0.22.0, REL-0.23.0, REL-0.24.0, REL-0.26.0, REL-0.27.0 |
 | implemented | PROP-2026-0001, PROP-2026-0002, PROP-2026-0004, PROP-2026-0005, PROP-2026-0008 |
 | resolved | INC-2026-0001, INC-2026-0002 |
 
@@ -159,7 +161,7 @@ Lookup by ID, type, status, component and owner, per `DOCUMENTATION.md` §17.
 |---|---|
 | `PROP` | PROP-2026-0009 |
 | `STD` | STD-2026-0007 |
-| `PLAN` | PLAN-2026-0006 |
+| `PLAN` | PLAN-2026-0007 |
 | `TEST` | TEST-2026-0016 |
 | `DEMO` | DEMO-2026-0006 |
 | `MAN` | MAN-2026-0004 |

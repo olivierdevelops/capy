@@ -60,6 +60,7 @@ Lookup by software version, per `DOCUMENTATION.md` §17.
 
 | Version | Tag | Release Document | Plan | Validation | Demo | Status |
 |---|---|---|---|---|---|---|
+| 0.27.0 | `v0.27.0` | REL-0.27.0 | PLAN-2026-0006 | — | — | code revision `8b351af`; tag pending (not pushed) |
 | 0.26.0 | `v0.26.0` | REL-0.26.0 | PLAN-2026-0005 | RPT-2026-0005 | DEMO-2026-0005 | released locally — commit `05ae277` (not pushed) |
 | 0.25.0 | `v0.25.0` | — | — | — | — | released — commit `75a9f68`; operators for Ambit; predates its release document |
 | 0.24.0 | `v0.24.0` | REL-0.24.0 | PLAN-2026-0004 | RPT-2026-0004 | DEMO-2026-0004 | released — commit `54f1a5e` |

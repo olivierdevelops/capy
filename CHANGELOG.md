@@ -8,6 +8,8 @@ may break between minor versions**.
 
 ## [Unreleased]
 
+## [0.27.0] — 2026-11-16
+
 ### Added
 
 - `block_open "{" close "}" continue "else"`: a delimiter block may be followed on the same line

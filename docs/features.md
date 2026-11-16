@@ -205,6 +205,17 @@ block_close "}"
 
 Body delimited by the named tokens. No closer function needed.
 
+By default the closing delimiter must be followed by a newline. To let the next
+statement start on the same line, name the literals that may follow:
+
+```
+block_open "{" close "}" continue "else"
+```
+
+Now `} else {` parses exactly as `else {` on its own line does: `else` is a separate
+statement rule that follows the `if` statement. Without `continue` the behaviour and the
+error (`expected newline after block close`) are unchanged. See `samples/block-continue/`.
+
 ### Mode C — verbatim (raw bytes)
 
 ```

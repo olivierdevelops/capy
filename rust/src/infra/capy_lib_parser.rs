@@ -14,7 +14,7 @@
 //!     arg literal <STR>
 //!     arg capture <NAME> <TYPE>
 //!     block_closer <NAME>
-//!     block_open <STR> close <STR>
+//!     block_open <STR> close <STR> [continue <STR>...]
 //!     <inner-DSL body statements>
 //! end
 //!
@@ -803,11 +803,17 @@ impl CapyLibParserState {
                 }
                 "block_open" => {
                     self.next_line();
-                    if tokens.len() != 4 || tokens[2] != "close" {
-                        return Err(self.errf("block_open <OPEN> close <CLOSE>"));
+                    if tokens.len() < 4
+                        || tokens[2] != "close"
+                        || (tokens.len() > 4 && (tokens.len() < 6 || tokens[4] != "continue"))
+                    {
+                        return Err(self.errf("block_open <OPEN> close <CLOSE> [continue <LITERAL>...]"));
                     }
                     block.open = tokens[1].clone();
                     block.close = tokens[3].clone();
+                    if tokens.len() > 4 {
+                        block.continue_with = tokens[5..].to_vec();
+                    }
                     block_set = true;
                 }
                 "block_close_seq" => {

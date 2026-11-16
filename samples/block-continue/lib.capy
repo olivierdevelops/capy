@@ -1,0 +1,41 @@
+# block-continue — `} else {` on one line, opted in per block.
+#
+# `block_open "{" close "}"` normally needs a newline after the `}`. Adding
+# `continue "else"` lets the NEXT statement start on the closer's line when it
+# begins with that literal, so these two scripts parse to the same tree:
+#
+#   if c {            if c {
+#       a()               a()
+#   }                 } else {
+#   else {                b()
+#       b()           }
+#   }
+#
+# `else` stays a separate statement rule (it follows the `if` statement); the
+# engine only learns that a statement may begin right after `}`.
+extension cx
+
+function if
+    arg literal "if"
+    arg capture cond ident
+    block_open "{" close "}" continue "else"
+    write `if ${cond}:
+${indent 4 body}
+`
+end
+
+function else
+    arg literal "else"
+    block_open "{" close "}"
+    write `else:
+${indent 4 body}
+`
+end
+
+function call
+    arg capture name ident
+    arg literal "("
+    arg literal ")"
+    write `${name}()
+`
+end

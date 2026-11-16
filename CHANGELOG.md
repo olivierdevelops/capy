@@ -10,6 +10,10 @@ may break between minor versions**.
 
 ### Added
 
+- `block_open "{" close "}" continue "else"`: a delimiter block may be followed on the same line
+  by a statement that begins with one of the named literals, so `} else {` parses as the own-line
+  `else {` does (same tree). Without `continue` the newline is still required and the error is
+  unchanged. Sample: `samples/block-continue/`, `samples/block-continue-rejected/`.
 - A call written `f(args)`, with the `(` touching the name, is an operand of an expression when an
   operator is next to it or it sits in another call's arguments. `n * fact(n - 1)` is now a tree
   whose right child is the call, instead of the flat chain of `return_ar`. A bare `f(x)` keeps the

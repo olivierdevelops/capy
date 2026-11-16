@@ -140,6 +140,9 @@ pub struct RawBlock {
     /// by `block_close_seq "</" name ">"`. Each segment is a literal (quoted in
     /// source) or a capture reference (bare identifier). Empty unless used.
     pub close_seq: Vec<RawCloseSeg>,
+    /// Literals that may follow the `close` delimiter on the same line
+    /// (`block_open "{" close "}" continue "else"`). Empty unless used.
+    pub continue_with: Vec<String>,
 }
 
 /// One segment of a `block_close_seq` directive: a quoted literal

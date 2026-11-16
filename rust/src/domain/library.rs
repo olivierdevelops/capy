@@ -187,6 +187,10 @@ pub struct BlockSpec {
     /// after each section keyword (`${rescue}`, `${finally}`). The block is
     /// closed by `closer`.
     pub sections: Vec<String>,
+    /// Delimiter mode only. Literals that may start the next statement on the
+    /// SAME line as the closing delimiter (`} else {`). Empty (the default)
+    /// keeps the rule that the close delimiter is followed by a newline or EOF.
+    pub continue_with: Vec<String>,
 }
 
 /// One piece of a capture-bound block closer (`BlockSpec::close_seq`). Exactly

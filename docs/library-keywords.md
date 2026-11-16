@@ -127,6 +127,7 @@ its template as the automatic local `${body}` (see
 |-----------|-------------------|------------|
 | `block_closer end` | indentation; closed by the named closer function (`end`) | Python/YAML-style indented blocks |
 | `block_open "{" close "}"` | explicit open/close delimiters | `{ … }` brace blocks |
+| `block_open "{" close "}" continue "else"` | as above, and the next statement may start on the closer's line when it begins with `else` (`} else {`) | C-family `if … } else { … }` |
 | `block_dedent` | the first DEDENT (no closer keyword) | CSS selectors, YAML sections |
 | `block_verbatim end` | raw source bytes until the closer (no nested parsing) | code blocks, embedded HTML/SVG |
 | `block_close_seq "</" name ">"` | an exact multi-token sequence (literals + capture refs) | matched-pair HTML/XML tags |

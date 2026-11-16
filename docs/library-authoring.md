@@ -373,6 +373,7 @@ exactly one of `block_closer`, `block_open`/`close`,
 |---|---|---|---|
 | `block_closer NAME` | An indented body that ends at a `NAME` keyword | Yes — as nested statements | Most cases — `if … end`, `for … end`, `match … end`. |
 | `block_open "X" close "Y"` | A `X`-prefixed, `Y`-suffixed delimited body on the same line as the opener (newlines inside OK) | Yes | Brace-style nesting, JSX-ish DSLs. |
+| `block_open "X" close "Y" continue "lit"…` | As above, and a following statement may start on the closer's line if it begins with one of the literals (`} else {`) | Yes | C-family `else` on the closing line. |
 | `block_dedent` | An indented body that ends at the first DEDENT — no closer keyword | Yes | CSS-style selector blocks, YAML-style sections. |
 | `block_verbatim NAME` | An indented body that ends at a `NAME` keyword | **No** — captured as raw source bytes | Code blocks, embedded HTML / SVG, anywhere the body is data not grammar. |
 

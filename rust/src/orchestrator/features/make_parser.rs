@@ -745,6 +745,16 @@ impl OuterP {
                         Ok(b) => b,
                     };
                     inst.body = Some(Box::new(body));
+                    // `continue "lit"...`: the next statement may start on the
+                    // closer's line when it begins with a named literal, so
+                    // `} else {` parses as the own-line form does.
+                    if !block.continue_with.is_empty()
+                        && self.peek_kind() != TokenKind::Newline
+                        && self.peek_kind() != TokenKind::Eof
+                        && block.continue_with.iter().any(|l| l == self.peek_text())
+                    {
+                        return Ok(inst);
+                    }
                     // Expect NEWLINE after the closing delimiter.
                     if self.peek_kind() != TokenKind::Newline
                         && self.peek_kind() != TokenKind::Eof
@@ -1128,7 +1138,11 @@ impl OuterP {
                     unbalanced_newlines += 1;
                 }
                 TokenKind::Dedent if depth <= 0 => break,
-                TokenKind::Ident if self.pos > start => {
+                TokenKind::Ident
+                    if self.pos > start
+                        && (depth <= 0 || unbalanced_newlines > 0)
+                        && self.starts_a_shape(&t.text) =>
+                {
                     // Rule 2, second clause: the set of tokens that can BEGIN a
                     // statement is known exactly from the shape table, so this is
                     // precise rather than heuristic.
@@ -1137,9 +1151,7 @@ impl OuterP {
                     // inside an unclosed delimiter — at that point the delimiter
                     // is far more likely to be missing than to be spanning lines
                     // deliberately, and the alternative is losing the file.
-                    if (depth <= 0 || unbalanced_newlines > 0) && self.starts_a_shape(&t.text) {
-                        return self.pos;
-                    }
+                    return self.pos;
                 }
                 _ => {}
             }

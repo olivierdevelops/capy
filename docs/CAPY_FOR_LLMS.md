@@ -73,6 +73,9 @@ function <NAME>              # one DSL statement shape
                              # rendered sub-results (independent of sep)
     block_closer <NAME>      # block opener: body runs until <NAME> appears
     block_open "OPEN" close "CLOSE"   # alternative: explicit delimiters
+                             # append `continue "LIT"...` to let the next
+                             # statement start on the closer's line when it
+                             # begins with LIT (`} else {`)
     block_dedent             # alternative: body ends at first DEDENT,
                              # no closer keyword (CSS-style selectors,
                              # YAML-style sections)

@@ -669,6 +669,7 @@ fn compile_function(
             is_dedent: rb.is_dedent,
             is_verbatim: rb.is_verbatim,
             sections: rb.sections.clone(),
+            continue_with: rb.continue_with.clone(),
             ..Default::default()
         };
         if !rb.close_seq.is_empty() {

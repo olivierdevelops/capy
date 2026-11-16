@@ -4,6 +4,28 @@ title: What's new — engine primitives shipped in this release
 
 # What's new
 
+## 0.27.0 — `} else {` on one line
+
+**A delimiter block can let the next statement start on its closing line.** Add
+`continue "else"` to the block line: `block_open "{" close "}" continue "else"`. After the `}`, a
+statement that begins with one of the named literals is parsed as the next statement, exactly as if it
+were on its own line, so `if c { … } else { … }` and the own-line form give the same tree.
+
+```text
+  if c {            if c {              both:  if   (cond = c, call a)
+      a()               a()                    else (call b)
+  } else {          }
+      b()           else {
+  }                     b()
+                    }
+```
+
+Without `continue` nothing changes: `} else {` is still `expected newline after block close`.
+See [`samples/block-continue/`](https://github.com/olivierdevelops/capy/tree/main/samples/block-continue) and the [library keyword cookbook](library-keywords.md).
+
+**Also in this release** (since 0.26.0): `a-1` now subtracts, and `f(args)` is an operand of an
+expression. See the [changelog](https://github.com/olivierdevelops/capy/blob/main/CHANGELOG.md).
+
 ## 0.26.0 — Capy from C
 
 **A C interface to the parse tree.** The new `capy-ffi` crate builds a static and shared library plus

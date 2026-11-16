@@ -2,7 +2,7 @@
 document_id: PLAN-2026-0006
 title: Implementation Plan — Statement continuation after a delimiter block close (0.27.0)
 document_type: plan
-status: in_progress
+status: completed
 
 created_date: 2026-11-16
 last_updated: 2026-11-16
@@ -62,7 +62,7 @@ next_review_date: 2027-05-16
 
 # Implementation Plan — Statement continuation after a delimiter block close (0.27.0)
 
-> **Status:** In progress
+> **Status:** Completed
 > **Created:** 2026-11-16
 > **Last Updated:** 2026-11-16
 > **Affected Versions:** 0.27.0
@@ -134,23 +134,23 @@ A literal is compared with the next token's text, so each literal is one token.
 
 | Req | Outcome | Acceptance | Status |
 |---|---|---|---|
-| R1 | `continue` accepted on a `block_open` line | library with it loads; malformed form is a load error naming the grammar | planned |
-| R2 | `} else {` parses | `capy ast` of the same-line and own-line scripts: same tree, only the `else` column differs | planned |
-| R3 | additive | with no `continue`, `} else {` gives `line 3: expected newline after block close` | planned |
-| R4 | no regression | existing goldens, `cargo test --workspace` unchanged | planned |
-| R5 | docs true | `library-keywords`, `features`, `CAPY_FOR_LLMS`, `library-authoring`, `whats-new`, `roadmap`; `mkdocs build --strict` | planned |
+| R1 | `continue` accepted on a `block_open` line | library with it loads; malformed form is a load error naming the grammar | DONE |
+| R2 | `} else {` parses | `capy ast` of the same-line and own-line scripts: same tree, only the `else` column differs | DONE |
+| R3 | additive | with no `continue`, `} else {` gives `line 3: expected newline after block close` | DONE |
+| R4 | no regression | existing goldens, `cargo test --workspace` unchanged | DONE |
+| R5 | docs true | `library-keywords`, `features`, `CAPY_FOR_LLMS`, `library-authoring`, `whats-new`, `roadmap`; `mkdocs build --strict` | DONE |
 
 ## Work Checklist
 
 | ID | Task | Files | Status |
 |---|---|---|---|
-| W-01 | parse `continue` on the `block_open` line | `rust/src/infra/capy_lib_parser.rs`, `rust/src/infra/raw_library.rs` | planned |
-| W-02 | carry it into `BlockSpec` | `rust/src/domain/library.rs`, `rust/src/orchestrator/features/make_library_loader.rs` | planned |
-| W-03 | accept a continuation after the closer | `rust/src/orchestrator/features/make_parser.rs` | planned |
-| W-04 | samples: `block-continue` (two scripts, one expected), `block-continue-rejected` (old error) | `samples/` | planned |
-| W-05 | docs (AGENTS.md rule: new directive) | `docs/*.md`, `samples/README.md`, `CHANGELOG.md` | planned |
-| W-06 | gates | — | planned |
-| W-07 | version 0.27.0 (commit B), release document (commit R) | `rust/**/Cargo.toml`, `Cargo.lock`, `CHANGELOG.md`, `program_docs/**` | planned |
+| W-01 | parse `continue` on the `block_open` line | `rust/src/infra/capy_lib_parser.rs`, `rust/src/infra/raw_library.rs` | DONE |
+| W-02 | carry it into `BlockSpec` | `rust/src/domain/library.rs`, `rust/src/orchestrator/features/make_library_loader.rs` | DONE |
+| W-03 | accept a continuation after the closer | `rust/src/orchestrator/features/make_parser.rs` | DONE |
+| W-04 | samples: `block-continue` (two scripts, one expected), `block-continue-rejected` (old error) | `samples/` | DONE |
+| W-05 | docs (AGENTS.md rule: new directive) | `docs/*.md`, `samples/README.md`, `CHANGELOG.md` | DONE |
+| W-06 | gates | — | DONE |
+| W-07 | version 0.27.0 (commit B), release document (commit R) | `rust/**/Cargo.toml`, `Cargo.lock`, `CHANGELOG.md`, `program_docs/**` | see REL-0.27.0 |
 
 ## Project Facts
 
@@ -173,6 +173,17 @@ contract, `vhco validate` and `vhco sync` steps do not apply.
 | a statement starting mid-line trips column or indent logic | the sample asserts the same tree; the own-line form is the reference |
 | `else` with no preceding `if` | unchanged: `else` is a normal statement rule, so it parses wherever the library allows it |
 | a literal that is several tokens never matches | documented: each literal is one token |
+
+## Findings
+
+| Kind | Entry |
+|---|---|
+| Deviation | The code was drafted before this plan was committed (the plan commit `3654c8e` precedes the feature commit, not the first edit). Nothing was measured, so no threshold was affected |
+| Finding | `cargo clippy -D warnings` failed on rustc/clippy 1.99 with `collapsible_match` in `make_parser.rs` (error recovery, from earlier work). Fixed by moving the condition into the match guard; behaviour is identical (a failed guard falls to `_ => {}`) |
+
+## Gate results
+
+`cargo build --workspace` ok; `cargo clippy --workspace --all-targets -- -D warnings` clean; `cargo test --workspace` 186 passed, 0 failed; `mkdocs build --strict` exit 0.
 
 ## Rollback
 

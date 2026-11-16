@@ -39,6 +39,7 @@ plugs together.
 | [scene-dsl/](scene-dsl/)       | A pure declarative DSL with no control flow defined. |
 | [builtin-functions/](builtin-functions/) | Live tour of every built-in template helper (`pascalCase`, `decoded`, `escapeHtml`, `percent`, `stars`, `indent`, …). Verifies the [function cookbook](../docs/function-cookbook.md). |
 | [library-keywords/](library-keywords/) | The canonical `if … end` block — `function` / `arg literal` / `arg capture` / `block_closer` / `write` / `${indent N body}`. Verifies the [library keyword cookbook](../docs/library-keywords.md). |
+| [block-continue/](block-continue/) | `block_open … continue "else"`: `} else {` on one line parses like the own-line form (two scripts, one expected output). [block-continue-rejected/](block-continue-rejected/) keeps the old error without the opt-in. |
 
 ---
 

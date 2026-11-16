@@ -62,11 +62,8 @@ for the per-release detail.
 
 - 🔭 **`else` arm on inner `if`**. Today's workaround is two `if` blocks with a
   negated condition. Tracked as the most-requested inner-DSL gap.
-- 🔭 **Statement continuation after a block close** — a Mode B block
-  (`block_open "{" close "}"`) requires a newline after its closing delimiter,
-  so the C-family one-liner `} else {` does not parse; `else` on its own line
-  does. The sequence-closed block mode already allows continuation, so the
-  asymmetry is the thing to resolve.
+- ✅ **Statement continuation after a block close** — `block_open "{" close "}" continue "else"`
+  lets `} else {` parse like `else` on its own line (`0.27.0`). Without `continue` a newline is still required.
 - 🔭 **Optional captures before a block opener** — `default` makes a capture
   omittable only when it is *trailing*, and a `block_open` after it means it is
   not. A library declaring one loads clean and then fails to match at run time;

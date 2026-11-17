@@ -69,7 +69,7 @@ Lookup by ID, type, status, component and owner, per `DOCUMENTATION.md` §17.
 | PROP-2026-0002 | Public Documentation and Samples for the 0.22.0 Parser Surface | proposal | implemented | docs, samples, capy-cli | Capy Engine | 2026-09-16 | [`proposals/prop-2026-0002-public-docs-and-samples-0.22.0.md`](../proposals/prop-2026-0002-public-docs-and-samples-0.22.0.md) |
 | PROP-2026-0003 | Expression Trees Over JSON, and the Parenthesis Round-Trip Fix | proposal | draft | capy-core, docs | Capy Engine | 2026-09-17 | [`proposals/prop-2026-0003-expression-trees-and-round-trip.md`](../proposals/prop-2026-0003-expression-trees-and-round-trip.md) |
 | PROP-2026-0004 | Ordered Alternation for Nonterminals | proposal | implemented | capy-core, docs, samples | Capy Engine | 2026-10-07 | [`proposals/prop-2026-0004-nonterminal-alternation.md`](../proposals/prop-2026-0004-nonterminal-alternation.md) |
-| ADR-0001 | Approve PROP-2026-0001 and its Frozen Contracts | decision | approved | capy-core | Capy Engine | 2026-09-16 | [`decisions/adr-0001-approve-parser-foundations.md`](../decisions/adr-0001-approve-parser-foundations.md) |
+| ADR-0001 | Approve PROP-2026-0001 and its Frozen Contracts | decision | approved | capy-core | PLAN-2026-0007, INC-2026-0004, Capy Engine | 2026-09-16 | [`decisions/adr-0001-approve-parser-foundations.md`](../decisions/adr-0001-approve-parser-foundations.md) |
 | TEST-2026-0001 | Test — AST Source Spans | test | completed | capy-core | Capy Engine | 2026-09-16 | [`testing/test-2026-0001-ast-spans.md`](../testing/test-2026-0001-ast-spans.md) |
 | TEST-2026-0002 | Test — Left-Recursion Guard and Parse Depth Bound | test | completed | capy-core | Capy Engine | 2026-09-16 | [`testing/test-2026-0002-recursion-guard.md`](../testing/test-2026-0002-recursion-guard.md) |
 | TEST-2026-0003 | Test — No Behaviour Change, and Comment Retention | test | completed | capy-core, capy-cli, capy-wasm-abi | Capy Engine | 2026-09-16 | [`testing/test-2026-0003-no-behaviour-change.md`](../testing/test-2026-0003-no-behaviour-change.md) |
@@ -116,6 +116,8 @@ Lookup by ID, type, status, component and owner, per `DOCUMENTATION.md` §17.
 | DEMO-2026-0005 | Release Verification Guide — 0.26.0 | demo | active | capy-ffi, capy-core, capy-cli, docs | Capy Engine | 2026-10-13 | [`demos/demo-2026-0005-release-verification-0.26.0.md`](../demos/demo-2026-0005-release-verification-0.26.0.md) |
 | MAN-2026-0003 | Manual — Calling Capy from C | manual | active | capy-ffi, capy-cli, docs | Capy Engine | 2026-10-13 | [`manuals/man-2026-0003-calling-capy-from-c.md`](../manuals/man-2026-0003-calling-capy-from-c.md) |
 | ARCH-2026-0002 | Architecture — The C ABI: Handles, Ids and Borrowed Strings | architecture | active | capy-ffi, capy-core | Capy Engine | 2026-10-13 | [`architecture/components/arch-2026-0002-c-abi-handles-ids-and-borrowed-strings.md`](../architecture/components/arch-2026-0002-c-abi-handles-ids-and-borrowed-strings.md) |
+| PLAN-2026-0007 | Implementation Plan — A backtick in a comment or string no longer opens a literal (0.27.1) | plan | completed | capy-core, docs | Capy Engine | 2026-11-17 | [`plans/plan-2026-0007-backtick-in-comment-or-string.md`](../plans/plan-2026-0007-backtick-in-comment-or-string.md) |
+| INC-2026-0004 | Incident — A Backtick in a Comment Drops the Rest of the File | incident | resolved | capy-core | Capy Engine | 2026-11-17 | [`incidents/resolved/inc-2026-0004-backtick-in-a-comment-drops-the-rest-of-the-file.md`](../incidents/resolved/inc-2026-0004-backtick-in-a-comment-drops-the-rest-of-the-file.md) |
 | REL-0.27.0 | Release 0.27.0 — } else { on one line | release | completed | capy-core, docs | Release Management | 2026-11-16 | [`releases/rel-0.27.0-release-notes.md`](../releases/rel-0.27.0-release-notes.md) |
 | REL-0.26.0 | Release 0.26.0 — Capy from C | release | completed | capy-ffi, capy-core, capy-cli, docs | Release Management | 2026-10-13 | [`releases/rel-0.26.0-release-notes.md`](../releases/rel-0.26.0-release-notes.md) |
 | ADR-0004 | Approve PROP-2026-0005 — Ordered-Choice Follow-Ups | decision | approved | capy-core, capy-cli, capy-wasm-abi, docs | Capy Engine | 2026-10-07 | [`decisions/adr-0004-approve-ordered-choice-follow-ups.md`](../decisions/adr-0004-approve-ordered-choice-follow-ups.md) |
@@ -141,9 +143,9 @@ Lookup by ID, type, status, component and owner, per `DOCUMENTATION.md` §17.
 | active | REF-2026-0001, STD-2026-0000…0006, DEMO-2026-0001…0005, MAN-2026-0001…0003, SYS-2026-0001, ARCH-2026-0001, ARCH-2026-0002, TRBL-2026-0001, INC-2026-0003 |
 | draft | PROP-2026-0003, PROP-2026-0006, PROP-2026-0007 |
 | approved | ADR-0001, ADR-0002, ADR-0003, ADR-0004, ADR-0005 |
-| completed | TEST-2026-0001…0015, RPT-2026-0001…0005, PLAN-2026-0001…0006, REL-0.21.0, REL-0.22.0, REL-0.23.0, REL-0.24.0, REL-0.26.0, REL-0.27.0 |
+| completed | TEST-2026-0001…0015, RPT-2026-0001…0005, PLAN-2026-0001…0007, REL-0.21.0, REL-0.22.0, REL-0.23.0, REL-0.24.0, REL-0.26.0, REL-0.27.0 |
 | implemented | PROP-2026-0001, PROP-2026-0002, PROP-2026-0004, PROP-2026-0005, PROP-2026-0008 |
-| resolved | INC-2026-0001, INC-2026-0002 |
+| resolved | INC-2026-0001, INC-2026-0002, INC-2026-0004 |
 
 ## By component
 
@@ -161,14 +163,14 @@ Lookup by ID, type, status, component and owner, per `DOCUMENTATION.md` §17.
 |---|---|
 | `PROP` | PROP-2026-0009 |
 | `STD` | STD-2026-0007 |
-| `PLAN` | PLAN-2026-0007 |
+| `PLAN` | PLAN-2026-0008 |
 | `TEST` | TEST-2026-0016 |
 | `DEMO` | DEMO-2026-0006 |
 | `MAN` | MAN-2026-0004 |
 | `SYS` | SYS-2026-0002 |
 | `ARCH` | ARCH-2026-0003 |
 | `ADR` | ADR-0006 |
-| `INC` | INC-2026-0004 |
+| `INC` | INC-2026-0005 |
 | `TRBL` | TRBL-2026-0002 |
 | `RPT` | RPT-2026-0006 |
 
@@ -188,3 +190,4 @@ Lookup by ID, type, status, component and owner, per `DOCUMENTATION.md` §17.
 | 10 | 2026-10-08 | Olivier | Added TEST-2026-0014 (PROP-2026-0007 experiment results); next `TEST` advanced to 0015 |
 | 11 | 2026-10-13 | Olivier, Claude | Added draft PROP-2026-0008 (C ABI for Capy); next `PROP` advanced to 0009 |
 | 12 | 2026-10-13 | Olivier, Claude | Added the 0.26.0 documents (ADR-0005, PLAN-2026-0005, INC-2026-0002/0003, TEST-2026-0015, RPT-2026-0005, DEMO-2026-0005, MAN-2026-0003, ARCH-2026-0002); PROP-2026-0008 implemented; next IDs advanced |
+| 13 | 2026-11-17 | Olivier, Claude | Added PLAN-2026-0007, INC-2026-0004 (0.27.1); next IDs advanced |

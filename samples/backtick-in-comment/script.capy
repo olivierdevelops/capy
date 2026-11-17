@@ -1,0 +1,6 @@
+// an unpaired ` in a comment must not swallow the rest of the file
+note first
+note second // and ` here, after code on the same line
+// ` another one
+say "still parsed"
+note last

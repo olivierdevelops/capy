@@ -4,6 +4,23 @@ title: What's new — engine primitives shipped in this release
 
 # What's new
 
+## 0.27.1 — a backtick in a comment or string is just text
+
+**Fix.** One unpaired backtick in a comment used to swallow the rest of the file: the parse was clean and
+everything after it was ignored. A backtick now opens a literal only when it is code.
+
+```text
+  // use ` for code            before:  note a / note b silently dropped
+  note a                       after:   note a / note b parsed
+  note b
+  say "a ` in a string"        after:   text, not a literal
+  say `never closed            after:   line N: backtick literal opened here is never closed
+```
+
+Comments use the library's own `comments` markers; strings are the lexer's `"` and `'`. Real multi-line
+backtick literals are unchanged. See `samples/backtick-in-comment/`, `backtick-in-string/`,
+`backtick-multiline/`, `backtick-unclosed/`.
+
 ## 0.27.0 — `} else {` on one line
 
 **A delimiter block can let the next statement start on its closing line.** Add

@@ -1,0 +1,21 @@
+# Backtick scan order (INC-2026-0004): a backtick opens a literal only when it is CODE.
+# A backtick inside a comment or a "string" is plain text.
+extension txt
+
+comments
+    line "//"
+end
+
+function say
+    arg literal "say"
+    arg capture msg string
+    write `say: ${decoded msg}
+`
+end
+
+function note
+    arg literal "note"
+    arg capture word ident
+    write `note: ${word}
+`
+end

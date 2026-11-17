@@ -1,0 +1,5 @@
+note: before
+say: line one
+// not a comment: inside a literal
+line "three"
+note: after

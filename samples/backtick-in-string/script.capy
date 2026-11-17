@@ -1,0 +1,4 @@
+note before
+say "a ` inside a string is text"
+say 'and ` in single quotes'
+note after

@@ -8,6 +8,10 @@ may break between minor versions**.
 
 ## [Unreleased]
 
+### Fixed
+
+- A backtick inside a comment or a `"`/`'` string no longer opens a multi-line backtick literal (it swallowed the rest of the file); an unclosed literal is now `line N: backtick literal opened here is never closed`.
+
 ## [0.27.0] — 2026-11-16
 
 ### Added

@@ -40,6 +40,7 @@ plugs together.
 | [builtin-functions/](builtin-functions/) | Live tour of every built-in template helper (`pascalCase`, `decoded`, `escapeHtml`, `percent`, `stars`, `indent`, …). Verifies the [function cookbook](../docs/function-cookbook.md). |
 | [library-keywords/](library-keywords/) | The canonical `if … end` block — `function` / `arg literal` / `arg capture` / `block_closer` / `write` / `${indent N body}`. Verifies the [library keyword cookbook](../docs/library-keywords.md). |
 | [block-continue/](block-continue/) | `block_open … continue "else"`: `} else {` on one line parses like the own-line form (two scripts, one expected output). [block-continue-rejected/](block-continue-rejected/) keeps the old error without the opt-in. |
+| [backtick-in-comment/](backtick-in-comment/), [backtick-in-string/](backtick-in-string/), [backtick-multiline/](backtick-multiline/), [backtick-unclosed/](backtick-unclosed/) | Backtick scan order: a backtick in a comment or string is text; a real multi-line literal is unchanged; an unclosed literal is a positioned error. |
 
 ---
 

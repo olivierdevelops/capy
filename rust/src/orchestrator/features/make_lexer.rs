@@ -95,7 +95,7 @@ fn tokenize_impl(
     } else {
         std::borrow::Cow::Borrowed(source)
     };
-    let lines = merge_backtick_lines(&split_lines(&norm));
+    let lines = merge_backtick_lines(&split_lines(&norm), comment_markers, line_base)?;
     for (li, raw) in lines.iter().enumerate() {
         let mut line: &str = raw;
         // `start_col` carries the source-absolute column at which `line`'s
@@ -231,11 +231,23 @@ fn split_lines(s: &str) -> Vec<&str> {
 /// The merged form is byte-equivalent to writing the original on a single line
 /// with `\n` escape sequences in place of real newlines. `${decoded x}`
 /// recovers the original newlines at render time.
-fn merge_backtick_lines<'a>(lines: &[&'a str]) -> Vec<std::borrow::Cow<'a, str>> {
+///
+/// INC-2026-0001 — only a backtick that is CODE opens or closes a literal. Outside a
+/// literal, a line is scanned in lexer order: the library's comment markers
+/// (`comment_markers`, i.e. `lib.comments`) end the scan for the line, and a `"` or `'`
+/// string (the lexer's own delimiters, see [`tokenize_line`]) is skipped whole, so a
+/// backtick inside either is plain text. A literal still open at end of input is an
+/// error naming the line that opened it (`line_base` is the first line's number).
+fn merge_backtick_lines<'a>(
+    lines: &[&'a str],
+    comment_markers: &[String],
+    line_base: usize,
+) -> Result<Vec<std::borrow::Cow<'a, str>>, CapyError> {
+    let mut open_at = 0usize;
     let mut out: Vec<std::borrow::Cow<'a, str>> = Vec::with_capacity(lines.len());
     let mut cur = String::new();
     let mut in_backtick = false;
-    for ln in lines {
+    for (li, ln) in lines.iter().enumerate() {
         // A line with no backtick, outside any backtick literal, passes through unchanged
         // (the byte loop below would copy it verbatim): borrow it.
         if !in_backtick && cur.is_empty() && !ln.contains('`') {
@@ -257,8 +269,30 @@ fn merge_backtick_lines<'a>(lines: &[&'a str]) -> Vec<std::borrow::Cow<'a, str>>
                 i += 2;
                 continue;
             }
+            if !in_backtick {
+                if ln.get(i..).is_some_and(|rest| has_comment_prefix(rest, comment_markers)) {
+                    // Comment: the rest of the line is text, copied verbatim.
+                    unsafe { cur.as_mut_vec().extend_from_slice(&b[i..]) };
+                    break;
+                }
+                if c == b'"' || c == b'\'' {
+                    // String: copy it whole (escapes honoured); an unterminated one is
+                    // left for tokenize_line to report.
+                    let mut j = i + 1;
+                    while j < b.len() && b[j] != c {
+                        j += if b[j] == b'\\' { 2 } else { 1 };
+                    }
+                    let end = (j + 1).min(b.len());
+                    unsafe { cur.as_mut_vec().extend_from_slice(&b[i..end]) };
+                    i = end;
+                    continue;
+                }
+            }
             if c == b'`' {
                 in_backtick = !in_backtick;
+                if in_backtick {
+                    open_at = li;
+                }
             }
             // Bytes are pushed individually in Go; reassemble via raw bytes so
             // multi-byte sequences survive intact.
@@ -269,10 +303,16 @@ fn merge_backtick_lines<'a>(lines: &[&'a str]) -> Vec<std::borrow::Cow<'a, str>>
             out.push(std::borrow::Cow::Owned(std::mem::take(&mut cur)));
         }
     }
+    if in_backtick {
+        return Err(CapyError::msg(format!(
+            "line {}: backtick literal opened here is never closed",
+            open_at + line_base
+        )));
+    }
     if !cur.is_empty() {
         out.push(std::borrow::Cow::Owned(cur));
     }
-    out
+    Ok(out)
 }
 
 /// Port of `hasCommentPrefix`. Empty markers list → never a comment.

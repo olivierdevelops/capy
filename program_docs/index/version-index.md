@@ -60,6 +60,7 @@ Lookup by software version, per `DOCUMENTATION.md` §17.
 
 | Version | Tag | Release Document | Plan | Validation | Demo | Status |
 |---|---|---|---|---|---|---|
+| 0.27.1 | `v0.27.1` | REL-0.27.1 | PLAN-2026-0007 | — | — | code revision `46dcf90`; tag pending (not pushed) |
 | 0.27.0 | `v0.27.0` | REL-0.27.0 | PLAN-2026-0006 | — | — | code revision `8b351af`; tag pending (not pushed) |
 | 0.26.0 | `v0.26.0` | REL-0.26.0 | PLAN-2026-0005 | RPT-2026-0005 | DEMO-2026-0005 | released locally — commit `05ae277` (not pushed) |
 | 0.25.0 | `v0.25.0` | — | — | — | — | released — commit `75a9f68`; operators for Ambit; predates its release document |
@@ -83,3 +84,4 @@ Lookup by software version, per `DOCUMENTATION.md` §17.
 | 2 | 2026-10-07 | Olivier | Added 0.23.0 |
 | 3 | 2026-10-07 | Olivier | Added 0.24.0 |
 | 4 | 2026-10-13 | Olivier, Claude | Added 0.26.0 (and 0.25.0, which had no release document) |
+| 5 | 2026-11-17 | Olivier, Claude | Added 0.27.1 |
